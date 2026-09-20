@@ -224,7 +224,6 @@ export default function App() {
       {/* 10. Footer */}
       <Footer
         siteSettings={siteSettings}
-        onOpenAdmin={() => navigateTo('admin')}
       />
 
       {/* Floating LINE Support Widget */}
@@ -266,6 +265,7 @@ export default function App() {
       {walletModalOpen && (
         <WalletModal
           user={user}
+          siteSettings={siteSettings}
           onClose={() => setWalletModalOpen(false)}
           onDepositSuccess={handleDepositSuccess}
         />

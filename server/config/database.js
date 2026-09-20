@@ -10,12 +10,12 @@ const defaultData = {
     siteName: "BOOSTUP ร้านเติมเงินเกม",
     siteSlogan: "PLAY MORE GO FURTHER • เติมเกมสุดคุ้ม รวดเร็ว ปลอดภัย 100% เติมง่าย ได้ทันที ไม่ต้องรอนาน",
     announcement: "🔥 ยินดีต้อนรับสู่ BOOSTUP ร้านเติมเงินเกม! เติมไว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
-    promptpayNumber: "0891234567",
-    promptpayName: "บจก. บูสต์อัพ (BOOSTUP THAILAND)",
-    truemoneyNumber: "0891234567",
-    bankName: "ธนาคารกสิกรไทย",
-    bankAccount: "123-2-34567-8",
-    bankAccountName: "บจก. บูสต์อัพ (BOOSTUP)",
+    promptpayNumber: "",
+    promptpayName: "",
+    truemoneyNumber: "",
+    bankName: "",
+    bankAccount: "",
+    bankAccountName: "",
     contactLine: "@boostup",
     contactFacebook: "BoostUpGameStore",
     contactDiscord: "discord.gg/boostup",
@@ -48,24 +48,7 @@ const defaultData = {
         desc: "ได้รับความไว้วางใจจากเหล่าโปรเพลเยอร์ สตรีมเมอร์ และเกมเมอร์ทั่วประเทศอย่างต่อเนื่อง"
       }
     ],
-    bankAccounts: [
-      {
-        id: "bank_kbank",
-        bankName: "ธนาคารกสิกรไทย (KBANK)",
-        accountNo: "123-2-34567-8",
-        accountName: "บจก. บูสต์อัพ (ประเทศไทย)",
-        promptpayLinked: true,
-        isActive: true
-      },
-      {
-        id: "bank_scb",
-        bankName: "ธนาคารไทยพาณิชย์ (SCB)",
-        accountNo: "987-6-54321-0",
-        accountName: "บจก. บูสต์อัพ (BOOSTUP THAILAND)",
-        promptpayLinked: false,
-        isActive: true
-      }
-    ],
+    bankAccounts: [],
     coinsRewardRate: 10, // 10 coins per 100 THB
     coinsMultiplierText: "2X COINS",
     footerAbout: "ผู้ให้บริการแพลตฟอร์มเติมเกมออนไลน์ครบวงจรอันดับ 1 ในไทย ระบบอัตโนมัติ 24 ชั่วโมง เสถียร ปลอดภัย เติมไวใน 1-3 วินาที เชื่อมต่อ API ตรงกับผู้ให้บริการชั้นนำ",
@@ -1195,6 +1178,18 @@ class Database {
       return this.data.orders[idx];
     }
     return null;
+  }
+
+  createTransaction(txnData) {
+    if (!this.data.transactions) this.data.transactions = [];
+    const newTxn = {
+      id: `txn_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+      ...txnData
+    };
+    this.data.transactions.unshift(newTxn);
+    this.save();
+    return newTxn;
   }
 
   // Analytics & Stats

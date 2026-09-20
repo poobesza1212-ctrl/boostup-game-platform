@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, MessageCircle, Heart, Flame } from 'lucide-react';
 
-export default function Footer({ siteSettings, onOpenAdmin }) {
+export default function Footer({ siteSettings }) {
   return (
     <footer id="contact" className="bg-[#06080c] border-t border-red-950/60 text-zinc-400 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -47,15 +47,6 @@ export default function Footer({ siteSettings, onOpenAdmin }) {
               <li><a href="#popular-games" className="hover:text-red-400 transition-colors">เติมเกมยอดนิยม</a></li>
               <li><a href="#step-guide" className="hover:text-red-400 transition-colors">วิธีการเติมเกม</a></li>
               <li><a href="#features" className="hover:text-red-400 transition-colors">จุดเด่นของระบบ</a></li>
-              <li>
-                <button 
-                  onClick={onOpenAdmin} 
-                  className="text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1.5 pt-1"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
-                  <span>ระบบจัดการหลังบ้าน</span>
-                </button>
-              </li>
             </ul>
           </div>
 

@@ -373,15 +373,15 @@ router.post('/auth/register', (req, res) => {
 
 router.post('/wallet/deposit', async (req, res) => {
   try {
-    const { userId, amount, method } = req.body;
-    if (!userId || !amount || amount <= 0) {
+    const { userId, amount, method, slipImage, voucherUrl } = req.body;
+    if (!userId || !amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'ข้อมูลการเติมเงินไม่ถูกต้อง' });
     }
 
-    const result = await paymentService.depositWallet(userId, amount, method);
+    const result = await paymentService.depositWallet(userId, amount, method, slipImage, voucherUrl);
     res.json({ success: true, ...result });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 

@@ -103,14 +103,43 @@ class PaymentService {
   }
 
   /**
-   * Deposit into User Wallet
+   * Deposit into User Wallet with proof of payment verification
    */
-  async depositWallet(userId, amount, method) {
+  async depositWallet(userId, amount, method, slipImage = null, voucherUrl = null) {
     const user = db.findUserById(userId);
-    if (!user) throw new Error("ไม่พบผู้ใช้");
+    if (!user) throw new Error("ไม่พบข้อมูลผู้ใช้งาน");
 
-    const newBalance = (Number(user.walletBalance) || 0) + Number(amount);
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      throw new Error("ยอดเงินที่ต้องการเติมไม่ถูกต้อง");
+    }
+
+    if (method === 'truemoney') {
+      if (!voucherUrl) {
+        throw new Error("กรุณากรอกลิงก์ซองของขวัญ TrueMoney เพื่อเติมเงิน");
+      }
+      await this.verifyTrueMoneyVoucher(voucherUrl, numAmount);
+    } else if (method === 'bank_transfer' || method === 'promptpay') {
+      if (!slipImage) {
+        throw new Error("กรุณาแนบสลิปหลักฐานการโอนเงินเพื่อยืนยันรายการ");
+      }
+    }
+
+    const newBalance = (Number(user.walletBalance) || 0) + numAmount;
     db.updateUser(userId, { walletBalance: newBalance });
+
+    // Record wallet transaction
+    db.createTransaction({
+      userId,
+      type: 'deposit',
+      amount: numAmount,
+      method,
+      slipImage: slipImage || null,
+      status: 'completed',
+      createdAt: new Date().toISOString()
+    });
+
+    db.logAction('user', user.name || user.username, 'WALLET_DEPOSIT', `เติมเงินเข้ากระเป๋า ฿${numAmount} ผ่าน ${method}`);
 
     return {
       success: true,

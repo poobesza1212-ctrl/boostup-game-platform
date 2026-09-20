@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const db = require('../config/database');
 const topupEngine = require('../services/topupEngine');
 const paymentService = require('../services/paymentService');
+const emailService = require('../services/emailService');
+const otpService = require('../services/otpService');
 
 // ==========================================
 // 1. PUBLIC & STOREFRONT APIS
@@ -371,32 +373,90 @@ router.post('/auth/register', (req, res) => {
   });
 });
 
-router.post('/auth/forgot-password', (req, res) => {
-  const { identifier, newPassword, confirmPassword } = req.body;
-  if (!identifier || !identifier.trim()) {
-    return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้หรืออีเมลที่ลงทะเบียนไว้' });
+// Request Password Reset OTP to registered Email
+router.post('/auth/request-reset-otp', async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier || !identifier.trim()) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้หรืออีเมลที่ลงทะเบียนไว้' });
+    }
+
+    const user = db.findUserByEmailOrUsername(identifier.trim());
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาตรวจสอบชื่อผู้ใช้หรืออีเมลอีกครั้ง' });
+    }
+
+    if (!user.email || !user.email.includes('@')) {
+      return res.status(400).json({ success: false, message: 'บัญชีนี้ยังไม่ได้ระบุอีเมลที่ถูกต้อง กรุณาติดต่อแอดมินทางแชทสดเพื่อขอรับความช่วยเหลือ' });
+    }
+
+    // Generate 6-digit OTP
+    const { otp, expiresInSeconds } = otpService.generateOtp(user.id, user.email);
+
+    // Send email with OTP
+    const emailResult = await emailService.sendPasswordResetOtp(user.email, user.name || user.username, otp);
+
+    // Mask email for user privacy (e.g. k***t@gmail.com)
+    const [namePart, domainPart] = user.email.split('@');
+    const maskedName = namePart.length > 2 
+      ? namePart[0] + '*'.repeat(namePart.length - 2) + namePart[namePart.length - 1]
+      : namePart[0] + '*';
+    const maskedEmail = `${maskedName}@${domainPart}`;
+
+    db.logAction('user', user.name || user.username, 'OTP_REQUESTED', `ขอรหัส OTP สำหรับรีเซ็ตรหัสผ่านไปยัง ${maskedEmail}`);
+
+    res.json({
+      success: true,
+      userId: user.id,
+      maskedEmail,
+      expiresInSeconds,
+      simulated: emailResult.simulated,
+      devOtp: emailResult.simulated ? otp : undefined,
+      message: `ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล ${maskedEmail} เรียบร้อยแล้ว (รหัสมีอายุ 5 นาที)`
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
+});
 
-  const user = db.findUserByEmailOrUsername(identifier.trim());
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาตรวจสอบชื่อผู้ใช้หรืออีเมลอีกครั้ง' });
+// Verify OTP and Set New Password
+router.post('/auth/verify-otp-reset', (req, res) => {
+  try {
+    const { userId, otp, newPassword, confirmPassword } = req.body;
+    if (!userId || !otp || !otp.trim()) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอกรหัสยืนยัน OTP ให้ครบถ้วน' });
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน' });
+    }
+
+    const user = db.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ' });
+    }
+
+    // Verify OTP
+    const verifyResult = otpService.verifyOtp(userId, otp.trim());
+    if (!verifyResult.valid) {
+      return res.status(400).json({ success: false, message: verifyResult.message });
+    }
+
+    // Update password
+    db.updateUser(user.id, { password: newPassword });
+    db.logAction('user', user.name || user.username, 'PASSWORD_RESET_SUCCESS', `รีเซ็ตรหัสผ่านสำเร็จผ่านการยืนยัน OTP ทางอีเมล (${user.username})`);
+
+    res.json({
+      success: true,
+      message: 'ยืนยันรหัส OTP และตั้งรหัสผ่านใหม่สำเร็จเรียบร้อยแล้ว! สามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที'
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
-
-  if (!newPassword || newPassword.length < 4) {
-    return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร' });
-  }
-
-  if (newPassword !== confirmPassword) {
-    return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน' });
-  }
-
-  db.updateUser(user.id, { password: newPassword });
-  db.logAction('user', user.name || user.username, 'PASSWORD_RESET', `ผู้ใช้รีเซ็ตรหัสผ่านใหม่สำเร็จ (${user.username})`);
-
-  res.json({
-    success: true,
-    message: 'ตั้งรหัสผ่านใหม่สำเร็จเรียบร้อยแล้ว! สามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที'
-  });
 });
 
 router.post('/wallet/deposit', async (req, res) => {

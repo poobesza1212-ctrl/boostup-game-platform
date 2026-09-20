@@ -45,7 +45,8 @@ import {
   Eye,
   XCircle,
   Check,
-  X
+  X,
+  Mail
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -2554,6 +2555,83 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
                     </label>
                   </div>
+                </div>
+              </div>
+
+              {/* 3.2 Email SMTP Settings (For Password Reset OTP) */}
+              <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-red-500" />
+                      ตั้งค่าระบบส่งอีเมลยืนยัน OTP (Email SMTP Settings)
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      กำหนดค่าอีเมลสำหรับส่งรหัส OTP กู้คืนรหัสผ่านไปยังกล่องข้อความของลูกค้าจริง
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-zinc-400 block mb-1">SMTP Server Host</label>
+                    <input
+                      type="text"
+                      value={siteSettings.smtp?.host || ''}
+                      onChange={(e) => setSiteSettings({ 
+                        ...siteSettings, 
+                        smtp: { ...(siteSettings.smtp || {}), host: e.target.value } 
+                      })}
+                      placeholder="เช่น smtp.gmail.com"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-zinc-400 block mb-1">SMTP Port</label>
+                    <input
+                      type="number"
+                      value={siteSettings.smtp?.port || 465}
+                      onChange={(e) => setSiteSettings({ 
+                        ...siteSettings, 
+                        smtp: { ...(siteSettings.smtp || {}), port: Number(e.target.value) } 
+                      })}
+                      placeholder="465 หรือ 587"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-zinc-400 block mb-1">อีเมลผู้ส่ง (Username / Email)</label>
+                    <input
+                      type="text"
+                      value={siteSettings.smtp?.user || ''}
+                      onChange={(e) => setSiteSettings({ 
+                        ...siteSettings, 
+                        smtp: { ...(siteSettings.smtp || {}), user: e.target.value } 
+                      })}
+                      placeholder="เช่น yourstore@gmail.com"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-zinc-400 block mb-1">รหัสผ่านแอป (App Password)</label>
+                    <input
+                      type="password"
+                      value={siteSettings.smtp?.pass || ''}
+                      onChange={(e) => setSiteSettings({ 
+                        ...siteSettings, 
+                        smtp: { ...(siteSettings.smtp || {}), pass: e.target.value } 
+                      })}
+                      placeholder="รหัสผ่านแอป Gmail 16 หลัก"
+                      className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 leading-relaxed">
+                  💡 <strong>หมายเหตุ:</strong> หากยังไม่ได้กรอกข้อมูล SMTP ระบบจะทำงานในโหมดจำลอง (Simulation Mode) โดยจะแสดงรหัส OTP ให้เห็นบนหน้าเว็บเพื่อความสะดวกในการทดสอบทันที
                 </div>
               </div>
 

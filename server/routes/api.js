@@ -320,7 +320,7 @@ router.post('/auth/login', (req, res) => {
 
   const user = db.findUserByEmailOrUsername(identifier);
   if (!user || user.password !== password) {
-    return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (ลอง admin / admin)' });
+    return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
   }
 
   res.json({
@@ -780,7 +780,7 @@ router.post('/admin/login', (req, res) => {
   const admin = db.findAdminByEmailOrUsername(username);
   if (!admin || admin.password !== password) {
     db.logAction('system', 'Security', 'ADMIN_LOGIN_FAILED', `เข้าสู่ระบบแอดมินไม่สำเร็จสำหรับผู้ใช้: ${username}`);
-    return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านผู้ดูแลระบบไม่ถูกต้อง (บัญชีเริ่มต้น: admin / admin)' });
+    return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านผู้ดูแลระบบไม่ถูกต้อง' });
   }
 
   if (admin.isActive === false) {

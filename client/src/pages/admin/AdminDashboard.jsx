@@ -117,8 +117,22 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [adjustAmount, setAdjustAmount] = useState('100');
 
   // Load Admin Data
-  const loadData = async () => {
+  const loadData = async (isBackgroundPoll = false) => {
     try {
+      if (isBackgroundPoll) {
+        // Fast background poll: only refresh live stats, orders, and customer activity
+        const [statsRes, ordersRes, custRes] = await Promise.all([
+          fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
+          fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
+          fetch('/api/admin/customers').then(r => r.json()).catch(() => ({}))
+        ]);
+        if (statsRes?.success) setStats(statsRes);
+        if (ordersRes?.success) setOrders(ordersRes.orders);
+        if (custRes?.success) setCustomers(custRes.customers);
+        return;
+      }
+
+      // Initial or explicit full load
       const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
@@ -135,22 +149,22 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         fetch('/api/admin/quick-categories').then(r => r.json()).catch(() => ({ categories: [] }))
       ]);
 
-      if (statsRes.success) setStats(statsRes);
-      if (ordersRes.success) setOrders(ordersRes.orders);
-      if (provRes.success) {
+      if (statsRes?.success) setStats(statsRes);
+      if (ordersRes?.success) setOrders(ordersRes.orders);
+      if (provRes?.success) {
         setProviders(provRes.providers);
         setGameRoutes(provRes.routes || {});
       }
-      if (gamesRes.success) setGames(gamesRes.games);
-      if (cpnRes.success) setCoupons(cpnRes.coupons);
-      if (custRes.success) setCustomers(custRes.customers);
-      if (setRes.success) setSiteSettings(setRes.settings);
-      if (admRes.success) setAdmins(admRes.admins);
-      if (sldRes.success) setSlides(sldRes.slides);
-      if (flashRes.success) setFlashSales(flashRes.flashSales);
-      if (cardRes.success) setGiftCards(cardRes.giftCards);
-      if (appRes.success) setAppSubscriptions(appRes.appSubscriptions);
-      if (catRes.success) setQuickCategories(catRes.categories);
+      if (gamesRes?.success) setGames(gamesRes.games);
+      if (cpnRes?.success) setCoupons(cpnRes.coupons);
+      if (custRes?.success) setCustomers(custRes.customers);
+      if (setRes?.success) setSiteSettings(setRes.settings);
+      if (admRes?.success) setAdmins(admRes.admins);
+      if (sldRes?.success) setSlides(sldRes.slides);
+      if (flashRes?.success) setFlashSales(flashRes.flashSales);
+      if (cardRes?.success) setGiftCards(cardRes.giftCards);
+      if (appRes?.success) setAppSubscriptions(appRes.appSubscriptions);
+      if (catRes?.success) setQuickCategories(catRes.categories);
     } catch (err) {
       console.error("Admin data load error:", err);
     } finally {
@@ -159,8 +173,8 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   };
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 10000); // Poll every 10s
+    loadData(false);
+    const interval = setInterval(() => loadData(true), 10000); // Only poll orders/stats in background
     return () => clearInterval(interval);
   }, []);
 
@@ -444,7 +458,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     } catch (e) {}
   };
 
-  const handleAddBankAccount = () => {
+  const handleAddBankAccount = async () => {
     if (!bankForm.accountNo || !bankForm.accountName) {
       alert('กรุณากรอกเลขที่บัญชีและชื่อบัญชี');
       return;
@@ -453,11 +467,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       id: `bank_${Date.now()}`,
       ...bankForm
     };
-    const currentBanks = siteSettings.bankAccounts || [];
-    setSiteSettings({
+    const currentBanks = siteSettings?.bankAccounts || [];
+    const updatedBanks = [...currentBanks, newBank];
+    const updatedSettings = {
       ...siteSettings,
-      bankAccounts: [...currentBanks, newBank]
-    });
+      bankAccounts: updatedBanks
+    };
+
+    setSiteSettings(updatedSettings);
     setNewBankModal(false);
     setBankForm({
       bankName: 'ธนาคารกสิกรไทย (KBANK)',
@@ -466,13 +483,43 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       promptpayLinked: false,
       isActive: true
     });
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSettings)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSiteSettings(data.settings);
+      }
+    } catch (e) {
+      console.error("Failed to auto-save bank account:", e);
+    }
   };
 
-  const handleDeleteBankAccount = (bankId) => {
-    setSiteSettings({
+  const handleDeleteBankAccount = async (bankId) => {
+    const updatedBanks = (siteSettings?.bankAccounts || []).filter(b => b.id !== bankId);
+    const updatedSettings = {
       ...siteSettings,
-      bankAccounts: (siteSettings.bankAccounts || []).filter(b => b.id !== bankId)
-    });
+      bankAccounts: updatedBanks
+    };
+    setSiteSettings(updatedSettings);
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSettings)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSiteSettings(data.settings);
+      }
+    } catch (e) {
+      console.error("Failed to auto-save after bank deletion:", e);
+    }
   };
 
   // Filtered orders list

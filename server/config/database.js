@@ -610,12 +610,55 @@ class Database {
   constructor() {
     this.ensureDir();
     this.load();
+    this.initPg();
   }
 
   ensureDir() {
     const dir = path.dirname(DB_FILE);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  async initPg() {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) return;
+
+    try {
+      let pg = null;
+      try {
+        pg = require('pg');
+      } catch (e) {
+        return;
+      }
+
+      this.pgPool = new pg.Pool({
+        connectionString: dbUrl,
+        ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false }
+      });
+
+      await this.pgPool.query(`
+        CREATE TABLE IF NOT EXISTS system_kv (
+          key VARCHAR(64) PRIMARY KEY,
+          data JSONB NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      const res = await this.pgPool.query(`SELECT data FROM system_kv WHERE key = 'store_data'`);
+      if (res.rows.length > 0 && res.rows[0].data) {
+        console.log("📦 Loaded persistent state from PostgreSQL database!");
+        this.data = res.rows[0].data;
+        this.saveToFileOnly();
+      } else {
+        await this.pgPool.query(
+          `INSERT INTO system_kv (key, data, updated_at) VALUES ('store_data', $1, CURRENT_TIMESTAMP)
+           ON CONFLICT (key) DO UPDATE SET data = $1, updated_at = CURRENT_TIMESTAMP`,
+          [this.data]
+        );
+      }
+    } catch (err) {
+      console.error("PostgreSQL cloud sync notice:", err.message);
     }
   }
 
@@ -642,19 +685,31 @@ class Database {
         if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) {
           this.data.appSubscriptions = defaultData.appSubscriptions;
         }
-        this.save();
+        this.saveToFileOnly();
       } else {
         this.data = JSON.parse(JSON.stringify(defaultData));
-        this.save();
+        this.saveToFileOnly();
       }
     } catch (err) {
       console.error("Error loading database, resetting to default:", err);
       this.data = JSON.parse(JSON.stringify(defaultData));
-      this.save();
+      this.saveToFileOnly();
     }
   }
 
   save() {
+    this.saveToFileOnly();
+
+    if (this.pgPool) {
+      this.pgPool.query(
+        `INSERT INTO system_kv (key, data, updated_at) VALUES ('store_data', $1, CURRENT_TIMESTAMP)
+         ON CONFLICT (key) DO UPDATE SET data = $1, updated_at = CURRENT_TIMESTAMP`,
+        [this.data]
+      ).catch(err => console.error("PostgreSQL cloud save error:", err.message));
+    }
+  }
+
+  saveToFileOnly() {
     try {
       const tempPath = `${DB_FILE}.tmp`;
       fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf8');

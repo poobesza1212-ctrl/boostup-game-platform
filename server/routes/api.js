@@ -371,6 +371,34 @@ router.post('/auth/register', (req, res) => {
   });
 });
 
+router.post('/auth/forgot-password', (req, res) => {
+  const { identifier, newPassword, confirmPassword } = req.body;
+  if (!identifier || !identifier.trim()) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้หรืออีเมลที่ลงทะเบียนไว้' });
+  }
+
+  const user = db.findUserByEmailOrUsername(identifier.trim());
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาตรวจสอบชื่อผู้ใช้หรืออีเมลอีกครั้ง' });
+  }
+
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร' });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน' });
+  }
+
+  db.updateUser(user.id, { password: newPassword });
+  db.logAction('user', user.name || user.username, 'PASSWORD_RESET', `ผู้ใช้รีเซ็ตรหัสผ่านใหม่สำเร็จ (${user.username})`);
+
+  res.json({
+    success: true,
+    message: 'ตั้งรหัสผ่านใหม่สำเร็จเรียบร้อยแล้ว! สามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที'
+  });
+});
+
 router.post('/wallet/deposit', async (req, res) => {
   try {
     const { userId, amount, method, slipImage, voucherUrl } = req.body;

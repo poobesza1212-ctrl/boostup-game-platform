@@ -930,6 +930,57 @@ router.put('/admin/settings', (req, res) => {
 });
 
 // ==========================================
+// 8. ADMIN SLIP APPROVAL & DEPOSIT APIS
+// ==========================================
+
+// Admin: Get all wallet deposit transactions
+router.get('/admin/deposits', (req, res) => {
+  try {
+    const txns = (db.getTransactions() || []).filter(t => t.type === 'deposit');
+    // Sort newest first
+    txns.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const pendingCount = txns.filter(t => t.status === 'pending').length;
+    res.json({ success: true, deposits: txns, pendingCount });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin: Approve a pending deposit slip
+router.post('/admin/deposits/:id/approve', async (req, res) => {
+  try {
+    const { adminName } = req.body;
+    const result = await paymentService.approveDeposit(req.params.id, adminName || 'Admin');
+    res.json({ success: true, ...result, message: 'อนุมัติสลิปและเติมเงินเข้ากระเป๋าลูกค้าสำเร็จเรียบร้อย' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Admin: Reject a pending deposit slip
+router.post('/admin/deposits/:id/reject', async (req, res) => {
+  try {
+    const { reason, adminName } = req.body;
+    const result = await paymentService.rejectDeposit(req.params.id, reason, adminName || 'Admin');
+    res.json({ success: true, ...result, message: 'ปฏิเสธสลิปการเติมเงินเรียบร้อยแล้ว' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// User: Get personal wallet deposit transactions
+router.get('/wallet/history/:userId', (req, res) => {
+  try {
+    const txns = (db.getTransactions() || [])
+      .filter(t => t.userId === req.params.userId && t.type === 'deposit')
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    res.json({ success: true, transactions: txns });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
 // 8. LIVE CHAT APIS (Customer & Admin)
 // ==========================================
 

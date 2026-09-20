@@ -42,6 +42,7 @@
       }
     ],
     "bankAccounts": [],
+    "autoSlipApproval": false,
     "coinsRewardRate": 0.05,
     "coinsMultiplierText": "2X COINS BACK",
     "footerAbout": "ศูนย์รวมบริการเติมเกมและสินค้าดิจิทัลครบวงจรที่ดีที่สุดในประเทศไทย",
@@ -797,6 +798,30 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1789940171081",
+      "adminId": "admin",
+      "adminName": "SuperAdmin",
+      "action": "REJECT_SLIP",
+      "details": "ปฏิเสธสลิปรายการ txn_1789940171080_ity4i เหตุผล: รูปสลิปไม่ชัดเจน",
+      "createdAt": "2026-09-20T21:36:11.081Z"
+    },
+    {
+      "id": "log_1789940171081",
+      "adminId": "user",
+      "adminName": "testuser",
+      "action": "SLIP_SUBMITTED",
+      "details": "ส่งสลิปแจ้งโอนเงิน ฿200 ผ่าน bank_transfer (รอดำเนินการตรวจสอบ)",
+      "createdAt": "2026-09-20T21:36:11.081Z"
+    },
+    {
+      "id": "log_1789940171077",
+      "adminId": "user",
+      "adminName": "testuser",
+      "action": "SLIP_SUBMITTED",
+      "details": "ส่งสลิปแจ้งโอนเงิน ฿500 ผ่าน bank_transfer (รอดำเนินการตรวจสอบ)",
+      "createdAt": "2026-09-20T21:36:11.077Z"
+    },
     {
       "id": "log_1789922804104",
       "adminId": "admin",

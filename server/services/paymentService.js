@@ -114,36 +114,155 @@ class PaymentService {
       throw new Error("ยอดเงินที่ต้องการเติมไม่ถูกต้อง");
     }
 
+    // 1. TrueMoney Voucher (instant check if valid)
     if (method === 'truemoney') {
       if (!voucherUrl) {
         throw new Error("กรุณากรอกลิงก์ซองของขวัญ TrueMoney เพื่อเติมเงิน");
       }
       await this.verifyTrueMoneyVoucher(voucherUrl, numAmount);
-    } else if (method === 'bank_transfer' || method === 'promptpay') {
-      if (!slipImage) {
-        throw new Error("กรุณาแนบสลิปหลักฐานการโอนเงินเพื่อยืนยันรายการ");
+
+      const newBalance = (Number(user.walletBalance) || 0) + numAmount;
+      db.updateUser(userId, { walletBalance: newBalance });
+
+      const txn = db.createTransaction({
+        userId,
+        userName: user.name || user.username,
+        userEmail: user.email || '',
+        type: 'deposit',
+        amount: numAmount,
+        method,
+        voucherUrl,
+        status: 'completed',
+        approvedAt: new Date().toISOString()
+      });
+
+      db.logAction('user', user.name || user.username, 'WALLET_DEPOSIT', `เติมเงินเข้ากระเป๋า ฿${numAmount} ผ่าน ${method} (สำเร็จทันที)`);
+
+      return {
+        success: true,
+        status: 'completed',
+        message: `เติมเงินเข้ากระเป๋าสำเร็จ ฿${numAmount.toFixed(2)} บาท`,
+        newBalance,
+        transaction: txn
+      };
+    }
+
+    // 2. Bank Transfer / PromptPay Slip Verification
+    if (method === 'bank_transfer' || method === 'promptpay') {
+      if (!slipImage || typeof slipImage !== 'string' || slipImage.length < 50) {
+        throw new Error("กรุณาแนบรูปภาพสลิปหลักฐานการโอนเงินที่ถูกต้อง");
+      }
+
+      const settings = db.getSettings();
+      // Strict Security: Defaults to Manual Admin Approval so fake images cannot credit balance
+      const isAutoApproval = settings.autoSlipApproval === true;
+
+      if (!isAutoApproval) {
+        // Create Pending Transaction for Admin Review
+        const txn = db.createTransaction({
+          userId,
+          userName: user.name || user.username,
+          userEmail: user.email || '',
+          type: 'deposit',
+          amount: numAmount,
+          method,
+          slipImage,
+          status: 'pending', // PENDING ADMIN SLIP APPROVAL!
+          notes: 'รอแอดมินตรวจสอบสลิปโอนเงิน'
+        });
+
+        db.logAction('user', user.name || user.username, 'SLIP_SUBMITTED', `ส่งสลิปแจ้งโอนเงิน ฿${numAmount} ผ่าน ${method} (รอดำเนินการตรวจสอบ)`);
+
+        return {
+          success: true,
+          status: 'pending',
+          message: `แจ้งโอนเงิน ฿${numAmount.toFixed(2)} เรียบร้อยแล้ว! สลิปของคุณอยู่ระหว่างรอแอดมินตรวจสอบ ยอดเงินจะเข้ากระเป๋าอัตโนมัติเมื่ออนุมัติ`,
+          newBalance: user.walletBalance,
+          transaction: txn
+        };
+      } else {
+        // Auto approval (Demo mode)
+        const newBalance = (Number(user.walletBalance) || 0) + numAmount;
+        db.updateUser(userId, { walletBalance: newBalance });
+
+        const txn = db.createTransaction({
+          userId,
+          userName: user.name || user.username,
+          userEmail: user.email || '',
+          type: 'deposit',
+          amount: numAmount,
+          method,
+          slipImage,
+          status: 'completed',
+          approvedAt: new Date().toISOString()
+        });
+
+        db.logAction('user', user.name || user.username, 'WALLET_DEPOSIT', `เติมเงินเข้ากระเป๋า ฿${numAmount} ผ่าน ${method} (อนุมัติอัตโนมัติ)`);
+
+        return {
+          success: true,
+          status: 'completed',
+          message: `เติมเงินเข้ากระเป๋าสำเร็จ ฿${numAmount.toFixed(2)} บาท`,
+          newBalance,
+          transaction: txn
+        };
       }
     }
 
-    const newBalance = (Number(user.walletBalance) || 0) + numAmount;
-    db.updateUser(userId, { walletBalance: newBalance });
+    throw new Error("ไม่รองรับช่องทางการชำระเงินนี้");
+  }
 
-    // Record wallet transaction
-    db.createTransaction({
-      userId,
-      type: 'deposit',
-      amount: numAmount,
-      method,
-      slipImage: slipImage || null,
+  /**
+   * Admin approves a pending deposit slip
+   */
+  async approveDeposit(transactionId, adminName = 'แอดมิน') {
+    const txn = db.getTransactionById(transactionId);
+    if (!txn) throw new Error("ไม่พบรายการธุรกรรมนี้");
+    if (txn.status === 'completed') throw new Error("รายการนี้ได้รับการอนุมัติไปแล้ว");
+    if (txn.type !== 'deposit') throw new Error("ประเภทธุรกรรมไม่ถูกต้อง");
+
+    const user = db.findUserById(txn.userId);
+    if (!user) throw new Error("ไม่พบผู้ใช้งานเจ้าของสลิปนี้");
+
+    const numAmount = Number(txn.amount) || 0;
+    const newBalance = (Number(user.walletBalance) || 0) + numAmount;
+
+    db.updateUser(user.id, { walletBalance: newBalance });
+    const updatedTxn = db.updateTransaction(transactionId, {
       status: 'completed',
-      createdAt: new Date().toISOString()
+      approvedAt: new Date().toISOString(),
+      approvedBy: adminName
     });
 
-    db.logAction('user', user.name || user.username, 'WALLET_DEPOSIT', `เติมเงินเข้ากระเป๋า ฿${numAmount} ผ่าน ${method}`);
+    db.logAction('admin', adminName, 'APPROVE_SLIP', `อนุมัติสลิปเติมเงิน ฿${numAmount} ให้แก่ลูกค้า ${user.name || user.username}`);
 
     return {
       success: true,
+      transaction: updatedTxn,
       newBalance
+    };
+  }
+
+  /**
+   * Admin rejects a pending deposit slip
+   */
+  async rejectDeposit(transactionId, reason = 'สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง', adminName = 'แอดมิน') {
+    const txn = db.getTransactionById(transactionId);
+    if (!txn) throw new Error("ไม่พบรายการธุรกรรมนี้");
+    if (txn.status === 'completed') throw new Error("ไม่สามารถปฏิเสธรายการที่อนุมัติแล้ว");
+
+    const updatedTxn = db.updateTransaction(transactionId, {
+      status: 'rejected',
+      rejectedReason: reason,
+      rejectedAt: new Date().toISOString(),
+      rejectedBy: adminName
+    });
+
+    db.logAction('admin', adminName, 'REJECT_SLIP', `ปฏิเสธสลิปรายการ ${transactionId} เหตุผล: ${reason}`);
+
+    return {
+      success: true,
+      transaction: updatedTxn
     };
   }
 }

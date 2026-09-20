@@ -28,6 +28,8 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [pendingDetails, setPendingDetails] = useState(null);
 
   const quickAmounts = ['50', '100', '300', '500', '1000', '2000'];
   const activeBankAccounts = siteSettings?.bankAccounts?.filter(b => b.isActive) || [];
@@ -139,11 +141,21 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
       });
       const data = await res.json();
       if (data.success) {
-        setSuccessMsg(`เติมเงินเข้ากระเป๋าจำนวน ฿${numAmount.toFixed(2)} สำเร็จเรียบร้อย!`);
-        if (onDepositSuccess) onDepositSuccess(data.newBalance);
-        setTimeout(() => {
-          onClose();
-        }, 1800);
+        if (data.status === 'pending') {
+          // Deposit requires Admin Slip Approval!
+          setIsPendingApproval(true);
+          setPendingDetails({
+            amount: numAmount,
+            method,
+            txnId: data.transaction?.id
+          });
+        } else {
+          setSuccessMsg(`เติมเงินเข้ากระเป๋าจำนวน ฿${numAmount.toFixed(2)} สำเร็จเรียบร้อย!`);
+          if (onDepositSuccess) onDepositSuccess(data.newBalance);
+          setTimeout(() => {
+            onClose();
+          }, 1800);
+        }
       } else {
         setErrorMsg(data.message || 'การเติมเงินไม่สำเร็จ');
       }
@@ -179,8 +191,60 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
         {/* Content Body */}
         <div className="p-6 space-y-5">
           
-          {/* STEP 1: Select Amount & Method */}
-          {step === 'select' && (
+          {isPendingApproval ? (
+            <div className="text-center space-y-5 animate-in fade-in zoom-in-95">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Clock className="w-8 h-8 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <Clock className="w-3.5 h-3.5" /> อยู่ระหว่างรอแอดมินตรวจสอบสลิป
+                </div>
+                <h4 className="text-lg font-black text-white font-['Kanit']">แจ้งโอนเงินเรียบร้อยแล้ว!</h4>
+                <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                  ระบบได้รับหลักฐานการโอนเงินจำนวน <strong className="text-emerald-400 font-['Kanit']">฿{Number(pendingDetails?.amount || amount).toFixed(2)}</strong> เรียบร้อยแล้ว ขณะนี้เจ้าหน้าที่กำลังตรวจสอบความถูกต้อง และจะเติมยอดเงินเข้ากระเป๋าของคุณภายใน 1-3 นาที
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-left space-y-2.5 text-xs">
+                <div className="flex justify-between text-zinc-400">
+                  <span>รหัสธุรกรรม:</span>
+                  <span className="text-white font-mono text-[11px]">{pendingDetails?.txnId || '-'}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>ยอดเงินที่แจ้งโอน:</span>
+                  <span className="text-emerald-400 font-bold font-['Kanit'] text-sm">฿{Number(pendingDetails?.amount || amount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>ช่องทาง:</span>
+                  <span className="text-white">{pendingDetails?.method === 'promptpay' ? 'QR พร้อมเพย์' : 'โอนผ่านบัญชีธนาคาร'}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>สถานะปัจจุบัน:</span>
+                  <span className="text-amber-400 font-bold flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" /> รอการอนุมัติ (Pending)
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs font-bold shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+                >
+                  รับทราบและปิดหน้าต่าง
+                </button>
+                <p className="text-[11px] text-zinc-500">
+                  หากยอดเงินไม่เข้าภายใน 5 นาที สามารถติดต่อแอดมินผ่านปุ่ม "แชทสด" ที่มุมขวาล่างได้ตลอด 24 ชม.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* STEP 1: Select Amount & Method */}
+              {step === 'select' && (
             <div className="space-y-5">
               
               {/* Amount Selection */}
@@ -525,6 +589,9 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
               </button>
 
             </div>
+          )}
+
+            </>
           )}
 
         </div>

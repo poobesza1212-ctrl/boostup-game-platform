@@ -49,6 +49,7 @@ const defaultData = {
       }
     ],
     bankAccounts: [],
+    autoSlipApproval: false, // Strict Security: requires admin to approve slips before adding balance
     coinsRewardRate: 10, // 10 coins per 100 THB
     coinsMultiplierText: "2X COINS",
     footerAbout: "ผู้ให้บริการแพลตฟอร์มเติมเกมออนไลน์ครบวงจรอันดับ 1 ในไทย ระบบอัตโนมัติ 24 ชั่วโมง เสถียร ปลอดภัย เติมไวใน 1-3 วินาที เชื่อมต่อ API ตรงกับผู้ให้บริการชั้นนำ",
@@ -1246,6 +1247,22 @@ class Database {
     this.data.transactions.unshift(newTxn);
     this.save();
     return newTxn;
+  }
+
+  getTransactions() {
+    return this.data.transactions || [];
+  }
+
+  getTransactionById(id) {
+    return (this.data.transactions || []).find(t => t.id === id) || null;
+  }
+
+  updateTransaction(id, updates) {
+    const txn = this.getTransactionById(id);
+    if (!txn) return null;
+    Object.assign(txn, updates);
+    this.save();
+    return txn;
   }
 
   // Analytics & Stats

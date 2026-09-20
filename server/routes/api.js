@@ -929,4 +929,76 @@ router.put('/admin/settings', (req, res) => {
   res.json({ success: true, settings });
 });
 
+// ==========================================
+// 8. LIVE CHAT APIS (Customer & Admin)
+// ==========================================
+
+// Get or initialize customer chat session
+router.get('/chat/session', (req, res) => {
+  const { sessionId, userId, customerName } = req.query;
+  const chat = db.createOrGetChatSession({ sessionId, userId, customerName });
+  db.markChatAsRead(chat.id, 'customer');
+  res.json({ success: true, chat });
+});
+
+// Customer sends message
+router.post('/chat/message', (req, res) => {
+  const { chatId, sessionId, userId, customerName, text } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อความ' });
+  }
+
+  let chat = chatId ? db.getChatById(chatId) : null;
+  if (!chat) {
+    chat = db.createOrGetChatSession({ sessionId, userId, customerName });
+  }
+
+  const result = db.addChatMessage(chat.id, {
+    sender: 'customer',
+    senderName: customerName || (chat.customerName || 'ลูกค้า'),
+    text
+  });
+
+  if (!result) {
+    return res.status(500).json({ success: false, message: 'ไม่สามารถส่งข้อความได้' });
+  }
+
+  res.json({ success: true, chat: result.chat, message: result.message });
+});
+
+// Admin: Get all live chat rooms
+router.get('/admin/chats', (req, res) => {
+  const chats = db.getChats();
+  const totalUnread = chats.reduce((sum, c) => sum + (c.unreadAdmin || 0), 0);
+  res.json({ success: true, chats, totalUnread });
+});
+
+// Admin: Reply to customer chat
+router.post('/admin/chats/:id/reply', (req, res) => {
+  const { text, adminName } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อความตอบกลับ' });
+  }
+
+  const result = db.addChatMessage(req.params.id, {
+    sender: 'admin',
+    senderName: adminName || 'แอดมิน BOOSTUP',
+    text
+  });
+
+  if (!result) {
+    return res.status(404).json({ success: false, message: 'ไม่พบห้องแชทนี้' });
+  }
+
+  db.markChatAsRead(req.params.id, 'admin');
+  res.json({ success: true, chat: result.chat, message: result.message });
+});
+
+// Admin: Mark chat as read
+router.put('/admin/chats/:id/read', (req, res) => {
+  const chat = db.markChatAsRead(req.params.id, 'admin');
+  if (!chat) return res.status(404).json({ success: false, message: 'ไม่พบห้องแชท' });
+  res.json({ success: true, chat });
+});
+
 module.exports = router;

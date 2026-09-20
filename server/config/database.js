@@ -603,7 +603,8 @@ const defaultData = {
         { id: "sub_sp_3m", name: "Premium ส่วนตัว 3 เดือน", price: 249, originalPrice: 417 }
       ]
     }
-  ]
+  ],
+  chats: []
 };
 
 class Database {
@@ -1277,6 +1278,106 @@ class Database {
       totalSales: totalSales,
       paymentDistribution: paymentCounts
     };
+  }
+
+  // ==========================================
+  // Live Chat System
+  // ==========================================
+  getChats() {
+    return (this.data.chats || []).slice().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  getChatById(chatId) {
+    return (this.data.chats || []).find(c => c.id === chatId) || null;
+  }
+
+  getChatBySessionOrUserId(sessionId, userId) {
+    const chats = this.data.chats || [];
+    if (userId) {
+      const byUser = chats.find(c => c.userId === userId);
+      if (byUser) return byUser;
+    }
+    if (sessionId) {
+      const bySess = chats.find(c => c.sessionId === sessionId);
+      if (bySess) return bySess;
+    }
+    return null;
+  }
+
+  createOrGetChatSession({ sessionId, userId, customerName, customerContact }) {
+    if (!this.data.chats) this.data.chats = [];
+
+    let chat = this.getChatBySessionOrUserId(sessionId, userId);
+
+    if (!chat) {
+      chat = {
+        id: `chat_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+        sessionId: sessionId || `sess_${Date.now()}`,
+        userId: userId || null,
+        customerName: customerName || (userId ? 'สมาชิก BOOSTUP' : 'ลูกค้า (Guest)'),
+        customerContact: customerContact || '',
+        unreadAdmin: 0,
+        unreadCustomer: 0,
+        status: 'open',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [
+          {
+            id: `msg_welcome_${Date.now()}`,
+            sender: 'bot',
+            senderName: 'BOOSTUP Support Bot',
+            text: 'สวัสดีครับ ยินดีต้อนรับสู่ระบบแชทสด BOOSTUP! เจ้าหน้าที่พร้อมให้บริการตลอด 24 ชม. สามารถพิมพ์สอบถามข้อมูล แจ้งปัญหาการเติมเกม หรือระบุเลขออเดอร์ไว้ได้เลยครับ',
+            createdAt: new Date().toISOString()
+          }
+        ]
+      };
+      this.data.chats.unshift(chat);
+      this.save();
+    } else {
+      if (userId && !chat.userId) chat.userId = userId;
+      if (customerName && (chat.customerName === 'ลูกค้า (Guest)' || !chat.customerName)) {
+        chat.customerName = customerName;
+      }
+      this.save();
+    }
+
+    return chat;
+  }
+
+  addChatMessage(chatId, { sender, senderName, text }) {
+    if (!this.data.chats) this.data.chats = [];
+    const chat = this.getChatById(chatId);
+    if (!chat) return null;
+
+    const newMsg = {
+      id: `msg_${Date.now()}_${crypto.randomBytes(2).toString('hex')}`,
+      sender: sender || 'customer',
+      senderName: senderName || (sender === 'admin' ? 'แอดมิน BOOSTUP' : 'ลูกค้า'),
+      text: (text || '').trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    if (!chat.messages) chat.messages = [];
+    chat.messages.push(newMsg);
+    chat.updatedAt = new Date().toISOString();
+
+    if (sender === 'customer') {
+      chat.unreadAdmin = (chat.unreadAdmin || 0) + 1;
+    } else if (sender === 'admin') {
+      chat.unreadCustomer = (chat.unreadCustomer || 0) + 1;
+    }
+
+    this.save();
+    return { chat, message: newMsg };
+  }
+
+  markChatAsRead(chatId, readerRole = 'admin') {
+    const chat = this.getChatById(chatId);
+    if (!chat) return null;
+    if (readerRole === 'admin') chat.unreadAdmin = 0;
+    if (readerRole === 'customer') chat.unreadCustomer = 0;
+    this.save();
+    return chat;
   }
 }
 

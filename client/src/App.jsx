@@ -227,7 +227,10 @@ export default function App() {
       />
 
       {/* Floating LINE Support Widget */}
-      <FloatingSupport contactLine={siteSettings?.contactLine || '@boostup'} />
+      <FloatingSupport 
+        contactLine={siteSettings?.contactLine || '@boostup'} 
+        user={user}
+      />
 
       {/* Interactive Purchase Modal (Handles Games, Flash Deals, Gift Cards & App Subs) */}
       {selectedProductForCheckout && (

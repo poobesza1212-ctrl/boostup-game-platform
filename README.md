@@ -126,3 +126,55 @@ CODASHOP_API_SECRET=coda_sec_your_secret_here
 PROMPTPAY_NUMBER=0891234567
 PROMPTPAY_NAME=บจก. บูสต์อัพ (BOOSTUP THAILAND)
 ```
+
+---
+
+## 🚀 วิธีการนำระบบขึ้นเว็บจริง (Production Deployment)
+
+### 1. วิธีที่ 1: Deploy บน Cloud Hosting ฟรีตลอด 24 ชม. (Render.com / Railway)
+1. นำโค้ดขึ้น GitHub:
+   ```bash
+   git remote add origin <your-github-repo-url>
+   git branch -M main
+   git push -u origin main
+   ```
+2. ไปที่ [Render.com](https://render.com) หรือ [Railway.app](https://railway.app)
+3. เลือก **New Web Service** และเชื่อมต่อ GitHub Repository นี้
+4. ระบบจะตรวจพบไฟล์ `render.yaml` และตั้งค่าคำสั่งให้อัตโนมัติ:
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+5. รอระบบ Build เสร็จ (ประมาณ 1-2 นาที) จะได้รับลิงก์ HTTPS ใช้งานได้ทันที 24 ชม.
+
+### 2. วิธีที่ 2: รันด้วย Docker & Docker Compose (Containerized)
+```bash
+# รันคอนเทนเนอร์ในโหมด Production พร้อม Persistent Volumes
+docker compose up -d --build
+
+# ดูสถานะและ Log
+docker compose logs -f
+```
+
+### 3. วิธีที่ 3: ขึ้น Linux VPS (Ubuntu / Debian ด้วย PM2)
+```bash
+# 1. ติดตั้ง Node.js 20+ และ PM2
+sudo apt update && sudo apt install -y curl git
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
+
+# 2. ติดตั้ง Dependencies และ Build หน้าเว็บ
+npm install
+npm run build
+
+# 3. รันด้วย PM2 Process Manager
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
+
+### 4. วิธีที่ 4: เปิด Public HTTPS ทันทีผ่านเครื่องนี้ (Cloudflare Tunnel)
+```bash
+# รันสคริปต์เพื่อสร้าง Secure Public HTTPS URL ให้คนภายนอกเข้าได้ทันที
+./scripts/deploy-tunnel.sh
+```
+

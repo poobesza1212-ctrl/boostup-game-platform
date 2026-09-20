@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+  <defs>
+    <linearGradient id="boostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dc2626" />
+      <stop offset="50%" stop-color="#991b1b" />
+      <stop offset="100%" stop-color="#450a0a" />
+    </linearGradient>
+    <linearGradient id="goldStar" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#eab308" />
+    </linearGradient>
+  </defs>
+
+  <!-- BOOST Emblem -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#boostGrad)" stroke="#ef4444" stroke-width="2.5" />
+  <path d="M22 44L32 18L42 44L32 36Z" fill="#ffffff" />
+  <polygon points="50,12 52,17 57,19 52,21 50,26 48,21 43,19 48,17" fill="url(#goldStar)" />
+
+  <!-- Typography: BOOSTUP -->
+  <text x="74" y="32" font-family="'Kanit', sans-serif" font-weight="900" font-size="24" fill="#ffffff" letter-spacing="1">BOOST</text>
+  <text x="156" y="32" font-family="'Kanit', sans-serif" font-weight="900" font-size="24" fill="#ef4444" letter-spacing="1">UP</text>
+  <text x="74" y="49" font-family="'Prompt', sans-serif" font-weight="600" font-size="9" fill="#9ca3af" letter-spacing="2">PLAY MORE GO FURTHER • 24/7</text>
+</svg>

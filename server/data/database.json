@@ -1,0 +1,1177 @@
+{
+  "settings": {
+    "siteName": "BOOSTUP ร้านเติมเงินเกม",
+    "siteSlogan": "PLAY MORE GO FURTHER • เติมเกมสุดคุ้ม รวดเร็ว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
+    "announcement": "🔥 ยินดีต้อนรับสู่ BOOSTUP ร้านเติมเงินเกม! เติมไว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
+    "promptpayNumber": "0891234567",
+    "promptpayName": "บจก. บูสต์อัพ (BOOSTUP THAILAND)",
+    "truemoneyNumber": "0891234567",
+    "bankName": "ธนาคารกสิกรไทย",
+    "bankAccount": "123-2-34567-8",
+    "bankAccountName": "บจก. บูสต์อัพ (BOOSTUP)",
+    "contactLine": "@boostup",
+    "contactFacebook": "BoostUpGameStore",
+    "contactDiscord": "discord.gg/boostup",
+    "simulationMode": true,
+    "autoTopupEnabled": true,
+    "logoUrl": "/uploads/boostup_logo.jpg",
+    "trustPoints": [
+      {
+        "id": "t1",
+        "icon": "ShieldCheck",
+        "title": "จดทะเบียนนิติบุคคล 100%",
+        "desc": "ทุนจดทะเบียน 5,000,000 บาท ถูกต้องตามกฎหมาย"
+      },
+      {
+        "id": "t2",
+        "icon": "Zap",
+        "title": "ระบบตัดยอดผ่าน API ตรง 1-3 วิ",
+        "desc": "ทำงานตลอด 24 ชั่วโมง ไม่มีวันหยุด"
+      },
+      {
+        "id": "t3",
+        "icon": "Lock",
+        "title": "ใช้เพียง Player ID เท่านั้น",
+        "desc": "ปลอดภัย ไม่ต้องให้รหัสผ่านหรือ OTP"
+      },
+      {
+        "id": "t4",
+        "icon": "Users",
+        "title": "รีวิวกว่า 2,500,000+ ออเดอร์",
+        "desc": "เกมเมอร์ระดับท็อปและสตรีมเมอร์ไว้วางใจ"
+      }
+    ],
+    "bankAccounts": [
+      {
+        "id": "bank_kbank_main",
+        "bankName": "ธนาคารกสิกรไทย (KBANK)",
+        "accountNo": "098-2-33445-5",
+        "accountName": "บจก. บูสต์อัพ (BOOSTUP)",
+        "promptpayLinked": true,
+        "isActive": true
+      },
+      {
+        "id": "bank_scb_sub",
+        "bankName": "ธนาคารไทยพาณิชย์ (SCB)",
+        "accountNo": "112-9-88776-1",
+        "accountName": "บจก. บูสต์อัพ (BOOSTUP)",
+        "promptpayLinked": false,
+        "isActive": true
+      }
+    ],
+    "coinsRewardRate": 0.05,
+    "coinsMultiplierText": "2X COINS BACK",
+    "footerAbout": "ศูนย์รวมบริการเติมเกมและสินค้าดิจิทัลครบวงจรที่ดีที่สุดในประเทศไทย",
+    "footerLegal": "สงวนลิขสิทธิ์ พ.ศ. 2569 บริษัท บูสต์อัพ จำกัด (BOOSTUP THAILAND)",
+    "footerCopyright": "© 2026 BOOSTUP ร้านเติมเงินเกม (PLAY MORE GO FURTHER) All Rights Reserved.",
+    "lineContact": "@boostup"
+  },
+  "users": [],
+  "games": [
+    {
+      "id": "rov",
+      "name": "ROV (Realm of Valor)",
+      "publisher": "Garena",
+      "slug": "rov",
+      "category": "MOBA",
+      "icon": "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80",
+      "badge": "🔥 ยอดนิยมอันดับ 1",
+      "currencyName": "คูปอง (Coupons)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก OpenID หรือ UID ผู้เล่น",
+      "inputHelp": "ดู UID ได้ที่: เข้าเกม ROV > กดรูปโปรไฟล์มุมซ้ายบน > ดูที่แถบ UID (เลข 10-12 หลัก)",
+      "isPopular": true,
+      "displayOrder": 1,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "rov_35",
+          "name": "35 คูปอง",
+          "currencyAmount": 35,
+          "originalPrice": 39,
+          "price": 35,
+          "costPrice": 31,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "rov_180",
+          "name": "180 คูปอง",
+          "currencyAmount": 180,
+          "originalPrice": 199,
+          "price": 179,
+          "costPrice": 160,
+          "bonus": "+10 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_360",
+          "name": "360 คูปอง",
+          "currencyAmount": 360,
+          "originalPrice": 399,
+          "price": 349,
+          "costPrice": 315,
+          "bonus": "+25 คูปอง",
+          "isPopular": true
+        },
+        {
+          "id": "rov_900",
+          "name": "900 คูปอง",
+          "currencyAmount": 900,
+          "originalPrice": 999,
+          "price": 869,
+          "costPrice": 790,
+          "bonus": "+75 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_1800",
+          "name": "1,800 คูปอง",
+          "currencyAmount": 1800,
+          "originalPrice": 1999,
+          "price": 1729,
+          "costPrice": 1580,
+          "bonus": "+180 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_pass",
+          "name": "Valor Pass บัตรผ่านฤดูกาล",
+          "currencyAmount": 1,
+          "originalPrice": 350,
+          "price": 299,
+          "costPrice": 270,
+          "bonus": "ไอเท็มพิเศษ",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "freefire",
+      "name": "Free Fire",
+      "publisher": "Garena",
+      "slug": "freefire",
+      "category": "Battle Royale",
+      "icon": "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=400&q=80",
+      "badge": "⚡ เติมไวใน 1 วิ",
+      "currencyName": "เพชร (Diamonds)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Player ID (ตัวเลข 8-10 หลัก)",
+      "inputHelp": "เปิดหน้าต่างโปรไฟล์ในเกม Free Fire > คัดลอก UID ใต้ชื่อตัวละคร",
+      "isPopular": true,
+      "displayOrder": 2,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "ff_100",
+          "name": "100 เพชร",
+          "currencyAmount": 100,
+          "originalPrice": 39,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "+5",
+          "isPopular": false
+        },
+        {
+          "id": "ff_310",
+          "name": "310 เพชร",
+          "currencyAmount": 310,
+          "originalPrice": 119,
+          "price": 99,
+          "costPrice": 88,
+          "bonus": "+15",
+          "isPopular": false
+        },
+        {
+          "id": "ff_520",
+          "name": "520 เพชร",
+          "currencyAmount": 520,
+          "originalPrice": 199,
+          "price": 179,
+          "costPrice": 155,
+          "bonus": "+30",
+          "isPopular": true
+        },
+        {
+          "id": "ff_1060",
+          "name": "1,060 เพชร",
+          "currencyAmount": 1060,
+          "originalPrice": 399,
+          "price": 349,
+          "costPrice": 310,
+          "bonus": "+80",
+          "isPopular": false
+        },
+        {
+          "id": "ff_weekly",
+          "name": "สิทธิพิเศษสมาชิกรายสัปดาห์",
+          "currencyAmount": 1,
+          "originalPrice": 129,
+          "price": 99,
+          "costPrice": 85,
+          "bonus": "รวม 450 เพชร",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "pubg_mobile",
+      "name": "PUBG Mobile",
+      "publisher": "Tencent / Level Infinite",
+      "slug": "pubg-mobile",
+      "category": "Battle Royale",
+      "icon": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=400&q=80",
+      "badge": "🎯 ยอดนิยม",
+      "currencyName": "UC (Unknown Cash)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Character ID (เลข 9-11 หลัก)",
+      "inputHelp": "เปิดเมนูโปรไฟล์ในเกม PUBG Mobile เพื่อดู Character ID",
+      "isPopular": true,
+      "displayOrder": 3,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "pubg_60",
+          "name": "60 UC",
+          "currencyAmount": 60,
+          "originalPrice": 42,
+          "price": 35,
+          "costPrice": 31,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_325",
+          "name": "300 + 25 UC",
+          "currencyAmount": 325,
+          "originalPrice": 210,
+          "price": 175,
+          "costPrice": 158,
+          "bonus": "+25 UC ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "pubg_660",
+          "name": "600 + 60 UC",
+          "currencyAmount": 660,
+          "originalPrice": 410,
+          "price": 349,
+          "costPrice": 310,
+          "bonus": "+60 UC ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_1800",
+          "name": "1,500 + 300 UC",
+          "currencyAmount": 1800,
+          "originalPrice": 1050,
+          "price": 879,
+          "costPrice": 790,
+          "bonus": "+300 UC ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_rp",
+          "name": "Royale Pass อัปเกรด",
+          "currencyAmount": 1,
+          "originalPrice": 420,
+          "price": 359,
+          "costPrice": 320,
+          "bonus": "ชุดแรร์ + สกินปืน",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "valorant",
+      "name": "Valorant",
+      "publisher": "Riot Games",
+      "slug": "valorant",
+      "category": "Tactical FPS",
+      "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80",
+      "badge": "🔥 เรตถูกสุด",
+      "currencyName": "VP (Valorant Points)",
+      "inputType": "riot_id",
+      "inputPlaceholder": "กรอก Riot ID พร้อม Tag เช่น Player#TH1",
+      "inputHelp": "ดู Riot ID ได้ที่หน้าจอหลักมุมขวาบน หรือใน Riot Client",
+      "isPopular": true,
+      "displayOrder": 4,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "val_475",
+          "name": "475 VP",
+          "currencyAmount": 475,
+          "originalPrice": 175,
+          "price": 150,
+          "costPrice": 135,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "val_1000",
+          "name": "1,000 VP",
+          "currencyAmount": 1000,
+          "originalPrice": 350,
+          "price": 299,
+          "costPrice": 270,
+          "bonus": "+50 VP",
+          "isPopular": true
+        },
+        {
+          "id": "val_2050",
+          "name": "2,050 VP",
+          "currencyAmount": 2050,
+          "originalPrice": 700,
+          "price": 599,
+          "costPrice": 540,
+          "bonus": "+150 VP",
+          "isPopular": false
+        },
+        {
+          "id": "val_3650",
+          "name": "3,650 VP",
+          "currencyAmount": 3650,
+          "originalPrice": 1250,
+          "price": 1049,
+          "costPrice": 950,
+          "bonus": "+350 VP",
+          "isPopular": false
+        },
+        {
+          "id": "val_5350",
+          "name": "5,350 VP",
+          "currencyAmount": 5350,
+          "originalPrice": 1750,
+          "price": 1499,
+          "costPrice": 1350,
+          "bonus": "+600 VP",
+          "isPopular": false
+        }
+      ]
+    },
+    {
+      "id": "genshin",
+      "name": "Genshin Impact",
+      "publisher": "HoYoverse",
+      "slug": "genshin-impact",
+      "category": "Action RPG",
+      "icon": "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=400&q=80",
+      "badge": "✨ พรแห่งดวงจันทร์",
+      "currencyName": "Genesis Crystal",
+      "inputType": "uid_server",
+      "servers": [
+        "Asia",
+        "America",
+        "Europe",
+        "TW/HK/MO"
+      ],
+      "inputPlaceholder": "กรอก UID (เลข 9 หลัก)",
+      "inputHelp": "เปิดเมนู Paimon หรือดูที่มุมขวาล่างของหน้าจอเกม Genshin Impact",
+      "isPopular": true,
+      "displayOrder": 5,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "gi_moon",
+          "name": "Blessing of the Welkin Moon (พรแห่งดวงจันทร์)",
+          "currencyAmount": 1,
+          "originalPrice": 219,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "รวม 3,000 Primogems",
+          "isPopular": true
+        },
+        {
+          "id": "gi_60",
+          "name": "60 Genesis Crystals",
+          "currencyAmount": 60,
+          "originalPrice": 42,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "คูณ 2 เติมครั้งแรก",
+          "isPopular": false
+        },
+        {
+          "id": "gi_300",
+          "name": "300 + 30 Genesis Crystals",
+          "currencyAmount": 330,
+          "originalPrice": 210,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "+30 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_980",
+          "name": "980 + 110 Genesis Crystals",
+          "currencyAmount": 1090,
+          "originalPrice": 620,
+          "price": 519,
+          "costPrice": 470,
+          "bonus": "+110 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_1980",
+          "name": "1,980 + 260 Genesis Crystals",
+          "currencyAmount": 2240,
+          "originalPrice": 1250,
+          "price": 999,
+          "costPrice": 910,
+          "bonus": "+260 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_6480",
+          "name": "6,480 + 1,600 Genesis Crystals",
+          "currencyAmount": 8080,
+          "originalPrice": 4100,
+          "price": 3290,
+          "costPrice": 2990,
+          "bonus": "+1,600 โบนัส",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "hok",
+      "name": "Honor of Kings",
+      "publisher": "Level Infinite",
+      "slug": "honor-of-kings",
+      "category": "MOBA",
+      "icon": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80",
+      "badge": "🚀 มาแรง",
+      "currencyName": "Tokens",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Player ID / UID",
+      "inputHelp": "เปิดหน้าตั้งค่าโปรไฟล์เพื่อคัดลอก UID",
+      "isPopular": true,
+      "displayOrder": 6,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "hok_80",
+          "name": "80 + 8 Tokens",
+          "currencyAmount": 88,
+          "originalPrice": 45,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "+8 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_240",
+          "name": "240 + 24 Tokens",
+          "currencyAmount": 264,
+          "originalPrice": 129,
+          "price": 99,
+          "costPrice": 85,
+          "bonus": "+24 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_400",
+          "name": "400 + 40 Tokens",
+          "currencyAmount": 440,
+          "originalPrice": 219,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "+40 ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "hok_800",
+          "name": "800 + 95 Tokens",
+          "currencyAmount": 895,
+          "originalPrice": 429,
+          "price": 349,
+          "costPrice": 305,
+          "bonus": "+95 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_pass",
+          "name": "Season Battle Pass",
+          "currencyAmount": 1,
+          "originalPrice": 350,
+          "price": 289,
+          "costPrice": 250,
+          "bonus": "สกินพิเศษ",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "wuwa",
+      "name": "Wuthering Waves",
+      "slug": "wuwa",
+      "category": "Action RPG",
+      "icon": "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=400&q=80",
+      "badge": "⚡ เกมใหม่มาแรง",
+      "publisher": "Kuro Games",
+      "currencyName": "Lunite",
+      "inputType": "uid_and_server",
+      "inputPlaceholder": "Kuro UID (9 หลัก)",
+      "inputHelp": "ดู Kuro UID ได้ที่มุมขวาล่างของหน้าจอเกม Wuthering Waves",
+      "hasServer": true,
+      "servers": [
+        "Asia",
+        "America",
+        "Europe",
+        "SEA"
+      ],
+      "isPopular": true,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "wuwa-60",
+          "name": "60 Lunite",
+          "currencyAmount": 60,
+          "originalPrice": 39,
+          "price": 33,
+          "costPrice": 29,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "wuwa-300",
+          "name": "300 + 30 Lunite",
+          "currencyAmount": 330,
+          "originalPrice": 179,
+          "price": 159,
+          "costPrice": 142,
+          "bonus": "+30 โบนัส",
+          "isPopular": true
+        },
+        {
+          "id": "wuwa-980",
+          "name": "980 + 110 Lunite",
+          "currencyAmount": 1090,
+          "originalPrice": 599,
+          "price": 499,
+          "costPrice": 450,
+          "bonus": "+110 โบนัส",
+          "isPopular": true
+        },
+        {
+          "id": "wuwa-pass",
+          "name": "Lunite Subscription (บัตรเดือน 30 วัน)",
+          "currencyAmount": 3000,
+          "originalPrice": 199,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "90 Lunite ทุกวัน",
+          "isPopular": true
+        }
+      ]
+    }
+  ],
+  "providers": [
+    {
+      "id": "prov_smileone",
+      "name": "Smile One API",
+      "code": "SMILE_ONE",
+      "endpoint": "https://api.smile.one/v1/topup",
+      "apiKey": "sm_live_9482759103829103",
+      "apiSecret": "sec_a91048201948201",
+      "balance": 13548,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 223,
+      "successRate": 99.4,
+      "priority": 1,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "freefire",
+        "pubg_mobile",
+        "hok"
+      ]
+    },
+    {
+      "id": "prov_unipin",
+      "name": "UniPin B2B Gateway",
+      "code": "UNIPIN",
+      "endpoint": "https://api.unipin.com/v2/order",
+      "apiKey": "uni_b2b_th_847192048",
+      "apiSecret": "sec_uni_947192847",
+      "balance": 0,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 260,
+      "successRate": 98.8,
+      "priority": 2,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "freefire",
+        "pubg_mobile",
+        "genshin",
+        "valorant"
+      ]
+    },
+    {
+      "id": "prov_codashop",
+      "name": "Codashop Direct B2B",
+      "code": "CODASHOP",
+      "endpoint": "https://order.codashop.com/th/init",
+      "apiKey": "coda_partner_99182",
+      "apiSecret": "sec_coda_8819283",
+      "balance": 24500,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 180,
+      "successRate": 99.7,
+      "priority": 3,
+      "isActive": true,
+      "supportedGames": [
+        "valorant",
+        "genshin",
+        "pubg_mobile"
+      ]
+    },
+    {
+      "id": "prov_lapak",
+      "name": "Lapakgaming Aggregator",
+      "code": "LAPAKGAMING",
+      "endpoint": "https://api.lapakgaming.com/v1/checkout",
+      "apiKey": "lpk_live_th_48192",
+      "apiSecret": "sec_lpk_93817",
+      "balance": 5120,
+      "currency": "THB",
+      "status": "standby",
+      "latencyMs": 310,
+      "successRate": 97.9,
+      "priority": 4,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "hok",
+        "freefire"
+      ]
+    }
+  ],
+  "gameRoutes": {
+    "rov": {
+      "primary": "prov_smileone",
+      "fallback": "prov_unipin"
+    },
+    "freefire": {
+      "primary": "prov_smileone",
+      "fallback": "prov_unipin"
+    },
+    "pubg_mobile": {
+      "primary": "prov_smileone",
+      "fallback": "prov_codashop"
+    },
+    "valorant": {
+      "primary": "prov_codashop",
+      "fallback": "prov_unipin"
+    },
+    "genshin": {
+      "primary": "prov_unipin",
+      "fallback": "prov_codashop"
+    },
+    "hok": {
+      "primary": "prov_smileone",
+      "fallback": "prov_lapak"
+    }
+  },
+  "coupons": [
+    {
+      "id": "cpn_welcome",
+      "code": "WELCOME10",
+      "description": "ส่วนลด 10% ต้อนรับสมาชิกใหม่ ทุกเกม ไม่มีขั้นต่ำ",
+      "discountType": "percent",
+      "discountValue": 10,
+      "minSpend": 0,
+      "maxDiscount": 100,
+      "usageLimit": 1000,
+      "usedCount": 238,
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "cpn_promo50",
+      "code": "PROMO50",
+      "description": "ลดทันที 50 บาท เมื่อเติมครบ 300 บาทขึ้นไป",
+      "discountType": "fixed",
+      "discountValue": 50,
+      "minSpend": 300,
+      "maxDiscount": 50,
+      "usageLimit": 500,
+      "usedCount": 184,
+      "expiresAt": "2026-11-30T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "cpn_vip20",
+      "code": "BOOSTUP20",
+      "description": "ส่วนลดพิเศษ 20 บาท สำหรับเติม ROV และ Free Fire",
+      "discountType": "fixed",
+      "discountValue": 20,
+      "minSpend": 100,
+      "maxDiscount": 20,
+      "usageLimit": 300,
+      "usedCount": 95,
+      "expiresAt": "2026-10-31T23:59:59Z",
+      "isActive": true
+    }
+  ],
+  "orders": [],
+  "transactions": [],
+  "cards": [
+    {
+      "id": "crd_1",
+      "gameId": "steam",
+      "code": "STEAM-XXXX-YYYY-ZZZZ",
+      "amount": 350,
+      "status": "available"
+    },
+    {
+      "id": "crd_2",
+      "gameId": "garena",
+      "code": "GAR-9948-2849-1029",
+      "amount": 100,
+      "status": "available"
+    }
+  ],
+  "admins": [
+    {
+      "id": "adm_super",
+      "username": "admin",
+      "email": "admin@boostup.com",
+      "password": "admin",
+      "name": "ผู้ดูแลระบบสูงสุด (Super Admin)",
+      "role": "super_admin",
+      "department": "Management",
+      "isActive": true,
+      "createdAt": "2026-09-20T12:16:07.027Z"
+    },
+    {
+      "id": "adm_operator",
+      "username": "operator1",
+      "email": "operator@boostup.com",
+      "password": "operator123",
+      "name": "เจ้าหน้าที่ฝ่ายออเดอร์ (Operator)",
+      "role": "operator",
+      "department": "Customer Support & Orders",
+      "isActive": true,
+      "createdAt": "2026-09-20T12:16:07.027Z"
+    },
+    {
+      "id": "adm_editor",
+      "username": "editor1",
+      "email": "editor@boostup.com",
+      "password": "editor123",
+      "name": "เจ้าหน้าที่ฝ่ายการตลาด (Content Editor)",
+      "role": "content_editor",
+      "department": "Marketing & CMS",
+      "isActive": true,
+      "createdAt": "2026-09-20T12:16:07.027Z"
+    }
+  ],
+  "carouselSlides": [
+    {
+      "id": "slide_1",
+      "badge": "⚡ ดีลพิเศษประจำวัน (DAILY FLASH SALE)",
+      "badgeColor": "bg-red-600 text-white",
+      "title": "FLASH SALE ดีลเดือดลดสูงสุด 30%",
+      "subtitle": "เติม ROV, Free Fire, Valorant, Genshin คูปองและเพชรเข้าเกมทันที 24 ชม. ไม่ต้องรอนาน",
+      "ctaText": "ช้อปดีล Flash Sale",
+      "ctaTarget": "flash-sale-section",
+      "image": "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80",
+      "accentGradient": "from-red-950 via-zinc-900 to-black",
+      "displayOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "slide_2",
+      "badge": "🪙 สิทธิพิเศษสำหรับสมาชิก (COINS REWARD)",
+      "badgeColor": "bg-amber-500 text-black font-black",
+      "title": "รับเหรียญ BOOSTUP COINS คูณ 2 เท่า!",
+      "subtitle": "ยิ่งเติม ยิ่งคุ้ม ทุกยอดการเติมเกมสะสมเหรียญแลกรับส่วนลดเงินสด หรือรับแพ็กเกจเกมฟรี",
+      "ctaText": "ดูเกมยอดนิยม",
+      "ctaTarget": "popular-games",
+      "image": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
+      "accentGradient": "from-amber-950 via-zinc-900 to-black",
+      "displayOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "slide_3",
+      "badge": "🎁 กิจกรรมพิเศษประจำเดือน (LUCKY DRAW)",
+      "badgeColor": "bg-gradient-to-r from-purple-600 to-pink-600 text-white",
+      "title": "เติมร้อย ลุ้นล้าน แจกใหญ่ทุกสัปดาห์",
+      "subtitle": "เติมเงินครบทุก 100 บาท รับสิทธิ์ลุ้นรับ Steam Deck, iPhone, บัตรของขวัญ และไอเท็มแรร์",
+      "ctaText": "เติมเงินรับสิทธิ์ลุ้น",
+      "ctaTarget": "popular-games",
+      "image": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80",
+      "accentGradient": "from-purple-950 via-zinc-900 to-black",
+      "displayOrder": 3,
+      "isActive": true
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log_1789922804104",
+      "adminId": "admin",
+      "adminName": "Admin",
+      "action": "RESET_STATS",
+      "details": "รีเซ็ตข้อมูลคำสั่งซื้อและสถิติหลังบ้านทั้งหมดเป็น 0",
+      "createdAt": "2026-09-20T16:46:44.104Z"
+    }
+  ],
+  "uploads": [],
+  "quickCategories": [
+    {
+      "id": "cat_games",
+      "label": "เติมเกมออนไลน์",
+      "sublabel": "UID ออโต้ 24 ชม.",
+      "iconName": "Gamepad2",
+      "iconColor": "text-red-500",
+      "targetId": "popular-games",
+      "badge": "HOT 2026",
+      "badgeColor": "",
+      "isActive": true,
+      "displayOrder": 1
+    },
+    {
+      "id": "cat_cards",
+      "label": "บัตรเติมเงิน",
+      "sublabel": "Steam, Razer, Roblox",
+      "iconName": "CreditCard",
+      "iconColor": "text-blue-400",
+      "targetId": "gift-cards-section",
+      "badge": "",
+      "badgeColor": "",
+      "isActive": true,
+      "displayOrder": 2
+    },
+    {
+      "id": "cat_flash",
+      "label": "Flash Sale",
+      "sublabel": "ดีลฟ้าผ่า ลดสูงสุด 30%",
+      "iconName": "Zap",
+      "iconColor": "text-amber-400",
+      "targetId": "flash-sale-section",
+      "badge": "HOT 🔥",
+      "badgeColor": "bg-red-600 text-white",
+      "isActive": true,
+      "displayOrder": 3
+    },
+    {
+      "id": "cat_apps",
+      "label": "ต่ออายุสมาชิกแอป",
+      "sublabel": "YouTube, Netflix, Discord",
+      "iconName": "Film",
+      "iconColor": "text-purple-400",
+      "targetId": "apps-section",
+      "badge": "",
+      "badgeColor": "",
+      "isActive": true,
+      "displayOrder": 4
+    },
+    {
+      "id": "cat_mobile",
+      "label": "เติมเงินมือถือ",
+      "sublabel": "AIS, True, Dtac",
+      "iconName": "Smartphone",
+      "iconColor": "text-emerald-400",
+      "targetId": "popular-games",
+      "badge": "",
+      "badgeColor": "",
+      "isActive": true,
+      "displayOrder": 5
+    },
+    {
+      "id": "cat_coins",
+      "label": "Boost Coins",
+      "sublabel": "สะสมเหรียญแลกส่วนลด",
+      "iconName": "Coins",
+      "iconColor": "text-amber-500",
+      "targetId": "popular-games",
+      "badge": "2X COINS",
+      "badgeColor": "bg-amber-500 text-black",
+      "isActive": true,
+      "displayOrder": 6
+    }
+  ],
+  "flashSales": [
+    {
+      "id": "fs_rov_360",
+      "gameId": "rov",
+      "gameName": "ROV (Realm of Valor)",
+      "packageName": "360 คูปอง",
+      "icon": "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 399,
+      "flashPrice": 289,
+      "discountPercent": 28,
+      "totalStock": 50,
+      "soldStock": 38,
+      "currencyAmount": 360,
+      "currencyName": "คูปอง"
+    },
+    {
+      "id": "fs_ff_520",
+      "gameId": "freefire",
+      "gameName": "Free Fire",
+      "packageName": "520 เพชร",
+      "icon": "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 199,
+      "flashPrice": 149,
+      "discountPercent": 25,
+      "totalStock": 60,
+      "soldStock": 49,
+      "currencyAmount": 520,
+      "currencyName": "เพชร"
+    },
+    {
+      "id": "fs_val_1000",
+      "gameId": "valorant",
+      "gameName": "Valorant",
+      "packageName": "1,000 VP",
+      "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 350,
+      "flashPrice": 269,
+      "discountPercent": 23,
+      "totalStock": 40,
+      "soldStock": 31,
+      "currencyAmount": 1000,
+      "currencyName": "VP"
+    },
+    {
+      "id": "fs_genshin_moon",
+      "gameId": "genshin",
+      "gameName": "Genshin Impact",
+      "packageName": "Blessing of the Welkin Moon",
+      "icon": "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 219,
+      "flashPrice": 155,
+      "discountPercent": 29,
+      "totalStock": 35,
+      "soldStock": 27,
+      "currencyAmount": 1,
+      "currencyName": "พรแห่งดวงจันทร์"
+    },
+    {
+      "id": "fs_pubg_325",
+      "gameId": "pubg_mobile",
+      "gameName": "PUBG Mobile",
+      "packageName": "300 + 25 UC",
+      "icon": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 210,
+      "flashPrice": 159,
+      "discountPercent": 24,
+      "totalStock": 45,
+      "soldStock": 36,
+      "currencyAmount": 325,
+      "currencyName": "UC"
+    }
+  ],
+  "giftCards": [
+    {
+      "id": "gc_steam",
+      "name": "Steam Wallet Code (THB)",
+      "publisher": "Valve",
+      "category": "PC Gaming",
+      "icon": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80",
+      "badge": "จัดส่งรหัสทันที",
+      "denominations": [
+        {
+          "id": "gc_steam_50",
+          "name": "50 THB",
+          "price": 55
+        },
+        {
+          "id": "gc_steam_200",
+          "name": "200 THB",
+          "price": 215
+        },
+        {
+          "id": "gc_steam_350",
+          "name": "350 THB",
+          "price": 375
+        },
+        {
+          "id": "gc_steam_1000",
+          "name": "1,000 THB",
+          "price": 1050
+        }
+      ]
+    },
+    {
+      "id": "gc_razer",
+      "name": "Razer Gold PIN (TH)",
+      "publisher": "Razer",
+      "category": "Universal Game Card",
+      "icon": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&q=80",
+      "badge": "เติมได้ทุกเกม",
+      "denominations": [
+        {
+          "id": "gc_razer_100",
+          "name": "100 THB",
+          "price": 100
+        },
+        {
+          "id": "gc_razer_300",
+          "name": "300 THB",
+          "price": 300
+        },
+        {
+          "id": "gc_razer_500",
+          "name": "500 THB",
+          "price": 500
+        },
+        {
+          "id": "gc_razer_1000",
+          "name": "1,000 THB",
+          "price": 1000
+        }
+      ]
+    },
+    {
+      "id": "gc_roblox",
+      "name": "Roblox Gift Card (Robux)",
+      "publisher": "Roblox Corporation",
+      "category": "Roblox",
+      "icon": "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      "badge": "ยอดนิยมในวัยรุ่น",
+      "denominations": [
+        {
+          "id": "gc_rob_100",
+          "name": "100 THB (ประมาณ 250 Robux)",
+          "price": 105
+        },
+        {
+          "id": "gc_rob_300",
+          "name": "300 THB (ประมาณ 800 Robux)",
+          "price": 310
+        },
+        {
+          "id": "gc_rob_500",
+          "name": "500 THB (ประมาณ 1,400 Robux)",
+          "price": 515
+        }
+      ]
+    },
+    {
+      "id": "gc_riot",
+      "name": "Riot Points Card (TH)",
+      "publisher": "Riot Games",
+      "category": "Valorant / LoL",
+      "icon": "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=400&q=80",
+      "badge": "ไม่มีหมดอายุ",
+      "denominations": [
+        {
+          "id": "gc_riot_150",
+          "name": "150 THB (475 VP)",
+          "price": 150
+        },
+        {
+          "id": "gc_riot_300",
+          "name": "300 THB (1,000 VP)",
+          "price": 299
+        },
+        {
+          "id": "gc_riot_600",
+          "name": "600 THB (2,050 VP)",
+          "price": 595
+        }
+      ]
+    }
+  ],
+  "appSubscriptions": [
+    {
+      "id": "sub_discord",
+      "name": "Discord Nitro",
+      "publisher": "Discord Inc.",
+      "icon": "https://images.unsplash.com/photo-1614680376593-902f749f7ffc?auto=format&fit=crop&w=400&q=80",
+      "badge": "บูสต์เซิร์ฟเวอร์",
+      "plans": [
+        {
+          "id": "sub_dis_1m",
+          "name": "Nitro ราย 1 เดือน",
+          "price": 169,
+          "originalPrice": 219
+        },
+        {
+          "id": "sub_dis_1y",
+          "name": "Nitro ราย 1 ปี",
+          "price": 1690,
+          "originalPrice": 2190
+        }
+      ]
+    },
+    {
+      "id": "sub_youtube",
+      "name": "YouTube Premium",
+      "publisher": "Google LLC",
+      "icon": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=400&q=80",
+      "badge": "ไม่มีโฆษณาคั่น",
+      "plans": [
+        {
+          "id": "sub_yt_1m",
+          "name": "สมาชิกส่วนตัว 1 เดือน",
+          "price": 99,
+          "originalPrice": 159
+        },
+        {
+          "id": "sub_yt_3m",
+          "name": "สมาชิกส่วนตัว 3 เดือน",
+          "price": 279,
+          "originalPrice": 477
+        },
+        {
+          "id": "sub_yt_1y",
+          "name": "สมาชิกส่วนตัว 1 ปี",
+          "price": 990,
+          "originalPrice": 1590
+        }
+      ]
+    },
+    {
+      "id": "sub_netflix",
+      "name": "Netflix Premium (4K Ultra HD)",
+      "publisher": "Netflix Inc.",
+      "icon": "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=400&q=80",
+      "badge": "ดูได้ 4 จอ 4K",
+      "plans": [
+        {
+          "id": "sub_nf_1m",
+          "name": "จอส่วนตัว 1 เดือน (4K UHD)",
+          "price": 129,
+          "originalPrice": 169
+        },
+        {
+          "id": "sub_nf_3m",
+          "name": "จอส่วนตัว 3 เดือน (4K UHD)",
+          "price": 369,
+          "originalPrice": 507
+        }
+      ]
+    },
+    {
+      "id": "sub_spotify",
+      "name": "Spotify Premium",
+      "publisher": "Spotify AB",
+      "icon": "https://images.unsplash.com/photo-1614680376408-81e91ffe3db7?auto=format&fit=crop&w=400&q=80",
+      "badge": "ฟังเพลงไม่จำกัด",
+      "plans": [
+        {
+          "id": "sub_sp_1m",
+          "name": "Premium ส่วนตัว 1 เดือน",
+          "price": 89,
+          "originalPrice": 139
+        },
+        {
+          "id": "sub_sp_3m",
+          "name": "Premium ส่วนตัว 3 เดือน",
+          "price": 249,
+          "originalPrice": 417
+        }
+      ]
+    }
+  ]
+}

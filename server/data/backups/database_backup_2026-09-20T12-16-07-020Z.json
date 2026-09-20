@@ -1,0 +1,845 @@
+{
+  "settings": {
+    "siteName": "TWELVE SYSTEMS - แพลตฟอร์มเติมเกมครบวงจร",
+    "siteSlogan": "เติมเกมสุดคุ้ม รวดเร็ว ปลอดภัย 100% เติมง่าย ได้ทันที ไม่ต้องรอนาน",
+    "announcement": "🔥 โปรโมชั่นต้อนรับเปิดร้านใหม่! ใส่โค้ด 'WELCOME10' รับส่วนลดทันที 10% ทุกเกม เติมไวอัตโนมัติ 24 ชม.",
+    "promptpayNumber": "0891234567",
+    "promptpayName": "บจก. ทเวลฟ์ ซิสเต็มส์ (ประเทศไทย)",
+    "truemoneyNumber": "0891234567",
+    "bankName": "ธนาคารกสิกรไทย",
+    "bankAccount": "123-2-34567-8",
+    "bankAccountName": "บจก. ทเวลฟ์ ซิสเต็มส์",
+    "contactLine": "@twelvesystems",
+    "contactFacebook": "TwelveSystemsTH",
+    "contactDiscord": "discord.gg/twelvesystems",
+    "simulationMode": true,
+    "autoTopupEnabled": true
+  },
+  "users": [
+    {
+      "id": "usr_admin",
+      "username": "admin",
+      "email": "admin@twelvesystems.com",
+      "password": "admin",
+      "role": "admin",
+      "name": "ผู้ดูแลระบบ (Admin)",
+      "walletBalance": 5000,
+      "points": 1250,
+      "tier": "Diamond",
+      "createdAt": "2026-09-01T10:00:00Z"
+    },
+    {
+      "id": "usr_gamer1",
+      "username": "gamerboy99",
+      "email": "user@gamer.th",
+      "password": "password",
+      "role": "user",
+      "name": "น้องกานต์ โปรเพลเยอร์",
+      "walletBalance": 350,
+      "points": 302,
+      "tier": "Gold",
+      "createdAt": "2026-09-10T14:30:00Z"
+    }
+  ],
+  "games": [
+    {
+      "id": "rov",
+      "name": "ROV (Realm of Valor)",
+      "publisher": "Garena",
+      "slug": "rov",
+      "category": "MOBA",
+      "icon": "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80",
+      "badge": "🔥 ยอดนิยมอันดับ 1",
+      "currencyName": "คูปอง (Coupons)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก OpenID หรือ UID ผู้เล่น",
+      "inputHelp": "ดู UID ได้ที่: เข้าเกม ROV > กดรูปโปรไฟล์มุมซ้ายบน > ดูที่แถบ UID (เลข 10-12 หลัก)",
+      "isPopular": true,
+      "displayOrder": 1,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "rov_35",
+          "name": "35 คูปอง",
+          "currencyAmount": 35,
+          "originalPrice": 39,
+          "price": 35,
+          "costPrice": 31,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "rov_180",
+          "name": "180 คูปอง",
+          "currencyAmount": 180,
+          "originalPrice": 199,
+          "price": 179,
+          "costPrice": 160,
+          "bonus": "+10 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_360",
+          "name": "360 คูปอง",
+          "currencyAmount": 360,
+          "originalPrice": 399,
+          "price": 349,
+          "costPrice": 315,
+          "bonus": "+25 คูปอง",
+          "isPopular": true
+        },
+        {
+          "id": "rov_900",
+          "name": "900 คูปอง",
+          "currencyAmount": 900,
+          "originalPrice": 999,
+          "price": 869,
+          "costPrice": 790,
+          "bonus": "+75 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_1800",
+          "name": "1,800 คูปอง",
+          "currencyAmount": 1800,
+          "originalPrice": 1999,
+          "price": 1729,
+          "costPrice": 1580,
+          "bonus": "+180 คูปอง",
+          "isPopular": false
+        },
+        {
+          "id": "rov_pass",
+          "name": "Valor Pass บัตรผ่านฤดูกาล",
+          "currencyAmount": 1,
+          "originalPrice": 350,
+          "price": 299,
+          "costPrice": 270,
+          "bonus": "ไอเท็มพิเศษ",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "freefire",
+      "name": "Free Fire",
+      "publisher": "Garena",
+      "slug": "freefire",
+      "category": "Battle Royale",
+      "icon": "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=400&q=80",
+      "badge": "⚡ เติมไวใน 1 วิ",
+      "currencyName": "เพชร (Diamonds)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Player ID (ตัวเลข 8-10 หลัก)",
+      "inputHelp": "เปิดหน้าต่างโปรไฟล์ในเกม Free Fire > คัดลอก UID ใต้ชื่อตัวละคร",
+      "isPopular": true,
+      "displayOrder": 2,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "ff_100",
+          "name": "100 เพชร",
+          "currencyAmount": 100,
+          "originalPrice": 39,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "+5",
+          "isPopular": false
+        },
+        {
+          "id": "ff_310",
+          "name": "310 เพชร",
+          "currencyAmount": 310,
+          "originalPrice": 119,
+          "price": 99,
+          "costPrice": 88,
+          "bonus": "+15",
+          "isPopular": false
+        },
+        {
+          "id": "ff_520",
+          "name": "520 เพชร",
+          "currencyAmount": 520,
+          "originalPrice": 199,
+          "price": 179,
+          "costPrice": 155,
+          "bonus": "+30",
+          "isPopular": true
+        },
+        {
+          "id": "ff_1060",
+          "name": "1,060 เพชร",
+          "currencyAmount": 1060,
+          "originalPrice": 399,
+          "price": 349,
+          "costPrice": 310,
+          "bonus": "+80",
+          "isPopular": false
+        },
+        {
+          "id": "ff_weekly",
+          "name": "สิทธิพิเศษสมาชิกรายสัปดาห์",
+          "currencyAmount": 1,
+          "originalPrice": 129,
+          "price": 99,
+          "costPrice": 85,
+          "bonus": "รวม 450 เพชร",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "pubg_mobile",
+      "name": "PUBG Mobile",
+      "publisher": "Tencent / Level Infinite",
+      "slug": "pubg-mobile",
+      "category": "Battle Royale",
+      "icon": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=400&q=80",
+      "badge": "🎯 ยอดนิยม",
+      "currencyName": "UC (Unknown Cash)",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Character ID (เลข 9-11 หลัก)",
+      "inputHelp": "เปิดเมนูโปรไฟล์ในเกม PUBG Mobile เพื่อดู Character ID",
+      "isPopular": true,
+      "displayOrder": 3,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "pubg_60",
+          "name": "60 UC",
+          "currencyAmount": 60,
+          "originalPrice": 42,
+          "price": 35,
+          "costPrice": 31,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_325",
+          "name": "300 + 25 UC",
+          "currencyAmount": 325,
+          "originalPrice": 210,
+          "price": 175,
+          "costPrice": 158,
+          "bonus": "+25 UC ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "pubg_660",
+          "name": "600 + 60 UC",
+          "currencyAmount": 660,
+          "originalPrice": 410,
+          "price": 349,
+          "costPrice": 310,
+          "bonus": "+60 UC ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_1800",
+          "name": "1,500 + 300 UC",
+          "currencyAmount": 1800,
+          "originalPrice": 1050,
+          "price": 879,
+          "costPrice": 790,
+          "bonus": "+300 UC ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "pubg_rp",
+          "name": "Royale Pass อัปเกรด",
+          "currencyAmount": 1,
+          "originalPrice": 420,
+          "price": 359,
+          "costPrice": 320,
+          "bonus": "ชุดแรร์ + สกินปืน",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "valorant",
+      "name": "Valorant",
+      "publisher": "Riot Games",
+      "slug": "valorant",
+      "category": "Tactical FPS",
+      "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=400&q=80",
+      "badge": "🔥 เรตถูกสุด",
+      "currencyName": "VP (Valorant Points)",
+      "inputType": "riot_id",
+      "inputPlaceholder": "กรอก Riot ID พร้อม Tag เช่น Player#TH1",
+      "inputHelp": "ดู Riot ID ได้ที่หน้าจอหลักมุมขวาบน หรือใน Riot Client",
+      "isPopular": true,
+      "displayOrder": 4,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "val_475",
+          "name": "475 VP",
+          "currencyAmount": 475,
+          "originalPrice": 175,
+          "price": 150,
+          "costPrice": 135,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "val_1000",
+          "name": "1,000 VP",
+          "currencyAmount": 1000,
+          "originalPrice": 350,
+          "price": 299,
+          "costPrice": 270,
+          "bonus": "+50 VP",
+          "isPopular": true
+        },
+        {
+          "id": "val_2050",
+          "name": "2,050 VP",
+          "currencyAmount": 2050,
+          "originalPrice": 700,
+          "price": 599,
+          "costPrice": 540,
+          "bonus": "+150 VP",
+          "isPopular": false
+        },
+        {
+          "id": "val_3650",
+          "name": "3,650 VP",
+          "currencyAmount": 3650,
+          "originalPrice": 1250,
+          "price": 1049,
+          "costPrice": 950,
+          "bonus": "+350 VP",
+          "isPopular": false
+        },
+        {
+          "id": "val_5350",
+          "name": "5,350 VP",
+          "currencyAmount": 5350,
+          "originalPrice": 1750,
+          "price": 1499,
+          "costPrice": 1350,
+          "bonus": "+600 VP",
+          "isPopular": false
+        }
+      ]
+    },
+    {
+      "id": "genshin",
+      "name": "Genshin Impact",
+      "publisher": "HoYoverse",
+      "slug": "genshin-impact",
+      "category": "Action RPG",
+      "icon": "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=400&q=80",
+      "badge": "✨ พรแห่งดวงจันทร์",
+      "currencyName": "Genesis Crystal",
+      "inputType": "uid_server",
+      "servers": [
+        "Asia",
+        "America",
+        "Europe",
+        "TW/HK/MO"
+      ],
+      "inputPlaceholder": "กรอก UID (เลข 9 หลัก)",
+      "inputHelp": "เปิดเมนู Paimon หรือดูที่มุมขวาล่างของหน้าจอเกม Genshin Impact",
+      "isPopular": true,
+      "displayOrder": 5,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "gi_moon",
+          "name": "Blessing of the Welkin Moon (พรแห่งดวงจันทร์)",
+          "currencyAmount": 1,
+          "originalPrice": 219,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "รวม 3,000 Primogems",
+          "isPopular": true
+        },
+        {
+          "id": "gi_60",
+          "name": "60 Genesis Crystals",
+          "currencyAmount": 60,
+          "originalPrice": 42,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "คูณ 2 เติมครั้งแรก",
+          "isPopular": false
+        },
+        {
+          "id": "gi_300",
+          "name": "300 + 30 Genesis Crystals",
+          "currencyAmount": 330,
+          "originalPrice": 210,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "+30 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_980",
+          "name": "980 + 110 Genesis Crystals",
+          "currencyAmount": 1090,
+          "originalPrice": 620,
+          "price": 519,
+          "costPrice": 470,
+          "bonus": "+110 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_1980",
+          "name": "1,980 + 260 Genesis Crystals",
+          "currencyAmount": 2240,
+          "originalPrice": 1250,
+          "price": 999,
+          "costPrice": 910,
+          "bonus": "+260 โบนัส",
+          "isPopular": false
+        },
+        {
+          "id": "gi_6480",
+          "name": "6,480 + 1,600 Genesis Crystals",
+          "currencyAmount": 8080,
+          "originalPrice": 4100,
+          "price": 3290,
+          "costPrice": 2990,
+          "bonus": "+1,600 โบนัส",
+          "isPopular": true
+        }
+      ]
+    },
+    {
+      "id": "hok",
+      "name": "Honor of Kings",
+      "publisher": "Level Infinite",
+      "slug": "honor-of-kings",
+      "category": "MOBA",
+      "icon": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80",
+      "badge": "🚀 มาแรง",
+      "currencyName": "Tokens",
+      "inputType": "uid_only",
+      "inputPlaceholder": "กรอก Player ID / UID",
+      "inputHelp": "เปิดหน้าตั้งค่าโปรไฟล์เพื่อคัดลอก UID",
+      "isPopular": true,
+      "displayOrder": 6,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "hok_80",
+          "name": "80 + 8 Tokens",
+          "currencyAmount": 88,
+          "originalPrice": 45,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "+8 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_240",
+          "name": "240 + 24 Tokens",
+          "currencyAmount": 264,
+          "originalPrice": 129,
+          "price": 99,
+          "costPrice": 85,
+          "bonus": "+24 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_400",
+          "name": "400 + 40 Tokens",
+          "currencyAmount": 440,
+          "originalPrice": 219,
+          "price": 169,
+          "costPrice": 150,
+          "bonus": "+40 ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "hok_800",
+          "name": "800 + 95 Tokens",
+          "currencyAmount": 895,
+          "originalPrice": 429,
+          "price": 349,
+          "costPrice": 305,
+          "bonus": "+95 ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "hok_pass",
+          "name": "Season Battle Pass",
+          "currencyAmount": 1,
+          "originalPrice": 350,
+          "price": 289,
+          "costPrice": 250,
+          "bonus": "สกินพิเศษ",
+          "isPopular": true
+        }
+      ]
+    }
+  ],
+  "providers": [
+    {
+      "id": "prov_smileone",
+      "name": "Smile One API",
+      "code": "SMILE_ONE",
+      "endpoint": "https://api.smile.one/v1/topup",
+      "apiKey": "sm_live_9482759103829103",
+      "apiSecret": "sec_a91048201948201",
+      "balance": 14250,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 222,
+      "successRate": 99.4,
+      "priority": 1,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "freefire",
+        "pubg_mobile",
+        "hok"
+      ]
+    },
+    {
+      "id": "prov_unipin",
+      "name": "UniPin B2B Gateway",
+      "code": "UNIPIN",
+      "endpoint": "https://api.unipin.com/v2/order",
+      "apiKey": "uni_b2b_th_847192048",
+      "apiSecret": "sec_uni_947192847",
+      "balance": 0,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 260,
+      "successRate": 98.8,
+      "priority": 2,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "freefire",
+        "pubg_mobile",
+        "genshin",
+        "valorant"
+      ]
+    },
+    {
+      "id": "prov_codashop",
+      "name": "Codashop Direct B2B",
+      "code": "CODASHOP",
+      "endpoint": "https://order.codashop.com/th/init",
+      "apiKey": "coda_partner_99182",
+      "apiSecret": "sec_coda_8819283",
+      "balance": 24500,
+      "currency": "THB",
+      "status": "online",
+      "latencyMs": 180,
+      "successRate": 99.7,
+      "priority": 3,
+      "isActive": true,
+      "supportedGames": [
+        "valorant",
+        "genshin",
+        "pubg_mobile"
+      ]
+    },
+    {
+      "id": "prov_lapak",
+      "name": "Lapakgaming Aggregator",
+      "code": "LAPAKGAMING",
+      "endpoint": "https://api.lapakgaming.com/v1/checkout",
+      "apiKey": "lpk_live_th_48192",
+      "apiSecret": "sec_lpk_93817",
+      "balance": 5120,
+      "currency": "THB",
+      "status": "standby",
+      "latencyMs": 310,
+      "successRate": 97.9,
+      "priority": 4,
+      "isActive": true,
+      "supportedGames": [
+        "rov",
+        "hok",
+        "freefire"
+      ]
+    }
+  ],
+  "gameRoutes": {
+    "rov": {
+      "primary": "prov_smileone",
+      "fallback": "prov_unipin"
+    },
+    "freefire": {
+      "primary": "prov_smileone",
+      "fallback": "prov_unipin"
+    },
+    "pubg_mobile": {
+      "primary": "prov_smileone",
+      "fallback": "prov_codashop"
+    },
+    "valorant": {
+      "primary": "prov_codashop",
+      "fallback": "prov_unipin"
+    },
+    "genshin": {
+      "primary": "prov_unipin",
+      "fallback": "prov_codashop"
+    },
+    "hok": {
+      "primary": "prov_smileone",
+      "fallback": "prov_lapak"
+    }
+  },
+  "coupons": [
+    {
+      "id": "cpn_welcome",
+      "code": "WELCOME10",
+      "description": "ส่วนลด 10% ต้อนรับสมาชิกใหม่ ทุกเกม ไม่มีขั้นต่ำ",
+      "discountType": "percent",
+      "discountValue": 10,
+      "minSpend": 0,
+      "maxDiscount": 100,
+      "usageLimit": 1000,
+      "usedCount": 238,
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "cpn_promo50",
+      "code": "PROMO50",
+      "description": "ลดทันที 50 บาท เมื่อเติมครบ 300 บาทขึ้นไป",
+      "discountType": "fixed",
+      "discountValue": 50,
+      "minSpend": 300,
+      "maxDiscount": 50,
+      "usageLimit": 500,
+      "usedCount": 184,
+      "expiresAt": "2026-11-30T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "cpn_vip20",
+      "code": "TWELVE20",
+      "description": "ส่วนลดพิเศษ 20 บาท สำหรับเติม ROV และ Free Fire",
+      "discountType": "fixed",
+      "discountValue": 20,
+      "minSpend": 100,
+      "maxDiscount": 20,
+      "usageLimit": 300,
+      "usedCount": 95,
+      "expiresAt": "2026-10-31T23:59:59Z",
+      "isActive": true
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord_12576",
+      "orderNumber": "TW-20260919-12576",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "createdAt": "2026-09-19T08:46:16.501Z",
+      "userId": "usr_gamer1",
+      "gameId": "rov",
+      "packageId": "rov_360",
+      "playerId": "123456789",
+      "finalAmount": 314.1,
+      "costPrice": 315,
+      "paymentMethod": "promptpay",
+      "providerId": "prov_unipin",
+      "providerName": "UniPin B2B Gateway",
+      "isFallbackUsed": true,
+      "updatedAt": "2026-09-19T08:46:16.768Z",
+      "providerOrderId": "UNI-07576765",
+      "providerLatencyMs": 260,
+      "providerResponse": {
+        "status": "PAID",
+        "code": 1,
+        "refNo": "UNIPIN-REF-1789807576765"
+      },
+      "completedAt": "2026-09-19T08:46:16.768Z"
+    },
+    {
+      "id": "ord_12575",
+      "orderNumber": "TW-20260919-12575",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "createdAt": "2026-09-19T08:46:16.261Z",
+      "userId": "usr_gamer1",
+      "customerName": "น้องกานต์ โปรเพลเยอร์",
+      "gameId": "rov",
+      "gameName": "ROV (Realm of Valor)",
+      "packageId": "rov_360",
+      "packageName": "360 คูปอง",
+      "playerId": "123456789",
+      "playerNickname": "SilentAssassin",
+      "originalAmount": 349,
+      "discountAmount": 34.9,
+      "finalAmount": 314.1,
+      "costPrice": 315,
+      "paymentMethod": "promptpay",
+      "providerId": "prov_smileone",
+      "providerName": "Smile One API",
+      "isFallbackUsed": false,
+      "updatedAt": "2026-09-19T08:46:16.499Z",
+      "providerOrderId": "SM-07576495",
+      "providerLatencyMs": 222,
+      "providerResponse": {
+        "code": 200,
+        "status": "SUCCESS",
+        "txId": "TX-SM-1789807576495",
+        "inGameCurrencyDelivered": true
+      },
+      "completedAt": "2026-09-19T08:46:16.499Z"
+    },
+    {
+      "id": "ord_12569",
+      "orderNumber": "TW-20260919-12569",
+      "userId": "usr_gamer1",
+      "customerName": "น้องกานต์ โปรเพลเยอร์",
+      "gameId": "rov",
+      "gameName": "ROV (Realm of Valor)",
+      "packageId": "rov_360",
+      "packageName": "360 คูปอง",
+      "playerId": "123456789",
+      "playerNickname": "ProPlayer_TH",
+      "server": "",
+      "originalAmount": 349,
+      "discountAmount": 34.9,
+      "finalAmount": 314.1,
+      "costPrice": 315,
+      "couponCode": "WELCOME10",
+      "paymentMethod": "promptpay",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "providerId": "prov_smileone",
+      "providerName": "Smile One API",
+      "providerOrderId": "SM-948172901",
+      "providerLatencyMs": 142,
+      "createdAt": "2026-09-19T14:35:12Z",
+      "completedAt": "2026-09-19T14:35:15Z"
+    },
+    {
+      "id": "ord_12567",
+      "orderNumber": "TW-20260919-12567",
+      "userId": "usr_anonymous",
+      "customerName": "ลูกค้าทั่วไป",
+      "gameId": "freefire",
+      "gameName": "Free Fire",
+      "packageId": "ff_520",
+      "packageName": "520 เพชร",
+      "playerId": "987654321",
+      "playerNickname": "HeadShotGod99",
+      "server": "",
+      "originalAmount": 179,
+      "discountAmount": 0,
+      "finalAmount": 179,
+      "costPrice": 155,
+      "couponCode": null,
+      "paymentMethod": "truemoney",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "providerId": "prov_smileone",
+      "providerName": "Smile One API",
+      "providerOrderId": "SM-948172902",
+      "providerLatencyMs": 130,
+      "createdAt": "2026-09-19T14:32:04Z",
+      "completedAt": "2026-09-19T14:32:06Z"
+    },
+    {
+      "id": "ord_12566",
+      "orderNumber": "TW-20260919-12566",
+      "userId": "usr_anonymous",
+      "customerName": "ลูกค้าทั่วไป",
+      "gameId": "pubg_mobile",
+      "gameName": "PUBG Mobile",
+      "packageId": "pubg_60",
+      "packageName": "60 UC",
+      "playerId": "556677889",
+      "playerNickname": "ChickenDinner_TH",
+      "server": "",
+      "originalAmount": 35,
+      "discountAmount": 0,
+      "finalAmount": 35,
+      "costPrice": 31,
+      "couponCode": null,
+      "paymentMethod": "wallet",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "providerId": "prov_unipin",
+      "providerName": "UniPin B2B Gateway",
+      "providerOrderId": "UNI-55829103",
+      "providerLatencyMs": 215,
+      "createdAt": "2026-09-19T14:28:40Z",
+      "completedAt": "2026-09-19T14:28:43Z"
+    },
+    {
+      "id": "ord_12565",
+      "orderNumber": "TW-20260919-12565",
+      "userId": "usr_anonymous",
+      "customerName": "ลูกค้าทั่วไป",
+      "gameId": "genshin",
+      "gameName": "Genshin Impact",
+      "packageId": "gi_moon",
+      "packageName": "Blessing of the Welkin Moon",
+      "playerId": "112233445",
+      "playerNickname": "LumineTraveler",
+      "server": "Asia",
+      "originalAmount": 169,
+      "discountAmount": 0,
+      "finalAmount": 169,
+      "costPrice": 150,
+      "couponCode": null,
+      "paymentMethod": "promptpay",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "providerId": "prov_unipin",
+      "providerName": "UniPin B2B Gateway",
+      "providerOrderId": "UNI-55829104",
+      "providerLatencyMs": 198,
+      "createdAt": "2026-09-19T14:21:18Z",
+      "completedAt": "2026-09-19T14:21:20Z"
+    },
+    {
+      "id": "ord_12564",
+      "orderNumber": "TW-20260919-12564",
+      "userId": "usr_gamer1",
+      "customerName": "น้องกานต์ โปรเพลเยอร์",
+      "gameId": "valorant",
+      "gameName": "Valorant",
+      "packageId": "val_1000",
+      "packageName": "1,000 VP",
+      "playerId": "ViperMain#TH1",
+      "playerNickname": "ViperMain#TH1",
+      "server": "",
+      "originalAmount": 299,
+      "discountAmount": 29.9,
+      "finalAmount": 269.1,
+      "costPrice": 270,
+      "couponCode": "WELCOME10",
+      "paymentMethod": "bank_transfer",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "providerId": "prov_codashop",
+      "providerName": "Codashop Direct B2B",
+      "providerOrderId": "CODA-8819283",
+      "providerLatencyMs": 175,
+      "createdAt": "2026-09-19T13:45:00Z",
+      "completedAt": "2026-09-19T13:45:04Z"
+    }
+  ],
+  "transactions": [],
+  "cards": [
+    {
+      "id": "crd_1",
+      "gameId": "steam",
+      "code": "STEAM-XXXX-YYYY-ZZZZ",
+      "amount": 350,
+      "status": "available"
+    },
+    {
+      "id": "crd_2",
+      "gameId": "garena",
+      "code": "GAR-9948-2849-1029",
+      "amount": 100,
+      "status": "available"
+    }
+  ]
+}

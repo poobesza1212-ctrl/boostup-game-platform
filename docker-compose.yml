@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  boostup-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: boostup-game-platform
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    volumes:
+      - ./server/data:/app/server/data
+      - ./server/uploads:/app/server/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  boostup-data:
+  boostup-uploads:

@@ -155,7 +155,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [pgUrlInput, setPgUrlInput] = useState('');
   const [isConnectingPg, setIsConnectingPg] = useState(false);
   const [pgConnectMsg, setPgConnectMsg] = useState({ type: '', text: '' });
-  const [showPgGuide, setShowPgGuide] = useState(false);
+  const [showPgGuide, setShowPgGuide] = useState(true);
 
   // Bank Account Modal
   const [newBankModal, setNewBankModal] = useState(false);
@@ -276,6 +276,48 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [logActionFilter, setLogActionFilter] = useState('all');
   const [logDateFilter, setLogDateFilter] = useState('all');
 
+  // Emergency LocalStorage Rescue Cache (Protects customers if server container is reset)
+  const [rescueData, setRescueData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tw_admin_rescue_snapshot');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const handleRestoreRescueData = async () => {
+    if (!rescueData || !rescueData.customers || rescueData.customers.length === 0) return;
+    try {
+      const res = await fetch('/api/admin/database/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          backupData: {
+            users: rescueData.customers || [],
+            orders: rescueData.orders || [],
+            carouselSlides: rescueData.slides || [],
+            settings: rescueData.settings || null
+          },
+          adminName: adminUser?.name || 'Admin'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert({
+          title: 'กู้คืนข้อมูลสำเร็จ!',
+          message: `กู้คืนข้อมูลลูกค้าสำเร็จแล้ว (${rescueData.customers.length} คน) ข้อมูลกลับขึ้นเซิร์ฟเวอร์เรียบร้อย`,
+          type: 'success'
+        });
+        loadData(false);
+      } else {
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'กู้คืนไม่สำเร็จ', type: 'error' });
+      }
+    } catch (err) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'กู้คืนไม่สำเร็จ: ' + err.message, type: 'error' });
+    }
+  };
+
   // Load Admin Data
   const loadData = async (isBackgroundPoll = false) => {
     try {
@@ -292,7 +334,20 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         ]);
         if (statsRes?.success) setStats(statsRes);
         if (ordersRes?.success) setOrders(ordersRes.orders);
-        if (custRes?.success && !customerEditModal.open) setCustomers(custRes.customers);
+        if (custRes?.success && !customerEditModal.open) {
+          setCustomers(custRes.customers || []);
+          if (custRes.customers && custRes.customers.length > 0) {
+            try {
+              const snap = {
+                customers: custRes.customers,
+                orders: ordersRes?.orders || [],
+                timestamp: Date.now()
+              };
+              localStorage.setItem('tw_admin_rescue_snapshot', JSON.stringify(snap));
+              setRescueData(snap);
+            } catch (e) {}
+          }
+        }
         if (chatsRes?.success) {
           setChats(chatsRes.chats);
           setLiveChatUnread(chatsRes.totalUnread || 0);
@@ -339,8 +394,23 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
       if (gamesRes?.success) setGames(gamesRes.games);
       if (cpnRes?.success) setCoupons(cpnRes.coupons);
-      if (custRes?.success && !customerEditModal.open) setCustomers(custRes.customers);
       if (setRes?.success) setSiteSettings(setRes.settings);
+      if (custRes?.success && !customerEditModal.open) {
+        setCustomers(custRes.customers || []);
+        if (custRes.customers && custRes.customers.length > 0) {
+          try {
+            const snap = {
+              customers: custRes.customers,
+              orders: ordersRes?.orders || [],
+              slides: sldRes?.slides || [],
+              settings: setRes?.settings || null,
+              timestamp: Date.now()
+            };
+            localStorage.setItem('tw_admin_rescue_snapshot', JSON.stringify(snap));
+            setRescueData(snap);
+          } catch (e) {}
+        }
+      }
       if (admRes?.success) setAdmins(admRes.admins);
       if (sldRes?.success) setSlides(sldRes.slides);
       if (flashRes?.success) setFlashSales(flashRes.flashSales);
@@ -1645,6 +1715,59 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
         {/* Tab Content Router */}
         <div className="p-8 space-y-8">
+
+          {/* 1. Emergency Rescue Banner (If server container reset but client has cached users) */}
+          {rescueData && (rescueData.customers?.length || 0) > 0 && customers.length === 0 && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-orange-950/70 to-red-950/80 border-2 border-amber-500 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl animate-pulse">
+              <div className="flex items-center gap-3.5">
+                <span className="text-3xl select-none">🛡️</span>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-300 font-['Kanit'] flex items-center gap-2">
+                    <span>พบข้อมูลสำรองสมาชิกในเครื่องของคุณ ({rescueData.customers?.length || 0} คน)!</span>
+                  </h4>
+                  <p className="text-xs text-zinc-200 mt-0.5 leading-relaxed">
+                    เซิร์ฟเวอร์เพิ่งถูก Render รีสตาร์ท/Deploy ใหม่ คุณสามารถกดปุ่มเพื่อกู้คืนข้อมูลสมาชิกขึ้นเซิร์ฟเวอร์ทันที
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRestoreRescueData}
+                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-extrabold text-xs shadow-lg shadow-amber-400/30 flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 transition-all"
+              >
+                <span>⚡ กู้คืนข้อมูลลูกค้าทันที (1 คลิก)</span>
+              </button>
+            </div>
+          )}
+
+          {/* 2. Cloud PostgreSQL Alert Banner (If using temporary ephemeral storage) */}
+          {dbStatus && !dbStatus.isPgConnected && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/60 via-zinc-900 to-amber-950/60 border border-red-500/50 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/50 flex items-center justify-center text-red-400 shrink-0">
+                  <AlertTriangle className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-red-300 font-['Kanit'] flex items-center gap-2">
+                    <span>⚠️ ระบบยังใช้พื้นที่ชั่วคราว (ข้อมูลอาจรีเซ็ตเมื่อ Render มีการ Deploy โค้ดใหม่)</span>
+                  </h4>
+                  <p className="text-[11px] text-zinc-300 mt-0.5">
+                    โปรดเชื่อมต่อ <strong>Render PostgreSQL (ฟรี 100%)</strong> เพื่อให้ข้อมูลสมาชิก ยอดเงิน และออเดอร์ทั้งหมดบันทึกถาวรตลอดไป
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('settings');
+                  setShowPgGuide(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:brightness-110 text-white font-bold text-xs shadow-md shadow-red-600/30 whitespace-nowrap cursor-pointer transition-all"
+              >
+                ดูวิธีเชื่อมต่อให้ถาวร 100% (ฟรี)
+              </button>
+            </div>
+          )}
           
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (

@@ -765,14 +765,25 @@ class Database {
       }
 
       const cleanUrl = dbUrl.trim();
-      const pool = new pg.Pool({
-        connectionString: cleanUrl,
-        ssl: cleanUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-        connectionTimeoutMillis: 7000
-      });
+      let pool = null;
 
-      // Test connection
-      await pool.query('SELECT NOW()');
+      // Try connection with SSL fallback (Render internal networks may prefer non-SSL or SSL)
+      try {
+        pool = new pg.Pool({
+          connectionString: cleanUrl,
+          ssl: cleanUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+          connectionTimeoutMillis: 8000
+        });
+        await pool.query('SELECT NOW()');
+      } catch (sslErr) {
+        console.warn("Retrying PostgreSQL connection with ssl=false (for private/internal network)...", sslErr.message);
+        pool = new pg.Pool({
+          connectionString: cleanUrl,
+          ssl: false,
+          connectionTimeoutMillis: 8000
+        });
+        await pool.query('SELECT NOW()');
+      }
 
       // Ensure KV storage table exists
       await pool.query(`
@@ -792,21 +803,15 @@ class Database {
       if (res.rows.length > 0 && res.rows[0].data) {
         const pgData = res.rows[0].data;
         const pgUserCount = pgData.users?.length || 0;
-        const localUserCount = this.data?.users?.length || 0;
+        const pgOrderCount = pgData.orders?.length || 0;
 
-        console.log(`📦 [PostgreSQL Cloud] Connected! PG records: ${pgUserCount} users, Local records: ${localUserCount} users.`);
+        console.log(`📦 [PostgreSQL Cloud] Connected! PG records: ${pgUserCount} users, ${pgOrderCount} orders.`);
 
-        // Master Truth: If Postgres has data, it takes precedence over git/local files
-        if (pgUserCount >= localUserCount) {
-          this.data = pgData;
-          this.safeMergeDefaults();
-          this.saveToFileOnly();
-          console.log(`✅ [PostgreSQL Cloud] Successfully loaded live production database into memory!`);
-        } else {
-          // If local has more recent users, sync local to Postgres
-          await this.syncToPostgres();
-          console.log(`✅ [PostgreSQL Cloud] Synchronized local data to PostgreSQL cloud database.`);
-        }
+        // Master Truth: Postgres has production data, it ALWAYS takes precedence over fresh container/git files
+        this.data = pgData;
+        this.safeMergeDefaults();
+        this.saveToFileOnly();
+        console.log(`✅ [PostgreSQL Cloud] Successfully loaded live production database into memory! Data is 100% permanent.`);
       } else {
         // Initialize first state in Postgres
         await this.syncToPostgres();

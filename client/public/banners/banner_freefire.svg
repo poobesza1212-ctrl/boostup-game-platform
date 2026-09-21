@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgFF" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#190d02"/>
+      <stop offset="40%" stop-color="#3d1d03"/>
+      <stop offset="75%" stop-color="#241002"/>
+      <stop offset="100%" stop-color="#0a0501"/>
+    </linearGradient>
+    <linearGradient id="amberGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff9100"/>
+      <stop offset="100%" stop-color="#ff6d00"/>
+    </linearGradient>
+    <linearGradient id="cyanDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#00b0ff"/>
+    </linearGradient>
+    <radialGradient id="centerGlowFF" cx="70%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff9100" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#ff9100" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="gridFF" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ff9100" stroke-width="0.75" stroke-opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <rect width="1920" height="600" fill="url(#bgFF)"/>
+  <rect width="1920" height="600" fill="url(#gridFF)"/>
+  <rect width="1920" height="600" fill="url(#centerGlowFF)"/>
+
+  <path d="M -80 0 L 350 0 L 220 600 L -80 600 Z" fill="#ff9100" fill-opacity="0.04"/>
+  <path d="M 1520 0 L 2020 0 L 2020 600 L 1680 600 Z" fill="#ff6d00" fill-opacity="0.06"/>
+  <line x1="0" y1="595" x2="1920" y2="595" stroke="#ff9100" stroke-width="4" stroke-opacity="0.6"/>
+
+  <!-- Left Content -->
+  <g transform="translate(120, 110)">
+    <!-- Badge -->
+    <rect x="0" y="0" width="290" height="42" rx="21" fill="url(#amberGlow)"/>
+    <text x="145" y="27" font-family="'Kanit', sans-serif" font-size="16" font-weight="900" fill="#000000" text-anchor="middle" letter-spacing="1">💎 โบนัสเพชรจุใจ +50% FREE</text>
+
+    <!-- Main Title -->
+    <text x="0" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ffffff" letter-spacing="0">เติมเพชร Free Fire</text>
+    <text x="560" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ffb74d">คุ้มที่สุด!</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="175" font-family="'Kanit', sans-serif" font-size="24" font-weight="400" fill="#fed7aa">กรอกเพียง UID ตัวเลข เข้าบัญชีอัตโนมัติ ไม่ต้องยืนยันตัวตน เติมได้ตลอด 24 ชม.</text>
+
+    <!-- Features Pills -->
+    <g transform="translate(0, 220)">
+      <rect x="0" y="0" width="180" height="38" rx="8" fill="#2d1502" stroke="#ff9100" stroke-width="1.5"/>
+      <text x="90" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ โบนัสเพชรทุกแพ็ก</text>
+
+      <rect x="200" y="0" width="180" height="38" rx="8" fill="#2d1502" stroke="#ff9100" stroke-width="1.5"/>
+      <text x="290" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ตัดยอดไว 3 วินาที</text>
+
+      <rect x="400" y="0" width="180" height="38" rx="8" fill="#2d1502" stroke="#ff9100" stroke-width="1.5"/>
+      <text x="490" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ปลอดภัย 100%</text>
+    </g>
+
+    <!-- Call to action button -->
+    <g transform="translate(0, 300)">
+      <rect x="0" y="0" width="240" height="54" rx="14" fill="url(#amberGlow)" filter="drop-shadow(0 6px 16px rgba(255,145,0,0.5))"/>
+      <text x="120" y="34" font-family="'Kanit', sans-serif" font-size="18" font-weight="900" fill="#000000" text-anchor="middle">เติม Free Fire ทันที →</text>
+    </g>
+  </g>
+
+  <!-- Right Visual Art / Diamond Icon -->
+  <g transform="translate(1380, 110)">
+    <circle cx="180" cy="180" r="180" fill="#ff9100" fill-opacity="0.12"/>
+    <polygon points="180,40 310,140 260,310 100,310 50,140" fill="#2a1403" stroke="#ff9100" stroke-width="6"/>
+    
+    <!-- Big Glowing Diamond inside -->
+    <polygon points="180,90 260,150 180,270 100,150" fill="url(#cyanDiamond)" filter="drop-shadow(0 0 20px rgba(0,229,255,0.7))"/>
+    <polygon points="180,90 260,150 180,150" fill="#ffffff" fill-opacity="0.4"/>
+    
+    <text x="180" y="345" font-family="'Kanit', sans-serif" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="2">FREE FIRE</text>
+  </g>
+</svg>

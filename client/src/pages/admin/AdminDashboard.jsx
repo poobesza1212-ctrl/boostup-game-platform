@@ -51,7 +51,12 @@ import {
   Download,
   Filter,
   Phone,
-  UserCog
+  UserCog,
+  Images,
+  ArrowUp,
+  ArrowDown,
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -132,6 +137,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     ctaText: 'ช้อปดีลทันที',
     ctaTarget: 'popular-games'
   });
+
+  // Multi-Image Upload & Edit Slide States
+  const [multiUploadFiles, setMultiUploadFiles] = useState([]); // [{ file, preview, name, size }]
+  const [multiUploadProgress, setMultiUploadProgress] = useState({ isUploading: false, current: 0, total: 0, message: '' });
+  const [editSlideModal, setEditSlideModal] = useState(null); // slide object or null
 
   // Bank Account Modal
   const [newBankModal, setNewBankModal] = useState(false);
@@ -365,6 +375,200 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const data = await res.json();
       if (data.success) loadData();
     } catch (e) {}
+  };
+
+  // Handle Multiple File Selection for Banner Carousel
+  const handleSelectMultiFiles = (files) => {
+    if (!files || files.length === 0) return;
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/svg+xml'];
+    
+    Array.from(files).forEach((file) => {
+      if (!validTypes.includes(file.type)) {
+        alert(`ไฟล์ ${file.name} ไม่ใช่ไฟล์รูปภาพที่รองรับ`);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setMultiUploadFiles((prev) => [
+          ...prev,
+          {
+            file,
+            preview: e.target.result,
+            name: file.name,
+            sizeKb: (file.size / 1024).toFixed(1)
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveSelectedMultiFile = (idx) => {
+    setMultiUploadFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleUploadMultipleSlides = async () => {
+    if (multiUploadFiles.length === 0) return;
+    setMultiUploadProgress({ isUploading: true, current: 0, total: multiUploadFiles.length, message: 'กำลังเริ่มอัปโหลด...' });
+
+    const uploadedUrls = [];
+    try {
+      for (let i = 0; i < multiUploadFiles.length; i++) {
+        const item = multiUploadFiles[i];
+        setMultiUploadProgress({
+          isUploading: true,
+          current: i + 1,
+          total: multiUploadFiles.length,
+          message: `กำลังอัปโหลดรูปภาพที่ ${i + 1}/${multiUploadFiles.length}: ${item.name}`
+        });
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: item.preview,
+            filename: item.name
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.url) {
+          uploadedUrls.push(data.url);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setMultiUploadProgress({
+          isUploading: true,
+          current: multiUploadFiles.length,
+          total: multiUploadFiles.length,
+          message: 'กำลังบันทึกแบนเนอร์เข้าสู่ระบบ...'
+        });
+
+        const batchRes = await fetch('/api/admin/slides/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slides: uploadedUrls.map((url) => ({
+              image: url,
+              title: '',
+              subtitle: '',
+              badge: '',
+              ctaTarget: 'popular-games',
+              isPureGraphic: true,
+              isActive: true
+            }))
+          })
+        });
+        const batchData = await batchRes.json();
+        if (batchData.success) {
+          setMultiUploadFiles([]);
+          loadData();
+          alert(`อัปโหลดและเพิ่มแบนเนอร์ใหม่สำเร็จ ${batchData.count} ภาพเรียบร้อยแล้ว!`);
+        } else {
+          alert(batchData.message || 'บันทึกแบนเนอร์ไม่สำเร็จ');
+        }
+      } else {
+        alert('อัปโหลดรูปภาพไม่สำเร็จ');
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการอัปโหลดหลายภาพ: ' + err.message);
+    } finally {
+      setMultiUploadProgress({ isUploading: false, current: 0, total: 0, message: '' });
+    }
+  };
+
+  // Reorder Slide (Move Up / Down)
+  const handleMoveSlide = async (slideId, direction) => {
+    const idx = slides.findIndex((s) => s.id === slideId);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === slides.length - 1) return;
+
+    const newSlides = [...slides];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const temp = newSlides[idx];
+    newSlides[idx] = newSlides[targetIdx];
+    newSlides[targetIdx] = temp;
+
+    setSlides(newSlides);
+
+    try {
+      await fetch('/api/admin/slides/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slideIds: newSlides.map((s) => s.id) })
+      });
+      loadData();
+    } catch (e) {
+      loadData();
+    }
+  };
+
+  // Toggle Slide Active / Inactive
+  const handleToggleSlideActive = async (slide) => {
+    try {
+      const res = await fetch(`/api/admin/slides/${slide.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !slide.isActive })
+      });
+      const data = await res.json();
+      if (data.success) loadData();
+    } catch (e) {}
+  };
+
+  // Restore Default Demo Banners
+  const handleRestoreDefaultSlides = async () => {
+    if (!confirm('ต้องการคืนค่าแบนเนอร์เกมตัวอย่าง (ROV, Free Fire, Valorant, Genshin) หรือไม่?')) return;
+    try {
+      const res = await fetch('/api/admin/slides/reset-defaults', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+        alert('คืนค่าแบนเนอร์เกมตัวอย่างสำเร็จเรียบร้อย!');
+      }
+    } catch (e) {
+      alert('เกิดข้อผิดพลาดในการคืนค่า');
+    }
+  };
+
+  // Clear All Slides
+  const handleClearAllSlides = async () => {
+    if (!confirm('คำเตือน: คุณต้องการลบแบนเนอร์ทั้งหมดในระบบใช่หรือไม่?')) return;
+    try {
+      const res = await fetch('/api/admin/slides/all', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+        alert('ลบแบนเนอร์ทั้งหมดเรียบร้อยแล้ว');
+      }
+    } catch (e) {}
+  };
+
+  // Save Edit Slide
+  const handleSaveEditSlide = async (e) => {
+    e.preventDefault();
+    if (!editSlideModal) return;
+    try {
+      const res = await fetch(`/api/admin/slides/${editSlideModal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editSlideModal)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEditSlideModal(null);
+        loadData();
+        alert('บันทึกการแก้ไขแบนเนอร์สำเร็จ');
+      }
+    } catch (e) {
+      alert('แก้ไขแบนเนอร์ไม่สำเร็จ');
+    }
   };
 
   // Handle Delete Admin
@@ -2117,45 +2321,287 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
               {/* Subtab 1: Carousel Slides */}
               {cmsSubTab === 'slides' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-6">
+                  {/* Action Bar Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800">
                     <div>
-                      <h3 className="text-sm font-bold text-white font-['Kanit']">
-                        จัดการแบนเนอร์สไลด์โปรโมชั่น (Hero Carousel Banners)
-                      </h3>
-                      <p className="text-xs text-zinc-400">ควบคุมแบนเนอร์ที่แสดงผลที่หน้าแรกของร้านค้า</p>
+                      <div className="flex items-center gap-2">
+                        <Images className="w-5 h-5 text-red-500" />
+                        <h3 className="text-base font-bold text-white font-['Kanit']">
+                          จัดการแบนเนอร์สไลด์หน้าร้าน (Hero Carousel)
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 border border-red-800/50 text-[11px] font-bold">
+                          {slides.length} ภาพ
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        เลือกใส่รูปภาพแบนเนอร์โปรโมชั่นได้หลายภาพพร้อมกัน ระบบจะสไลด์อัตโนมัติที่หน้าแรกของร้านค้า
+                      </p>
                     </div>
-                    <button
-                      onClick={() => setNewSlideModal(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-md shadow-red-600/30"
-                    >
-                      <Plus className="w-4 h-4" /> เพิ่มแบนเนอร์ใหม่
-                    </button>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreDefaultSlides()}
+                        className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-all flex items-center gap-1.5"
+                        title="โหลดแบนเนอร์เกมยอดนิยม 4 เกมกลับมา"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" /> คืนค่าแบนเนอร์เกมตัวอย่าง
+                      </button>
+
+                      {slides.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleClearAllSlides()}
+                          className="px-3 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> ลบทั้งหมด
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setNewSlideModal(true)}
+                        className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> สร้างแบบใส่ข้อความ
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {slides.map((s) => (
-                      <div key={s.id} className="rounded-2xl bg-cyber-card border border-zinc-800 overflow-hidden space-y-3">
-                        <div className="aspect-[21/9] w-full relative bg-zinc-950">
-                          <img src={s.image} alt={s.title} className="w-full h-full object-cover" />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold bg-red-600 text-white">
-                            {s.badge || 'PROMO'}
-                          </div>
+                  {/* Multi-Image Upload Dropzone Area */}
+                  <div className="p-5 rounded-2xl border-2 border-dashed border-red-600/40 bg-gradient-to-b from-red-950/10 to-zinc-900/40 hover:border-red-500 transition-all space-y-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-red-600/20 border border-red-600/40 flex items-center justify-center text-red-400">
+                          <Images className="w-6 h-6" />
                         </div>
-                        <div className="p-4 space-y-2">
-                          <h4 className="text-xs font-bold text-white line-clamp-1">{s.title}</h4>
-                          <p className="text-[11px] text-zinc-400 line-clamp-2">{s.subtitle}</p>
-                          <div className="pt-2 border-t border-zinc-800 flex justify-end">
-                            <button
-                              onClick={() => handleDeleteSlide(s.id)}
-                              className="px-2.5 py-1 rounded bg-red-950/40 text-red-400 border border-red-900/60 text-[10px] font-bold"
-                            >
-                              ลบสไลด์
-                            </button>
-                          </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white font-['Kanit']">
+                            📸 อัปโหลดรูปภาพแบนเนอร์หลายๆ ภาพพร้อมกัน (Multi-Image Upload)
+                          </h4>
+                          <p className="text-xs text-zinc-400">
+                            คลิกเลือกหรือลากไฟล์ภาพ (PNG, JPG, WEBP, GIF, SVG) เข้ามาได้ครั้งละหลายๆ ภาพ
+                          </p>
                         </div>
                       </div>
-                    ))}
+
+                      <label className="cursor-pointer px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+                        <Upload className="w-4 h-4" />
+                        <span>เลือกรูปภาพจากเครื่อง (เลือกได้หลายไฟล์)</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/png, image/jpeg, image/jpg, image/webp, image/gif, image/svg+xml"
+                          onChange={(e) => {
+                            if (e.target.files) handleSelectMultiFiles(e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Previews of Selected Multi-Upload Files */}
+                    {multiUploadFiles.length > 0 && (
+                      <div className="pt-3 border-t border-zinc-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4" />
+                            เลือกแล้ว {multiUploadFiles.length} ภาพ (พร้อมอัปโหลด)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setMultiUploadFiles([])}
+                            className="text-[11px] text-zinc-400 hover:text-red-400"
+                          >
+                            ยกเลิกทั้งหมด
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                          {multiUploadFiles.map((item, idx) => (
+                            <div key={idx} className="relative group rounded-xl overflow-hidden border border-zinc-700 bg-black aspect-[21/9]">
+                              <img src={item.preview} alt={item.name} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSelectedMultiFile(idx)}
+                                  className="p-1 rounded-lg bg-red-600 text-white hover:bg-red-500"
+                                  title="ลบภาพนี้"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="absolute bottom-0 inset-x-0 bg-black/80 px-1.5 py-0.5 text-[9px] text-zinc-300 truncate">
+                                {item.name} ({item.sizeKb} KB)
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Upload Button with Progress */}
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                          {multiUploadProgress.isUploading ? (
+                            <div className="flex items-center gap-2 text-xs text-red-400">
+                              <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                              <span>{multiUploadProgress.message}</span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleUploadMultipleSlides}
+                              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>บันทึกและแสดงแบนเนอร์ {multiUploadFiles.length} ภาพนี้ทันที</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Current Active Slides Grid */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                        ลำดับการแสดงผลแบนเนอร์บนหน้าร้าน ({slides.length})
+                      </h4>
+                      <span className="text-[11px] text-zinc-400">
+                        กดปุ่ม ▲ / ▼ เพื่อเลื่อนสลับลำดับการแสดงผล
+                      </span>
+                    </div>
+
+                    {slides.length === 0 ? (
+                      <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center space-y-3">
+                        <Images className="w-10 h-10 text-zinc-600 mx-auto" />
+                        <div className="text-sm font-bold text-zinc-300">ยังไม่มีแบนเนอร์ในระบบ</div>
+                        <p className="text-xs text-zinc-500">
+                          กดเลือกภาพด้านบนเพื่ออัปโหลดหลายภาพพร้อมกัน หรือกดปุ่ม "คืนค่าแบนเนอร์เกมตัวอย่าง"
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreDefaultSlides()}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+                        >
+                          คืนค่าแบนเนอร์เกมตัวอย่างทันที
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {slides.map((s, idx) => (
+                          <div
+                            key={s.id || idx}
+                            className={`rounded-2xl border overflow-hidden transition-all space-y-3 bg-cyber-card ${
+                              s.isActive !== false ? 'border-zinc-800' : 'border-zinc-800/40 opacity-60'
+                            }`}
+                          >
+                            {/* Banner Thumbnail */}
+                            <div className="aspect-[21/9] w-full relative bg-zinc-950 overflow-hidden">
+                              <img
+                                src={s.image}
+                                alt={s.title || 'Slide'}
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = '/banners/banner_rov.svg';
+                                }}
+                                className="w-full h-full object-cover"
+                              />
+
+                              {/* Order Badge */}
+                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/80 text-white border border-white/10 backdrop-blur-sm">
+                                #{idx + 1}
+                              </div>
+
+                              {/* Active Status Badge */}
+                              <div className="absolute top-2 right-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSlideActive(s)}
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                    s.isActive !== false
+                                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/40'
+                                      : 'bg-zinc-800 text-zinc-400'
+                                  }`}
+                                  title="คลิกเพื่อเปิด/ปิดการแสดงผล"
+                                >
+                                  {s.isActive !== false ? (
+                                    <>
+                                      <Eye className="w-3 h-3" /> เปิดใช้งาน
+                                    </>
+                                  ) : (
+                                    <>
+                                      <EyeOff className="w-3 h-3" /> ปิดซ่อน
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                              {s.badge && (
+                                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold bg-red-600 text-white shadow">
+                                  {s.badge}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Details & Actions */}
+                            <div className="p-4 pt-1 space-y-2.5">
+                              <div>
+                                <h5 className="text-xs font-bold text-white line-clamp-1">
+                                  {s.title || 'ภาพแบนเนอร์กราฟิก (Graphic Banner)'}
+                                </h5>
+                                <p className="text-[11px] text-zinc-400 line-clamp-1">
+                                  {s.subtitle || `ลิงก์ปลายทาง: #${s.ctaTarget || 'popular-games'}`}
+                                </p>
+                              </div>
+
+                              <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between">
+                                {/* Move Up / Down Buttons */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleMoveSlide(s.id, 'up')}
+                                    className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-300 text-xs"
+                                    title="เลื่อนขึ้นหน้า"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === slides.length - 1}
+                                    onClick={() => handleMoveSlide(s.id, 'down')}
+                                    className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-300 text-xs"
+                                    title="เลื่อนลงหลัง"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                {/* Edit & Delete Buttons */}
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditSlideModal(s)}
+                                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-bold flex items-center gap-1"
+                                  >
+                                    <Edit3 className="w-3 h-3" /> แก้ไข
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSlide(s.id)}
+                                    className="px-2.5 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/60 text-[11px] font-bold flex items-center gap-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" /> ลบ
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -3324,25 +3770,46 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
             </div>
             <form onSubmit={handleCreateSlide} className="space-y-3 text-xs">
               <div>
-                <label className="text-zinc-400 block mb-1">หัวข้อแบนเนอร์ (Title) *</label>
+                <label className="text-zinc-400 block mb-1">หัวข้อแบนเนอร์ (เว้นว่างได้ หากเป็นภาพกราฟิกล้วน)</label>
                 <input
                   type="text"
-                  required
-                  placeholder="เช่น FLASH SALE ดีลเดือดลด 30%"
+                  placeholder="เช่น FLASH SALE ดีลเดือดลด 30% (หรือเว้นว่าง)"
                   value={slideForm.title}
                   onChange={(e) => setSlideForm({ ...slideForm, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
                 />
               </div>
               <div>
-                <label className="text-zinc-400 block mb-1">คำบรรยาย (Subtitle)</label>
+                <label className="text-zinc-400 block mb-1">คำบรรยาย (เว้นว่างได้)</label>
                 <input
                   type="text"
-                  placeholder="เช่น เติม ROV, Free Fire คูปองเข้าเกมทันที 24 ชม."
+                  placeholder="เช่น เติม ROV คูปองเข้าเกมทันที 24 ชม."
                   value={slideForm.subtitle}
                   onChange={(e) => setSlideForm({ ...slideForm, subtitle: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ป้าย Badge</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น ⚡ FLASH SALE"
+                    value={slideForm.badge}
+                    onChange={(e) => setSlideForm({ ...slideForm, badge: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">ปลายทางเมื่อคลิก</label>
+                  <input
+                    type="text"
+                    placeholder="popular-games หรือ https://..."
+                    value={slideForm.ctaTarget}
+                    onChange={(e) => setSlideForm({ ...slideForm, ctaTarget: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
               </div>
 
               {/* Upload Banner from Machine */}
@@ -3359,6 +3826,99 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
               >
                 บันทึกและเผยแพร่แบนเนอร์
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Slide Modal */}
+      {editSlideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#0e121a] border border-zinc-700 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-sm font-bold text-white font-['Kanit']">แก้ไขแบนเนอร์สไลด์</h3>
+              <button onClick={() => setEditSlideModal(null)} className="text-zinc-400 hover:text-white">✕</button>
+            </div>
+            <form onSubmit={handleSaveEditSlide} className="space-y-3 text-xs">
+              <div>
+                <label className="text-zinc-400 block mb-1">หัวข้อแบนเนอร์ (เว้นว่างได้)</label>
+                <input
+                  type="text"
+                  placeholder="เว้นว่างหากต้องการแสดงเฉพาะภาพกราฟิก"
+                  value={editSlideModal.title || ''}
+                  onChange={(e) => setEditSlideModal({ ...editSlideModal, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-zinc-400 block mb-1">คำบรรยาย (เว้นว่างได้)</label>
+                <input
+                  type="text"
+                  placeholder="คำบรรยายย่อย"
+                  value={editSlideModal.subtitle || ''}
+                  onChange={(e) => setEditSlideModal({ ...editSlideModal, subtitle: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ป้าย Badge</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น ⚡ PROMO"
+                    value={editSlideModal.badge || ''}
+                    onChange={(e) => setEditSlideModal({ ...editSlideModal, badge: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">ปลายทางเมื่อคลิก</label>
+                  <input
+                    type="text"
+                    placeholder="popular-games หรือ https://..."
+                    value={editSlideModal.ctaTarget || 'popular-games'}
+                    onChange={(e) => setEditSlideModal({ ...editSlideModal, ctaTarget: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Upload or Change Image */}
+              <ImageUploader
+                currentImageUrl={editSlideModal.image}
+                onImageUploaded={(url) => setEditSlideModal({ ...editSlideModal, image: url })}
+                label="เปลี่ยนรูปภาพแบนเนอร์"
+                aspectRatio="banner"
+              />
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="editSlideActive"
+                  checked={editSlideModal.isActive !== false}
+                  onChange={(e) => setEditSlideModal({ ...editSlideModal, isActive: e.target.checked })}
+                  className="w-4 h-4 rounded text-red-600 bg-zinc-900 border-zinc-700 focus:ring-red-500"
+                />
+                <label htmlFor="editSlideActive" className="text-xs text-zinc-300 cursor-pointer">
+                  เปิดให้แสดงผลบนหน้าร้าน (Active)
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditSlideModal(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-md shadow-red-600/30"
+                >
+                  บันทึกการแก้ไข
+                </button>
+              </div>
             </form>
           </div>
         </div>

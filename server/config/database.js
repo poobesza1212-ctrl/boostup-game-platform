@@ -978,11 +978,16 @@ class Database {
 
   // Carousel Slides (CMS)
   getCarouselSlides() {
-    return (this.data.carouselSlides || []).filter(s => s.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
+    const active = (this.data.carouselSlides || []).filter(s => s.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
+    if (active.length > 0) return active;
+    return this.resetCarouselSlidesToDefaults();
   }
 
   getAllCarouselSlidesAdmin() {
-    return this.data.carouselSlides || [];
+    if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) {
+      return this.resetCarouselSlidesToDefaults();
+    }
+    return (this.data.carouselSlides || []).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }
 
   saveCarouselSlide(slide) {
@@ -990,6 +995,8 @@ class Database {
     const idx = this.data.carouselSlides.findIndex(s => s.id === slide.id);
     if (idx !== -1) {
       this.data.carouselSlides[idx] = { ...this.data.carouselSlides[idx], ...slide };
+      this.save();
+      return this.data.carouselSlides[idx];
     } else {
       const newSlide = {
         id: `slide_${Date.now()}`,
@@ -1001,14 +1008,125 @@ class Database {
       this.save();
       return newSlide;
     }
+  }
+
+  saveCarouselSlidesBatch(slidesArray) {
+    if (!this.data.carouselSlides) this.data.carouselSlides = [];
+    const added = [];
+    let currentOrder = this.data.carouselSlides.length;
+    for (const slide of slidesArray) {
+      currentOrder += 1;
+      const newSlide = {
+        id: `slide_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        title: slide.title || '',
+        subtitle: slide.subtitle || '',
+        badge: slide.badge || '',
+        badgeColor: slide.badgeColor || 'bg-red-600 text-white',
+        ctaText: slide.ctaText || 'ดูรายละเอียด',
+        ctaTarget: slide.ctaTarget || 'popular-games',
+        image: slide.image,
+        displayOrder: currentOrder,
+        isActive: slide.isActive !== false,
+        isPureGraphic: !slide.title && !slide.subtitle
+      };
+      this.data.carouselSlides.push(newSlide);
+      added.push(newSlide);
+    }
     this.save();
-    return this.data.carouselSlides[idx];
+    return added;
+  }
+
+  updateCarouselSlide(id, updates) {
+    if (!this.data.carouselSlides) return null;
+    const idx = this.data.carouselSlides.findIndex(s => s.id === id);
+    if (idx !== -1) {
+      this.data.carouselSlides[idx] = { ...this.data.carouselSlides[idx], ...updates };
+      this.save();
+      return this.data.carouselSlides[idx];
+    }
+    return null;
+  }
+
+  reorderCarouselSlides(orderedIds) {
+    if (!this.data.carouselSlides || !Array.isArray(orderedIds)) return this.data.carouselSlides || [];
+    orderedIds.forEach((id, index) => {
+      const slide = this.data.carouselSlides.find(s => s.id === id);
+      if (slide) slide.displayOrder = index + 1;
+    });
+    this.data.carouselSlides.sort((a, b) => a.displayOrder - b.displayOrder);
+    this.save();
+    return this.data.carouselSlides;
+  }
+
+  resetCarouselSlidesToDefaults() {
+    this.data.carouselSlides = [
+      {
+        id: "slide_rov",
+        badge: "⚡ FLASH SALE -30%",
+        badgeColor: "bg-red-600 text-white",
+        title: "เติมคูปอง ROV ราคาพิเศษ",
+        subtitle: "เข้าเกมอัตโนมัติ 1-3 วินาที ปลอดภัย ไม่ต้องใช้รหัสผ่าน",
+        ctaText: "เติม ROV ทันที",
+        ctaTarget: "popular-games",
+        image: "/banners/banner_rov.svg",
+        displayOrder: 1,
+        isActive: true,
+        isPureGraphic: true
+      },
+      {
+        id: "slide_ff",
+        badge: "💎 โบนัสเพชร +50%",
+        badgeColor: "bg-amber-500 text-black font-black",
+        title: "เติมเพชร Free Fire รับโบนัสฟรี",
+        subtitle: "กรอกเพียง UID ตัวเลข เข้าบัญชีทันที เติมได้ตลอด 24 ชม.",
+        ctaText: "เติม Free Fire",
+        ctaTarget: "popular-games",
+        image: "/banners/banner_freefire.svg",
+        displayOrder: 2,
+        isActive: true,
+        isPureGraphic: true
+      },
+      {
+        id: "slide_val",
+        badge: "⚡ FAST TOP-UP 24 ชม.",
+        badgeColor: "bg-cyan-500 text-black font-black",
+        title: "VALORANT POINTS (VP) เติมไว ปลอดภัย",
+        subtitle: "เติม Riot ID ตรงเข้าบัญชีทันที รองรับ Night Market ทุกเซิร์ฟเวอร์",
+        ctaText: "เติม VALORANT VP",
+        ctaTarget: "popular-games",
+        image: "/banners/banner_valorant.svg",
+        displayOrder: 3,
+        isActive: true,
+        isPureGraphic: true
+      },
+      {
+        id: "slide_gen",
+        badge: "✨ สิทธิพิเศษ 2X COINS",
+        badgeColor: "bg-purple-600 text-white font-bold",
+        title: "Genshin Impact พรแห่งดวงจันทร์",
+        subtitle: "Blessing of the Welkin Moon & Genesis Crystals ราคาคุ้มที่สุด",
+        ctaText: "เติม Genshin Impact",
+        ctaTarget: "popular-games",
+        image: "/banners/banner_genshin.svg",
+        displayOrder: 4,
+        isActive: true,
+        isPureGraphic: true
+      }
+    ];
+    this.save();
+    return this.data.carouselSlides;
   }
 
   deleteCarouselSlide(id) {
     if (!this.data.carouselSlides) return;
     this.data.carouselSlides = this.data.carouselSlides.filter(s => s.id !== id);
     this.save();
+  }
+
+  clearAllCarouselSlides() {
+    this.data.carouselSlides = [];
+    this.save();
+    return true;
   }
 
   // Admins & RBAC

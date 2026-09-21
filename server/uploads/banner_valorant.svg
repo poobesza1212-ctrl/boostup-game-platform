@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgVal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050d1a"/>
+      <stop offset="40%" stop-color="#0b1b36"/>
+      <stop offset="75%" stop-color="#081426"/>
+      <stop offset="100%" stop-color="#02060d"/>
+    </linearGradient>
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#00a8ff"/>
+    </linearGradient>
+    <linearGradient id="redVal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff4655"/>
+      <stop offset="100%" stop-color="#d93341"/>
+    </linearGradient>
+    <radialGradient id="centerGlowVal" cx="70%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="gridVal" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#00f0ff" stroke-width="0.75" stroke-opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <rect width="1920" height="600" fill="url(#bgVal)"/>
+  <rect width="1920" height="600" fill="url(#gridVal)"/>
+  <rect width="1920" height="600" fill="url(#centerGlowVal)"/>
+
+  <path d="M -80 0 L 350 0 L 220 600 L -80 600 Z" fill="#00f0ff" fill-opacity="0.03"/>
+  <path d="M 1520 0 L 2020 0 L 2020 600 L 1680 600 Z" fill="#ff4655" fill-opacity="0.05"/>
+  <line x1="0" y1="595" x2="1920" y2="595" stroke="#00f0ff" stroke-width="4" stroke-opacity="0.6"/>
+
+  <!-- Left Content -->
+  <g transform="translate(120, 110)">
+    <!-- Badge -->
+    <rect x="0" y="0" width="310" height="42" rx="21" fill="url(#cyanGlow)"/>
+    <text x="155" y="27" font-family="'Kanit', sans-serif" font-size="16" font-weight="900" fill="#001829" text-anchor="middle" letter-spacing="1">⚡ VALORANT POINTS (VP) แท้</text>
+
+    <!-- Main Title -->
+    <text x="0" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ffffff" letter-spacing="0">เติม VP VALORANT</text>
+    <text x="560" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#00f0ff">เข้าไว 24 ชม.</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="175" font-family="'Kanit', sans-serif" font-size="24" font-weight="400" fill="#bae6fd">เติม Riot ID ตรงเข้าบัญชีทันที ซื้อสกิน มีด ปืน Night Market ได้ครบทุกชิ้น</text>
+
+    <!-- Features Pills -->
+    <g transform="translate(0, 220)">
+      <rect x="0" y="0" width="180" height="38" rx="8" fill="#061933" stroke="#00f0ff" stroke-width="1.5"/>
+      <text x="90" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ เซิร์ฟเวอร์ TH/AP</text>
+
+      <rect x="200" y="0" width="180" height="38" rx="8" fill="#061933" stroke="#00f0ff" stroke-width="1.5"/>
+      <text x="290" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ คืนเงินหากมีปัญหา</text>
+
+      <rect x="400" y="0" width="180" height="38" rx="8" fill="#061933" stroke="#00f0ff" stroke-width="1.5"/>
+      <text x="490" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ปลอดภัย 100%</text>
+    </g>
+
+    <!-- Call to action button -->
+    <g transform="translate(0, 300)">
+      <rect x="0" y="0" width="240" height="54" rx="14" fill="url(#cyanGlow)" filter="drop-shadow(0 6px 16px rgba(0,240,255,0.4))"/>
+      <text x="120" y="34" font-family="'Kanit', sans-serif" font-size="18" font-weight="900" fill="#001829" text-anchor="middle">เติม VALORANT VP →</text>
+    </g>
+  </g>
+
+  <!-- Right Visual Art / Valorant 'V' Icon -->
+  <g transform="translate(1400, 110)">
+    <circle cx="160" cy="180" r="180" fill="#00f0ff" fill-opacity="0.1"/>
+    
+    <!-- Valorant Iconic V -->
+    <path d="M 60 70 L 160 250 L 160 170 L 100 70 Z" fill="#ff4655"/>
+    <path d="M 260 70 L 160 250 L 160 170 L 220 70 Z" fill="#ff4655"/>
+    <path d="M 120 70 L 160 140 L 200 70 Z" fill="#ffffff"/>
+    
+    <text x="160" y="330" font-family="'Kanit', sans-serif" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="4">VALORANT</text>
+    <text x="160" y="360" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#00f0ff" text-anchor="middle" letter-spacing="2">RIOT GAMES</text>
+  </g>
+</svg>

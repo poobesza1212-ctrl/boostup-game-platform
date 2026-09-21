@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgRov" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#180407"/>
+      <stop offset="40%" stop-color="#3b0a13"/>
+      <stop offset="75%" stop-color="#1a060a"/>
+      <stop offset="100%" stop-color="#080204"/>
+    </linearGradient>
+    <linearGradient id="redGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff1744"/>
+      <stop offset="100%" stop-color="#d50000"/>
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd54f"/>
+      <stop offset="100%" stop-color="#ff8f00"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="70%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff1744" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ff1744" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ff1744" stroke-width="0.75" stroke-opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1920" height="600" fill="url(#bgRov)"/>
+  <rect width="1920" height="600" fill="url(#grid)"/>
+  <rect width="1920" height="600" fill="url(#centerGlow)"/>
+
+  <!-- Geometric Tech Accents -->
+  <path d="M -100 0 L 400 0 L 250 600 L -100 600 Z" fill="#ff1744" fill-opacity="0.04"/>
+  <path d="M 1500 0 L 2020 0 L 2020 600 L 1650 600 Z" fill="#d50000" fill-opacity="0.06"/>
+  <line x1="0" y1="595" x2="1920" y2="595" stroke="#ff1744" stroke-width="4" stroke-opacity="0.6"/>
+
+  <!-- Left Content Info -->
+  <g transform="translate(120, 110)">
+    <!-- Badge -->
+    <rect x="0" y="0" width="280" height="42" rx="21" fill="url(#redGlow)"/>
+    <text x="140" y="27" font-family="'Kanit', sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">⚡ PROMO FLASH SALE -30%</text>
+
+    <!-- Main Title -->
+    <text x="0" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ffffff" letter-spacing="0">เติมคูปอง ROV</text>
+    <text x="440" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ff4d6d">ราคาถูกที่สุด</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="175" font-family="'Kanit', sans-serif" font-size="24" font-weight="400" fill="#fecdd3">ใช้เพียง OpenID / UID คูปองเข้าเกมทันที 1-3 วินาที ปลอดภัย 100%</text>
+
+    <!-- Features Pills -->
+    <g transform="translate(0, 220)">
+      <rect x="0" y="0" width="180" height="38" rx="8" fill="#260b11" stroke="#ff1744" stroke-width="1.5"/>
+      <text x="90" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ระบบอัตโนมัติ 24 ชม.</text>
+
+      <rect x="200" y="0" width="180" height="38" rx="8" fill="#260b11" stroke="#ff1744" stroke-width="1.5"/>
+      <text x="290" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ รับเหรียญ 2X COINS</text>
+
+      <rect x="400" y="0" width="180" height="38" rx="8" fill="#260b11" stroke="#ff1744" stroke-width="1.5"/>
+      <text x="490" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ไม่ต้องใช้รหัสผ่าน</text>
+    </g>
+
+    <!-- Call to action button visual -->
+    <g transform="translate(0, 300)">
+      <rect x="0" y="0" width="230" height="54" rx="14" fill="url(#redGlow)" filter="drop-shadow(0 6px 16px rgba(255,23,68,0.5))"/>
+      <text x="115" y="34" font-family="'Kanit', sans-serif" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle">เติมเงิน ROV ทันที →</text>
+    </g>
+  </g>
+
+  <!-- Right Visual Art / Icon Showcase -->
+  <g transform="translate(1380, 100)">
+    <!-- Shield / Emblem Glow -->
+    <circle cx="180" cy="180" r="180" fill="#ff1744" fill-opacity="0.15"/>
+    <circle cx="180" cy="180" r="130" fill="#d50000" fill-opacity="0.25"/>
+
+    <!-- Large 3D Styled Crest -->
+    <polygon points="180,30 310,100 310,250 180,330 50,250 50,100" fill="#1e0509" stroke="#ff1744" stroke-width="6"/>
+    <polygon points="180,60 280,115 280,230 180,295 80,230 80,115" fill="#2d080e" stroke="#ff4d6d" stroke-width="3"/>
+
+    <!-- Wing Swords -->
+    <path d="M 180 70 L 180 270 M 140 140 L 220 140" stroke="url(#goldGlow)" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Big Text ROV Emblem -->
+    <text x="180" y="210" font-family="'Kanit', sans-serif" font-size="44" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="4">ROV</text>
+    <text x="180" y="245" font-family="'Kanit', sans-serif" font-size="14" font-weight="800" fill="url(#goldGlow)" text-anchor="middle" letter-spacing="3">ARENA OF VALOR</text>
+  </g>
+</svg>

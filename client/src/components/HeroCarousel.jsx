@@ -1,167 +1,261 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Zap, Sparkles, Gift, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function HeroCarousel({ slides: customSlides, onSelectCategory, onOpenFlashSale }) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   const defaultSlides = [
     {
-      id: 1,
-      badge: "⚡ ดีลพิเศษประจำวัน (DAILY FLASH SALE)",
-      badgeColor: "bg-red-600 text-white",
-      title: "FLASH SALE ดีลเดือดลดสูงสุด 30%",
-      subtitle: "เติม ROV, Free Fire, Valorant, Genshin คูปองและเพชรเข้าเกมทันที 24 ชม. ไม่ต้องรอนาน",
-      ctaText: "ช้อปดีล Flash Sale",
-      ctaTarget: "flash-sale-section",
-      image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80",
-      accentGradient: "from-red-950 via-zinc-900 to-black"
+      id: 'default_rov',
+      badge: '⚡ FLASH SALE -30%',
+      badgeColor: 'bg-red-600 text-white',
+      title: 'เติมคูปอง ROV ราคาพิเศษ',
+      subtitle: 'เข้าเกมอัตโนมัติ 1-3 วินาที ปลอดภัย ไม่ต้องใช้รหัสผ่าน',
+      ctaText: 'เติม ROV ทันที',
+      ctaTarget: 'popular-games',
+      image: '/banners/banner_rov.svg',
+      isPureGraphic: true
     },
     {
-      id: 2,
-      badge: "🪙 สิทธิพิเศษสำหรับสมาชิก (COINS REWARD)",
-      badgeColor: "bg-amber-500 text-black font-black",
-      title: "รับเหรียญ BOOSTUP COINS คูณ 2 เท่า!",
-      subtitle: "ยิ่งเติม ยิ่งคุ้ม ทุกยอดการเติมเกมสะสมเหรียญแลกรับส่วนลดเงินสด หรือรับแพ็กเกจเกมฟรี",
-      ctaText: "ดูเกมยอดนิยม",
-      ctaTarget: "popular-games",
-      image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
-      accentGradient: "from-amber-950 via-zinc-900 to-black"
+      id: 'default_ff',
+      badge: '💎 โบนัสเพชร +50%',
+      badgeColor: 'bg-amber-500 text-black font-black',
+      title: 'เติมเพชร Free Fire รับโบนัสฟรี',
+      subtitle: 'กรอกเพียง UID ตัวเลข เข้าบัญชีทันที เติมได้ตลอด 24 ชม.',
+      ctaText: 'เติม Free Fire',
+      ctaTarget: 'popular-games',
+      image: '/banners/banner_freefire.svg',
+      isPureGraphic: true
     },
     {
-      id: 3,
-      badge: "🎁 กิจกรรมพิเศษประจำเดือน (LUCKY DRAW)",
-      badgeColor: "bg-gradient-to-r from-purple-600 to-pink-600 text-white",
-      title: "เติมร้อย ลุ้นล้าน แจกใหญ่ทุกสัปดาห์",
-      subtitle: "เติมเงินครบทุก 100 บาท รับสิทธิ์ลุ้นรับ Steam Deck, iPhone, บัตรของขวัญ และไอเท็มแรร์มูลค่ารวม 500,000 บาท",
-      ctaText: "เติมเงินรับสิทธิ์ลุ้น",
-      ctaTarget: "popular-games",
-      image: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80",
-      accentGradient: "from-purple-950 via-zinc-900 to-black"
+      id: 'default_val',
+      badge: '⚡ FAST TOP-UP 24 ชม.',
+      badgeColor: 'bg-cyan-500 text-black font-black',
+      title: 'VALORANT POINTS (VP) เติมไว ปลอดภัย',
+      subtitle: 'เติม Riot ID ตรงเข้าบัญชีทันที รองรับ Night Market ทุกเซิร์ฟเวอร์',
+      ctaText: 'เติม VALORANT VP',
+      ctaTarget: 'popular-games',
+      image: '/banners/banner_valorant.svg',
+      isPureGraphic: true
+    },
+    {
+      id: 'default_gen',
+      badge: '✨ สิทธิพิเศษ 2X COINS',
+      badgeColor: 'bg-purple-600 text-white font-bold',
+      title: 'Genshin Impact พรแห่งดวงจันทร์',
+      subtitle: 'Blessing of the Welkin Moon & Genesis Crystals ราคาคุ้มที่สุด',
+      ctaText: 'เติม Genshin Impact',
+      ctaTarget: 'popular-games',
+      image: '/banners/banner_genshin.svg',
+      isPureGraphic: true
     }
   ];
 
-  const slides = (customSlides && customSlides.length > 0) ? customSlides : defaultSlides;
+  // Active slides fallback
+  const rawSlides = (customSlides && customSlides.length > 0) ? customSlides : defaultSlides;
+  const slides = rawSlides.filter(s => s.isActive !== false);
+  const activeSlides = slides.length > 0 ? slides : defaultSlides;
 
-  // Auto-play slider every 5 seconds
+  // Auto-play slider every 4.5 seconds (paused when user hovers mouse)
   useEffect(() => {
-    if (!slides.length) return;
+    if (activeSlides.length <= 1 || isHovered) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
+      setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+    }, 4500);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [activeSlides.length, isHovered]);
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  // Keep index within bounds if slide count changes
+  useEffect(() => {
+    if (currentSlide >= activeSlides.length) {
+      setCurrentSlide(0);
+    }
+  }, [activeSlides.length, currentSlide]);
+
+  const prevSlide = (e) => {
+    e?.stopPropagation();
+    setCurrentSlide((prev) => (prev - 1 + activeSlides.length) % activeSlides.length);
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const nextSlide = (e) => {
+    e?.stopPropagation();
+    setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+  };
+
+  // Touch swipe support for mobile
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    if (diffX > 50) {
+      nextSlide();
+    } else if (diffX < -50) {
+      prevSlide();
+    }
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  };
+
+  const handleSlideClick = (slide) => {
+    if (typeof slide.ctaAction === 'function') {
+      slide.ctaAction();
+    } else if (slide.ctaTarget) {
+      if (slide.ctaTarget.startsWith('http://') || slide.ctaTarget.startsWith('https://')) {
+        window.open(slide.ctaTarget, '_blank');
+      } else {
+        const el = document.getElementById(slide.ctaTarget);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      const el = document.getElementById('popular-games');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
-    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
-      <div className="relative overflow-hidden rounded-3xl border border-red-950/60 shadow-2xl group min-h-[340px] sm:min-h-[380px] flex items-center">
-        
+    <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 pb-6">
+      <div 
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-red-600/30 shadow-2xl shadow-red-950/40 group aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] min-h-[190px] sm:min-h-[280px] md:min-h-[350px] lg:min-h-[400px] flex items-center bg-[#0d1017] select-none"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Slides rendering */}
-        {slides.map((slide, index) => {
+        {activeSlides.map((slide, index) => {
           const isActive = index === currentSlide;
+          // If a slide is pure graphic or user uploaded image without text
+          const hasTextOverlay = !slide.isPureGraphic && (slide.title || slide.subtitle);
+
           return (
             <div
-              key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex items-center ${
+              key={slide.id || index}
+              onClick={() => handleSlideClick(slide)}
+              className={`absolute inset-0 cursor-pointer transition-opacity duration-700 ease-in-out ${
                 isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
-              {/* Background Art with Gradient Overlay */}
-              <div className="absolute inset-0 overflow-hidden bg-black">
+              {/* Full Brightness Crisp Banner Artwork */}
+              <div className="absolute inset-0 overflow-hidden bg-[#0d1017]">
                 <img
                   src={slide.image}
-                  alt={slide.title}
+                  alt={slide.title || 'Promotional Banner'}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80';
+                    e.target.src = '/banners/banner_rov.svg';
                   }}
-                  className="w-full h-full object-cover object-center opacity-40 scale-105 group-hover:scale-100 transition-transform duration-1000"
+                  className="w-full h-full object-cover object-center transition-transform duration-1000 ease-out group-hover:scale-[1.02]"
                 />
-                <div className={`absolute inset-0 bg-gradient-to-r ${slide.accentGradient} opacity-90`}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080a0f] via-transparent to-transparent"></div>
+
+                {/* Subtle text gradient only when text overlay is requested */}
+                {hasTextOverlay && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent sm:w-2/3"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                  </>
+                )}
               </div>
 
-              {/* Slide Content */}
-              <div className="relative max-w-2xl px-6 sm:px-12 py-10 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${slide.badgeColor}`}>
-                    {slide.badge}
-                  </span>
+              {/* Slide Content (Only rendered if title/subtitle exists) */}
+              {hasTextOverlay && (
+                <div className="relative h-full max-w-2xl px-5 sm:px-12 flex flex-col justify-center space-y-2 sm:space-y-3.5 z-10 pointer-events-none">
+                  {slide.badge && (
+                    <div className="inline-flex items-center">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-black shadow-md ${slide.badgeColor || 'bg-red-600 text-white'}`}>
+                        {slide.badge}
+                      </span>
+                    </div>
+                  )}
+
+                  {slide.title && (
+                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight font-['Kanit'] leading-tight drop-shadow-md">
+                      {slide.title}
+                    </h2>
+                  )}
+
+                  {slide.subtitle && (
+                    <p className="text-xs sm:text-sm text-zinc-200 font-normal max-w-lg leading-relaxed line-clamp-2 drop-shadow">
+                      {slide.subtitle}
+                    </p>
+                  )}
+
+                  <div className="pt-1.5 sm:pt-2">
+                    <button
+                      type="button"
+                      className="pointer-events-auto px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-red-600/50 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                    >
+                      <span>{slide.ctaText || 'ช้อปทันที'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-
-                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight font-['Kanit'] leading-[1.15]">
-                  {slide.title}
-                </h2>
-
-                <p className="text-xs sm:text-sm text-zinc-300 font-light max-w-lg leading-relaxed">
-                  {slide.subtitle}
-                </p>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => {
-                      if (typeof slide.ctaAction === 'function') {
-                        slide.ctaAction();
-                      } else if (slide.ctaTarget) {
-                        const el = document.getElementById(slide.ctaTarget);
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                      } else {
-                        const el = document.getElementById('popular-games');
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="cyber-btn px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-red-600/40 flex items-center gap-2 transition-all"
-                  >
-                    <span>{slide.ctaText || 'ช้อปทันที'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
+              )}
             </div>
           );
         })}
 
         {/* Prev / Next Navigation Arrows */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-red-600 border border-zinc-700 text-white flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-          aria-label="Previous slide"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+        {activeSlides.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={prevSlide}
+              className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-red-600 border border-zinc-700/80 text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg hover:scale-110 active:scale-95 opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              aria-label="Previous banner"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
+            </button>
 
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-red-600 border border-zinc-700 text-white flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-          aria-label="Next slide"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+            <button
+              type="button"
+              onClick={nextSlide}
+              className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-red-600 border border-zinc-700/80 text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg hover:scale-110 active:scale-95 opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              aria-label="Next banner"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
+            </button>
+          </>
+        )}
+
+        {/* Counter Badge (e.g. 1 / 4) */}
+        {activeSlides.length > 1 && (
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[10px] sm:text-xs font-mono font-bold text-zinc-300">
+            {currentSlide + 1} / {activeSlides.length}
+          </div>
+        )}
 
         {/* Pagination Dots */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentSlide(idx)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                idx === currentSlide
-                  ? 'w-8 bg-red-600 shadow-md shadow-red-600/50'
-                  : 'w-2 bg-zinc-600 hover:bg-zinc-400'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
-        </div>
-
+        {activeSlides.length > 1 && (
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
+            {activeSlides.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentSlide(idx);
+                }}
+                className={`rounded-full transition-all duration-300 ${
+                  idx === currentSlide
+                    ? 'w-6 sm:w-8 h-2 sm:h-2.5 bg-gradient-to-r from-red-500 to-red-600 shadow-md shadow-red-500/80'
+                    : 'w-2 sm:w-2.5 h-2 sm:h-2.5 bg-zinc-600/80 hover:bg-zinc-400'
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

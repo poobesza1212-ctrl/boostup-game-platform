@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#140624"/>
+      <stop offset="40%" stop-color="#2a0d4c"/>
+      <stop offset="75%" stop-color="#190933"/>
+      <stop offset="100%" stop-color="#090212"/>
+    </linearGradient>
+    <linearGradient id="purpleGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+    <linearGradient id="primoGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e879f9"/>
+      <stop offset="50%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <radialGradient id="centerGlowGen" cx="70%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="gridGen" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#c084fc" stroke-width="0.75" stroke-opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <rect width="1920" height="600" fill="url(#bgGen)"/>
+  <rect width="1920" height="600" fill="url(#gridGen)"/>
+  <rect width="1920" height="600" fill="url(#centerGlowGen)"/>
+
+  <path d="M -80 0 L 350 0 L 220 600 L -80 600 Z" fill="#c084fc" fill-opacity="0.03"/>
+  <path d="M 1520 0 L 2020 0 L 2020 600 L 1680 600 Z" fill="#9333ea" fill-opacity="0.05"/>
+  <line x1="0" y1="595" x2="1920" y2="595" stroke="#c084fc" stroke-width="4" stroke-opacity="0.6"/>
+
+  <!-- Left Content -->
+  <g transform="translate(120, 110)">
+    <!-- Badge -->
+    <rect x="0" y="0" width="310" height="42" rx="21" fill="url(#purpleGlow)"/>
+    <text x="155" y="27" font-family="'Kanit', sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">✨ GENSHIN IMPACT PROMO</text>
+
+    <!-- Main Title -->
+    <text x="0" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#ffffff" letter-spacing="0">พรแห่งดวงจันทร์</text>
+    <text x="460" y="115" font-family="'Kanit', sans-serif" font-size="64" font-weight="900" fill="#e879f9">&amp; คริสตัล</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="175" font-family="'Kanit', sans-serif" font-size="24" font-weight="400" fill="#f5d0fe">Blessing of the Welkin Moon &amp; Genesis Crystals เติมตรงเข้า UID ปลอดภัย 100%</text>
+
+    <!-- Features Pills -->
+    <g transform="translate(0, 220)">
+      <rect x="0" y="0" width="180" height="38" rx="8" fill="#1f0738" stroke="#c084fc" stroke-width="1.5"/>
+      <text x="90" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ทุกเซิร์ฟเวอร์ Asia</text>
+
+      <rect x="200" y="0" width="180" height="38" rx="8" fill="#1f0738" stroke="#c084fc" stroke-width="1.5"/>
+      <text x="290" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ รับเหรียญ 2X COINS</text>
+
+      <rect x="400" y="0" width="180" height="38" rx="8" fill="#1f0738" stroke="#c084fc" stroke-width="1.5"/>
+      <text x="490" y="24" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">✓ ใช้เพียง UID เท่านั้น</text>
+    </g>
+
+    <!-- Call to action button -->
+    <g transform="translate(0, 300)">
+      <rect x="0" y="0" width="240" height="54" rx="14" fill="url(#purpleGlow)" filter="drop-shadow(0 6px 16px rgba(192,132,252,0.4))"/>
+      <text x="120" y="34" font-family="'Kanit', sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">เติม Genshin Impact →</text>
+    </g>
+  </g>
+
+  <!-- Right Visual Art / Primogem 4-Point Star -->
+  <g transform="translate(1400, 110)">
+    <circle cx="160" cy="180" r="180" fill="#c084fc" fill-opacity="0.1"/>
+    
+    <!-- Primogem 4-pointed Star -->
+    <path d="M 160 50 Q 160 180 290 180 Q 160 180 160 310 Q 160 180 30 180 Q 160 180 160 50 Z" fill="url(#primoGlow)" filter="drop-shadow(0 0 25px rgba(232,121,249,0.8))"/>
+    
+    <text x="160" y="350" font-family="'Kanit', sans-serif" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="2">GENSHIN IMPACT</text>
+    <text x="160" y="380" font-family="'Kanit', sans-serif" font-size="14" font-weight="700" fill="#e879f9" text-anchor="middle" letter-spacing="2">HOYOVERSE</text>
+  </g>
+</svg>

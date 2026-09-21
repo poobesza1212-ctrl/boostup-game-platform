@@ -704,8 +704,61 @@ router.get('/admin/slides', (req, res) => {
 
 router.post('/admin/slides', (req, res) => {
   const slide = db.saveCarouselSlide(req.body);
-  db.logAction('admin', 'Admin', 'SAVE_SLIDE', `บันทึกแบนเนอร์ ${slide.title}`);
+  db.logAction('admin', 'Admin', 'SAVE_SLIDE', `บันทึกแบนเนอร์ ${slide.title || slide.id}`);
   res.json({ success: true, slide });
+});
+
+router.post('/admin/slides/batch', (req, res) => {
+  try {
+    const { slides } = req.body;
+    if (!slides || !Array.isArray(slides) || slides.length === 0) {
+      return res.status(400).json({ success: false, message: 'ไม่พบรายการรูปภาพแบนเนอร์' });
+    }
+    const added = db.saveCarouselSlidesBatch(slides);
+    db.logAction('admin', 'Admin', 'BATCH_ADD_SLIDES', `เพิ่มแบนเนอร์ใหม่จำนวน ${added.length} ภาพ`);
+    res.json({ success: true, count: added.length, slides: added });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/admin/slides/:id', (req, res) => {
+  try {
+    const updated = db.updateCarouselSlide(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ success: false, message: 'ไม่พบแบนเนอร์' });
+    db.logAction('admin', 'Admin', 'UPDATE_SLIDE', `แก้ไขแบนเนอร์ ID: ${req.params.id}`);
+    res.json({ success: true, slide: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/slides/reorder', (req, res) => {
+  try {
+    const { slideIds } = req.body;
+    if (!Array.isArray(slideIds)) return res.status(400).json({ success: false, message: 'ข้อมูลลำดับไม่ถูกต้อง' });
+    const reordered = db.reorderCarouselSlides(slideIds);
+    db.logAction('admin', 'Admin', 'REORDER_SLIDES', 'สลับลำดับการแสดงผลแบนเนอร์');
+    res.json({ success: true, slides: reordered });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/slides/reset-defaults', (req, res) => {
+  try {
+    const slides = db.resetCarouselSlidesToDefaults();
+    db.logAction('admin', 'Admin', 'RESET_SLIDES', 'คืนค่าแบนเนอร์เกมตัวอย่าง (ROV, Free Fire, Valorant, Genshin)');
+    res.json({ success: true, message: 'คืนค่าแบนเนอร์เกมตัวอย่างสำเร็จ', slides });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/admin/slides/all', (req, res) => {
+  db.clearAllCarouselSlides();
+  db.logAction('admin', 'Admin', 'CLEAR_SLIDES', 'ลบแบนเนอร์ทั้งหมดในระบบ');
+  res.json({ success: true, message: 'ลบแบนเนอร์ทั้งหมดสำเร็จ' });
 });
 
 router.delete('/admin/slides/:id', (req, res) => {

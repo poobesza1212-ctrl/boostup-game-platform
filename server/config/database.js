@@ -1088,12 +1088,71 @@ class Database {
       throw new Error('ไฟล์ข้อมูลไม่ถูกต้อง');
     }
     const incomingData = importedJson.data || importedJson;
-    if (!incomingData.games || !incomingData.settings) {
-      throw new Error('โครงสร้างไฟล์สำรองไม่ถูกต้อง ไม่พบข้อมูลเกมหรือการตั้งค่า');
+
+    // Ensure this.data exists
+    if (!this.data || typeof this.data !== 'object') {
+      this.data = {};
     }
-    this.data = incomingData;
+
+    // Merge or set users
+    if (Array.isArray(incomingData.users)) {
+      if (!Array.isArray(this.data.users) || this.data.users.length === 0) {
+        this.data.users = incomingData.users;
+      } else {
+        // Merge without duplicates
+        incomingData.users.forEach(u => {
+          const idx = this.data.users.findIndex(ex => (u.id && ex.id === u.id) || (u.phone && ex.phone === u.phone) || (u.username && ex.username === u.username));
+          if (idx !== -1) {
+            this.data.users[idx] = { ...this.data.users[idx], ...u };
+          } else {
+            this.data.users.push(u);
+          }
+        });
+      }
+    }
+
+    // Merge or set orders
+    if (Array.isArray(incomingData.orders)) {
+      if (!Array.isArray(this.data.orders) || this.data.orders.length === 0) {
+        this.data.orders = incomingData.orders;
+      } else {
+        incomingData.orders.forEach(o => {
+          if (!this.data.orders.some(ex => (o.id && ex.id === o.id) || (o.orderNumber && ex.orderNumber === o.orderNumber))) {
+            this.data.orders.push(o);
+          }
+        });
+      }
+    }
+
+    // Merge or set carouselSlides
+    if (Array.isArray(incomingData.carouselSlides) && incomingData.carouselSlides.length > 0) {
+      this.data.carouselSlides = incomingData.carouselSlides;
+      this.data.carouselSlidesCustomized = true;
+    }
+
+    // Merge or set settings
+    if (incomingData.settings && typeof incomingData.settings === 'object') {
+      this.data.settings = { ...(this.data.settings || {}), ...incomingData.settings };
+      this.data.settingsCustomized = true;
+    }
+
+    // Set games if present in incoming data
+    if (Array.isArray(incomingData.games) && incomingData.games.length > 0) {
+      this.data.games = incomingData.games;
+    }
+
+    // Set other optional collections if present
+    if (Array.isArray(incomingData.flashSales)) this.data.flashSales = incomingData.flashSales;
+    if (Array.isArray(incomingData.giftCards)) this.data.giftCards = incomingData.giftCards;
+    if (Array.isArray(incomingData.appSubscriptions)) this.data.appSubscriptions = incomingData.appSubscriptions;
+    if (Array.isArray(incomingData.quickCategories)) this.data.quickCategories = incomingData.quickCategories;
+    if (incomingData.uploadedImages) {
+      this.data.uploadedImages = { ...(this.data.uploadedImages || {}), ...incomingData.uploadedImages };
+    }
+
     this.safeMergeDefaults();
     this.save();
+
     return {
       success: true,
       usersCount: (this.data.users || []).length,

@@ -297,7 +297,8 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
             users: rescueData.customers || [],
             orders: rescueData.orders || [],
             carouselSlides: rescueData.slides || [],
-            settings: rescueData.settings || null
+            settings: rescueData.settings || siteSettings || null,
+            games: games || []
           },
           adminName: adminUser?.name || 'Admin'
         })
@@ -306,9 +307,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (data.success) {
         showAlert({
           title: 'กู้คืนข้อมูลสำเร็จ!',
-          message: `กู้คืนข้อมูลลูกค้าสำเร็จแล้ว (${rescueData.customers.length} คน) ข้อมูลกลับขึ้นเซิร์ฟเวอร์เรียบร้อย`,
+          message: `กู้คืนข้อมูลลูกค้าสำเร็จแล้ว (${data.usersCount || rescueData.customers.length} คน) ข้อมูลบันทึกลง Cloud Database ถาวรเรียบร้อย`,
           type: 'success'
         });
+        setRescueData(null);
+        try {
+          localStorage.removeItem('tw_admin_rescue_snapshot');
+        } catch (e) {}
         loadData(false);
       } else {
         showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'กู้คืนไม่สำเร็จ', type: 'error' });

@@ -34,6 +34,39 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
   const quickAmounts = ['50', '100', '300', '500', '1000', '2000'];
   const activeBankAccounts = siteSettings?.bankAccounts?.filter(b => b.isActive) || [];
 
+  const isDepositChannelEnabled = (channelId) => {
+    if (!siteSettings || !siteSettings.paymentMethods) return true;
+    return siteSettings.paymentMethods[channelId]?.enabled !== false;
+  };
+
+  const availableDepositMethods = [
+    {
+      id: 'bank_transfer',
+      name: 'โอนธนาคาร',
+      desc: 'แนบสลิป',
+      icon: <Building2 className="w-5 h-5 text-emerald-400" />
+    },
+    {
+      id: 'promptpay',
+      name: 'พร้อมเพย์ QR',
+      desc: 'สแกนจ่าย',
+      icon: <QrCode className="w-5 h-5 text-blue-400" />
+    },
+    {
+      id: 'truemoney',
+      name: 'ซองทรูมันนี่',
+      desc: 'อั่งเปา',
+      icon: <Gift className="w-5 h-5 text-amber-400" />
+    }
+  ].filter(m => isDepositChannelEnabled(m.id));
+
+  // Auto-switch method if current is disabled
+  useEffect(() => {
+    if (availableDepositMethods.length > 0 && !availableDepositMethods.some(m => m.id === method)) {
+      setMethod(availableDepositMethods[0].id);
+    }
+  }, [availableDepositMethods, method]);
+
   // When switching to pay step with PromptPay, generate QR
   const handleProceedToPay = async () => {
     const numAmount = Number(amount);
@@ -285,54 +318,32 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
               {/* Payment Method Selection */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-white uppercase">2. เลือกช่องทางการชำระเงิน</label>
-                <div className="grid grid-cols-3 gap-2">
-                  
-                  {/* Bank Transfer */}
-                  <button
-                    type="button"
-                    onClick={() => setMethod('bank_transfer')}
-                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all ${
-                      method === 'bank_transfer'
-                        ? 'bg-red-950/60 border-red-500 text-white shadow-sm'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                    }`}
-                  >
-                    <Building2 className="w-5 h-5 text-emerald-400" />
-                    <div className="text-xs font-bold">โอนธนาคาร</div>
-                    <div className="text-[10px] text-zinc-400">แนบสลิป</div>
-                  </button>
-
-                  {/* PromptPay */}
-                  <button
-                    type="button"
-                    onClick={() => setMethod('promptpay')}
-                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all ${
-                      method === 'promptpay'
-                        ? 'bg-red-950/60 border-red-500 text-white shadow-sm'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                    }`}
-                  >
-                    <QrCode className="w-5 h-5 text-blue-400" />
-                    <div className="text-xs font-bold">พร้อมเพย์ QR</div>
-                    <div className="text-[10px] text-zinc-400">สแกนจ่าย</div>
-                  </button>
-
-                  {/* TrueMoney */}
-                  <button
-                    type="button"
-                    onClick={() => setMethod('truemoney')}
-                    className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all ${
-                      method === 'truemoney'
-                        ? 'bg-red-950/60 border-red-500 text-white shadow-sm'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                    }`}
-                  >
-                    <Gift className="w-5 h-5 text-amber-400" />
-                    <div className="text-xs font-bold">ซองทรูมันนี่</div>
-                    <div className="text-[10px] text-zinc-400">อั่งเปา</div>
-                  </button>
-
+                <div className={`grid gap-2 ${
+                  availableDepositMethods.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'
+                }`}>
+                  {availableDepositMethods.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMethod(m.id)}
+                      className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                        method === m.id
+                          ? 'bg-red-950/60 border-red-500 text-white shadow-sm'
+                          : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                      }`}
+                    >
+                      {m.icon}
+                      <div className="text-xs font-bold">{m.name}</div>
+                      <div className="text-[10px] text-zinc-400">{m.desc}</div>
+                    </button>
+                  ))}
                 </div>
+
+                {availableDepositMethods.length === 0 && (
+                  <div className="p-3 rounded-xl bg-red-950/40 border border-red-800/60 text-center text-xs text-red-300">
+                    ขณะนี้ทุกช่องทางการเติมเงินปิดปรับปรุงชั่วคราว
+                  </div>
+                )}
               </div>
 
               {errorMsg && (

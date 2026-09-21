@@ -205,6 +205,15 @@ router.post('/orders', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ข้อมูลการสั่งซื้อไม่ครบถ้วน' });
     }
 
+    const settings = db.getSettings();
+    const pmConfig = settings?.paymentMethods || {};
+    if (pmConfig[paymentMethod] && pmConfig[paymentMethod].enabled === false) {
+      return res.status(400).json({
+        success: false,
+        message: `ขออภัย ช่องทางชำระเงิน "${pmConfig[paymentMethod].name || paymentMethod}" ปิดให้บริการชั่วคราว กรุณาเลือกช่องทางอื่น`
+      });
+    }
+
     const game = db.getGameById(gameId);
     if (!game) return res.status(404).json({ success: false, message: 'ไม่พบเกมที่เลือก' });
 
@@ -509,6 +518,15 @@ router.post('/wallet/deposit', async (req, res) => {
     const { userId, amount, method, slipImage, voucherUrl } = req.body;
     if (!userId || !amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'ข้อมูลการเติมเงินไม่ถูกต้อง' });
+    }
+
+    const settings = db.getSettings();
+    const pmConfig = settings?.paymentMethods || {};
+    if (pmConfig[method] && pmConfig[method].enabled === false) {
+      return res.status(400).json({
+        success: false,
+        message: `ขออภัย ช่องทางเติมเงิน "${pmConfig[method].name || method}" ปิดให้บริการชั่วคราว กรุณาเลือกช่องทางอื่น`
+      });
     }
 
     const result = await paymentService.depositWallet(userId, amount, method, slipImage, voucherUrl);

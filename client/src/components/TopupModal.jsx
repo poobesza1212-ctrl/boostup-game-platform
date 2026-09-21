@@ -16,7 +16,7 @@ import {
   Key
 } from 'lucide-react';
 
-export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenWallet, initialPackageId }) {
+export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenWallet, initialPackageId, siteSettings }) {
   // Normalize packages from different product types
   const packagesList = game?.packages || 
     game?.denominations?.map(d => ({ id: d.id, name: d.name, price: d.price, originalPrice: d.price })) ||
@@ -31,11 +31,69 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
     ? packagesList.find(p => p.id === initialPackageId) || packagesList[0]
     : packagesList[0] || null;
 
+  // Payment Channels configuration
+  const isChannelEnabled = (channelId) => {
+    if (!siteSettings || !siteSettings.paymentMethods) return true;
+    return siteSettings.paymentMethods[channelId]?.enabled !== false;
+  };
+
+  const paymentChannels = [
+    {
+      id: 'promptpay',
+      name: 'พร้อมเพย์ QR',
+      sublabel: 'สแกนจ่าย 0% ฟรี',
+      icon: <QrCode className="w-4 h-4 text-blue-400" />,
+      iconBox: 'bg-blue-950/80 border-blue-800/50 text-blue-400',
+      activeBorder: 'bg-blue-950/60 border-blue-500 shadow-sm shadow-blue-500/20'
+    },
+    {
+      id: 'truemoney',
+      name: 'ซองทรูมันนี่',
+      sublabel: 'กรอกลิงก์ซอง',
+      icon: <Gift className="w-4 h-4 text-amber-400" />,
+      iconBox: 'bg-amber-950/80 border-amber-800/50 text-amber-400',
+      activeBorder: 'bg-amber-950/60 border-amber-500 shadow-sm shadow-amber-500/20'
+    },
+    {
+      id: 'bank_transfer',
+      name: 'โอนธนาคาร',
+      sublabel: 'แนบสลิปออโต้',
+      icon: <CreditCard className="w-4 h-4 text-emerald-400" />,
+      iconBox: 'bg-emerald-950/80 border-emerald-800/50 text-emerald-400',
+      activeBorder: 'bg-emerald-950/60 border-emerald-500 shadow-sm shadow-emerald-500/20'
+    },
+    {
+      id: 'wallet',
+      name: 'กระเป๋าเงิน',
+      sublabel: `฿${(user?.walletBalance || 0).toFixed(2)}`,
+      sublabelClass: 'text-emerald-400 font-bold',
+      icon: <Wallet className="w-4 h-4 text-red-400" />,
+      iconBox: 'bg-red-950/80 border-red-800/50 text-red-400',
+      activeBorder: 'bg-red-950/60 border-red-500 shadow-sm shadow-red-500/20'
+    },
+    {
+      id: 'credit_card',
+      name: 'บัตรเครดิต/เดบิต',
+      sublabel: 'Visa, Mastercard',
+      icon: <CreditCard className="w-4 h-4 text-purple-400" />,
+      iconBox: 'bg-purple-950/80 border-purple-800/50 text-purple-400',
+      activeBorder: 'bg-purple-950/60 border-purple-500 shadow-sm shadow-purple-500/20'
+    }
+  ].filter(c => isChannelEnabled(c.id));
+
+  const initialMethod = paymentChannels[0]?.id || 'promptpay';
   const [playerId, setPlayerId] = useState(isCodeDelivery ? (user?.email || '') : '');
   const [server, setServer] = useState(game?.servers ? game.servers[0] : '');
   const [selectedPackage, setSelectedPackage] = useState(initialPkg);
-  const [paymentMethod, setPaymentMethod] = useState('promptpay');
+  const [paymentMethod, setPaymentMethod] = useState(initialMethod);
   const [voucherUrl, setVoucherUrl] = useState('');
+
+  // Fallback payment method if current is disabled
+  useEffect(() => {
+    if (paymentChannels.length > 0 && !paymentChannels.some(c => c.id === paymentMethod)) {
+      setPaymentMethod(paymentChannels[0].id);
+    }
+  }, [paymentChannels, paymentMethod]);
   
   // Player Verification State
   const [isVerifying, setIsVerifying] = useState(false);
@@ -115,6 +173,10 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
   };
 
   const handleSubmit = () => {
+    if (paymentChannels.length === 0) {
+      alert('ขออภัย ขณะนี้ทุกช่องทางการชำระเงินปิดปรับปรุงชั่วคราว กรุณาติดต่อแอดมิน');
+      return;
+    }
     if (!playerId.trim()) {
       setVerificationError(isCodeDelivery ? 'กรุณาระบุอีเมลสำหรับรับโค้ด' : 'กรุณากรอกไอดีผู้เล่นก่อนทำรายการ');
       return;
@@ -310,75 +372,42 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
               <span>เลือกช่องทางชำระเงิน</span>
             </label>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              
-              {/* PromptPay */}
-              <div
-                onClick={() => setPaymentMethod('promptpay')}
-                className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
-                  paymentMethod === 'promptpay'
-                    ? 'bg-red-950/60 border-red-500 shadow-sm'
-                    : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="w-8 h-8 mx-auto rounded-lg bg-blue-950/80 border border-blue-800/50 flex items-center justify-center mb-1 text-blue-400 font-black text-xs">
-                  <QrCode className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-xs font-bold text-white">พร้อมเพย์ QR</div>
-                <div className="text-[10px] text-zinc-400">สแกนจ่าย 0% ฟรี</div>
-              </div>
-
-              {/* TrueMoney Voucher */}
-              <div
-                onClick={() => setPaymentMethod('truemoney')}
-                className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
-                  paymentMethod === 'truemoney'
-                    ? 'bg-red-950/60 border-red-500 shadow-sm'
-                    : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="w-8 h-8 mx-auto rounded-lg bg-amber-950/80 border border-amber-800/50 flex items-center justify-center mb-1 text-amber-400">
-                  <Gift className="w-4 h-4 text-amber-400" />
-                </div>
-                <div className="text-xs font-bold text-white">ซองทรูมันนี่</div>
-                <div className="text-[10px] text-zinc-400">กรอกลิงก์ซอง</div>
-              </div>
-
-              {/* Bank Transfer */}
-              <div
-                onClick={() => setPaymentMethod('bank_transfer')}
-                className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
-                  paymentMethod === 'bank_transfer'
-                    ? 'bg-red-950/60 border-red-500 shadow-sm'
-                    : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="w-8 h-8 mx-auto rounded-lg bg-emerald-950/80 border border-emerald-800/50 flex items-center justify-center mb-1 text-emerald-400">
-                  <CreditCard className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-xs font-bold text-white">โอนธนาคาร</div>
-                <div className="text-[10px] text-zinc-400">แนบสลิปออโต้</div>
-              </div>
-
-              {/* User Wallet */}
-              <div
-                onClick={() => setPaymentMethod('wallet')}
-                className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
-                  paymentMethod === 'wallet'
-                    ? 'bg-red-950/60 border-red-500 shadow-sm'
-                    : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div className="w-8 h-8 mx-auto rounded-lg bg-red-950/80 border border-red-800/50 flex items-center justify-center mb-1 text-red-400">
-                  <Wallet className="w-4 h-4 text-red-400" />
-                </div>
-                <div className="text-xs font-bold text-white">กระเป๋าเงิน</div>
-                <div className="text-[10px] text-emerald-400">
-                  ฿{(user?.walletBalance || 0).toFixed(2)}
-                </div>
-              </div>
-
+            <div className={`grid gap-2.5 ${
+              paymentChannels.length <= 2 ? 'grid-cols-2' : 
+              paymentChannels.length === 3 ? 'grid-cols-3' : 
+              'grid-cols-2 sm:grid-cols-4'
+            }`}>
+              {paymentChannels.map((channel) => {
+                const isSelected = paymentMethod === channel.id;
+                return (
+                  <div
+                    key={channel.id}
+                    onClick={() => setPaymentMethod(channel.id)}
+                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
+                      isSelected
+                        ? channel.activeBorder
+                        : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 mx-auto rounded-lg border flex items-center justify-center mb-1 ${channel.iconBox}`}>
+                      {channel.icon}
+                    </div>
+                    <div className="text-xs font-bold text-white">{channel.name}</div>
+                    <div className={`text-[10px] ${channel.sublabelClass || 'text-zinc-400'}`}>
+                      {channel.sublabel}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {paymentChannels.length === 0 && (
+              <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/60 text-center space-y-1 text-xs text-red-300">
+                <AlertCircle className="w-5 h-5 text-red-400 mx-auto" />
+                <p className="font-bold">ขณะนี้ระบบชำระเงินปิดปรับปรุงชั่วคราว</p>
+                <p className="text-[11px] text-zinc-400">กรุณาติดต่อแอดมินผ่านแชทสดเพื่อขอรับช่องทางชำระเงินพิเศษ</p>
+              </div>
+            )}
 
             {/* TrueMoney Voucher Link Field */}
             {paymentMethod === 'truemoney' && (

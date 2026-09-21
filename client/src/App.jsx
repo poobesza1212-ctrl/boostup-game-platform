@@ -239,6 +239,7 @@ export default function App() {
           onClose={() => setSelectedProductForCheckout(null)}
           onSubmitOrder={handleSubmitOrder}
           user={user}
+          siteSettings={siteSettings}
           onOpenWallet={() => {
             setSelectedProductForCheckout(null);
             setWalletModalOpen(true);

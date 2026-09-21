@@ -36,6 +36,43 @@ const defaultData = {
     contactDiscord: "discord.gg/boostup",
     simulationMode: true, // Allows instant full end-to-end testing out of the box
     autoTopupEnabled: true,
+    paymentMethods: {
+      promptpay: {
+        id: "promptpay",
+        name: "พร้อมเพย์ QR Code (PromptPay)",
+        sublabel: "สแกน QR Code จ่ายเงินผ่าน Mobile Banking ทุกธนาคาร (ค่าธรรมเนียม 0%)",
+        enabled: true,
+        icon: "QrCode"
+      },
+      truemoney: {
+        id: "truemoney",
+        name: "ซองของขวัญ ทรูมันนี่ (TrueMoney Wallet)",
+        sublabel: "สร้างซองของขวัญอั่งเปาในแอป TrueMoney แล้วนำลิงก์มากรอก",
+        enabled: true,
+        icon: "Gift"
+      },
+      bank_transfer: {
+        id: "bank_transfer",
+        name: "โอนผ่านบัญชีธนาคาร (Bank Transfer)",
+        sublabel: "โอนเงินเข้าบัญชีธนาคารของร้าน พร้อมระบบตรวจสอบและแนบสลิป",
+        enabled: true,
+        icon: "Building2"
+      },
+      wallet: {
+        id: "wallet",
+        name: "กระเป๋าเงินสมาชิก BOOSTUP (User Wallet)",
+        sublabel: "ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋า ไม่ต้องสแกนใหม่",
+        enabled: true,
+        icon: "Wallet"
+      },
+      credit_card: {
+        id: "credit_card",
+        name: "บัตรเครดิต / เดบิต (Credit / Debit Card)",
+        sublabel: "ชำระผ่านบัตร Visa, Mastercard, JCB (ระบบเกตเวย์ภายนอก)",
+        enabled: false,
+        icon: "CreditCard"
+      }
+    },
     logoUrl: "/uploads/boostup_logo.jpg",
     trustPoints: [
       {
@@ -833,6 +870,14 @@ class Database {
       this.data.settings = { ...defaultData.settings, ...this.data.settings };
       if (!this.data.settings.trustPoints) this.data.settings.trustPoints = defaultData.settings.trustPoints;
       if (!this.data.settings.bankAccounts) this.data.settings.bankAccounts = defaultData.settings.bankAccounts;
+      if (!this.data.settings.paymentMethods) {
+        this.data.settings.paymentMethods = defaultData.settings.paymentMethods;
+      } else {
+        this.data.settings.paymentMethods = {
+          ...defaultData.settings.paymentMethods,
+          ...this.data.settings.paymentMethods
+        };
+      }
     }
     if (!this.data.users) this.data.users = [];
     if (!this.data.admins) this.data.admins = defaultData.admins || [];

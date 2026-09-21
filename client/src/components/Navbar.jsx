@@ -13,7 +13,10 @@ import {
   CreditCard,
   Gift,
   Zap,
-  Film
+  Film,
+  ShoppingCart,
+  RotateCw,
+  Share2
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -23,6 +26,10 @@ export default function Navbar({
   onOpenAuth, 
   onLogout, 
   onOpenWallet,
+  cartCount = 0,
+  onOpenCart,
+  onOpenWheel,
+  onOpenAffiliate,
   siteSettings,
   searchQuery,
   setSearchQuery,
@@ -169,6 +176,43 @@ export default function Navbar({
             </button>
           </nav>
 
+          {/* Quick Actions (Wheel, Affiliate, Cart) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onOpenWheel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-950/70 to-red-950/70 border border-amber-500/40 hover:border-amber-400 text-amber-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="วงล้อเสี่ยงโชค & เช็คชื่อรายวัน"
+            >
+              <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xl:inline font-['Kanit']">วงล้อ & เช็คชื่อ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenAffiliate}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/70 to-indigo-950/70 border border-purple-500/40 hover:border-purple-400 text-purple-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="ระบบแนะนำเพื่อนรับค่าคอมมิชชั่น 2%"
+            >
+              <Share2 className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden xl:inline font-['Kanit']">ชวนเพื่อน 2%</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenCart}
+              className="relative p-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-amber-500/50 transition-all cursor-pointer"
+              title="ตะกร้าสินค้า"
+            >
+              <ShoppingCart className="w-4 h-4 text-amber-400" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-md animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* User Section (Coins, Wallet & Profile) */}
           <div className="flex items-center gap-3 shrink-0">
             {user ? (
@@ -283,6 +327,32 @@ export default function Navbar({
             >
               ต่ออายุสมาชิกแอป
             </button>
+            <div className="pt-2 border-t border-zinc-800/80 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onOpenWheel(); }}
+                className="text-left py-2 text-amber-300 font-bold flex items-center gap-2"
+              >
+                <RotateCw className="w-4 h-4 text-amber-400" />
+                <span>วงล้อเสี่ยงโชค & เช็คชื่อรายวัน</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onOpenAffiliate(); }}
+                className="text-left py-2 text-purple-300 font-bold flex items-center gap-2"
+              >
+                <Share2 className="w-4 h-4 text-purple-400" />
+                <span>แนะนำเพื่อนรับค่าคอมมิชชั่น 2%</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onOpenCart(); }}
+                className="text-left py-2 text-white font-bold flex items-center gap-2"
+              >
+                <ShoppingCart className="w-4 h-4 text-amber-400" />
+                <span>ตะกร้าสินค้า ({cartCount} รายการ)</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

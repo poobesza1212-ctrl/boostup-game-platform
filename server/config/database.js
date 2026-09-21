@@ -182,6 +182,23 @@ const defaultData = {
       displayOrder: 6
     }
   ],
+  digitalVault: [
+    { id: "vlt_seed_1", gameId: "gift_steam_50", gameName: "บัตร Steam Wallet 50 THB", packageName: "50 THB", code: "STEAM-TH-9942-8812-4411", costPrice: 45, status: "available", addedAt: "2026-09-20T12:00:00Z" },
+    { id: "vlt_seed_2", gameId: "gift_steam_50", gameName: "บัตร Steam Wallet 50 THB", packageName: "50 THB", code: "STEAM-TH-5531-2290-7710", costPrice: 45, status: "available", addedAt: "2026-09-20T12:00:00Z" },
+    { id: "vlt_seed_3", gameId: "gift_roblox_100", gameName: "บัตร Roblox 100 Robux", packageName: "100 Robux", code: "RBLX-CODE-7788-9900-1122", costPrice: 38, status: "available", addedAt: "2026-09-20T12:00:00Z" },
+    { id: "vlt_seed_4", gameId: "app_netflix_1m", gameName: "Netflix 1 เดือน (พรีเมียม 4K)", packageName: "1 เดือน", code: "NETFLIX-ACC: boost_user1@vip.com | PIN: 9942", costPrice: 85, status: "available", addedAt: "2026-09-20T12:00:00Z" },
+    { id: "vlt_seed_5", gameId: "app_youtube_1m", gameName: "YouTube Premium 1 เดือน", packageName: "1 เดือน", code: "INVITE-LINK: https://youtube.com/family/join?invite=boostup992", costPrice: 35, status: "available", addedAt: "2026-09-20T12:00:00Z" }
+  ],
+  luckyWheelPrizes: [
+    { id: "prize_1", name: "50 พอยท์", type: "points", value: 50, probability: 0.25, color: "#f59e0b", icon: "Coins" },
+    { id: "prize_2", name: "10 พอยท์", type: "points", value: 10, probability: 0.35, color: "#3b82f6", icon: "Coins" },
+    { id: "prize_3", name: "เครดิต 5 บาท", type: "credit", value: 5, probability: 0.15, color: "#10b981", icon: "Wallet" },
+    { id: "prize_4", name: "เครดิต 20 บาท", type: "credit", value: 20, probability: 0.08, color: "#8b5cf6", icon: "Gift" },
+    { id: "prize_5", name: "โค้ดลด 5%", type: "coupon", value: "LUCKY5", probability: 0.10, color: "#ec4899", icon: "Tag" },
+    { id: "prize_6", name: "หมุนฟรี 1 ครั้ง", type: "ticket", value: 1, probability: 0.05, color: "#06b6d4", icon: "RotateCw" },
+    { id: "prize_7", name: "รางวัลใหญ่ 100 บาท", type: "credit", value: 100, probability: 0.01, color: "#ef4444", icon: "Trophy" },
+    { id: "prize_8", name: "ลองใหม่พรุ่งนี้", type: "none", value: 0, probability: 0.01, color: "#64748b", icon: "Smile" }
+  ],
   users: [],
   admins: [
     {
@@ -941,6 +958,10 @@ class Database {
     if (!this.data.chats) this.data.chats = [];
     if (!this.data.auditLogs) this.data.auditLogs = [];
     if (!this.data.uploadedImages) this.data.uploadedImages = {};
+    if (!this.data.digitalVault) this.data.digitalVault = defaultData.digitalVault || [];
+    if (!this.data.luckyWheelPrizes || this.data.luckyWheelPrizes.length === 0) {
+      this.data.luckyWheelPrizes = defaultData.luckyWheelPrizes;
+    }
     if (!this.data.gameRoutes) {
       this.data.gameRoutes = defaultData.gameRoutes;
     } else if (!this.data.gameRoutes.roblox) {
@@ -1209,28 +1230,55 @@ class Database {
   }
 
   createUser(userData) {
+    const referralCode = `REF${Math.floor(100000 + Math.random() * 900000)}`;
     const newUser = {
       id: `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
       role: 'user',
       walletBalance: 0.00,
       points: 50, // Welcome gift 50 points
       tier: 'Bronze',
+      status: 'active',
+      referralCode,
+      referredBy: userData.referredBy || null,
+      affiliateEarnings: 0.00,
+      referralCount: 0,
+      spinTickets: 1, // 1 Free Welcome Spin on Lucky Wheel!
+      lastDailyCheckin: null,
+      checkinStreak: 0,
       createdAt: new Date().toISOString(),
       ...userData
     };
+
+    if (userData.password) {
+      newUser.passwordHash = crypto.createHash('sha256').update(userData.password).digest('hex');
+      delete newUser.password;
+    }
+
+    // If referred by someone, increment their referral count and give 1 bonus spin ticket!
+    if (userData.referredBy) {
+      const referrer = this.data.users.find(u => u.id === userData.referredBy || u.referralCode === userData.referredBy);
+      if (referrer) {
+        referrer.referralCount = (referrer.referralCount || 0) + 1;
+        referrer.spinTickets = (referrer.spinTickets || 0) + 1;
+        newUser.referredBy = referrer.id;
+      }
+    }
+
     this.data.users.push(newUser);
     this.save();
     return newUser;
   }
 
   updateUser(id, updates) {
-    const idx = this.data.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      this.data.users[idx] = { ...this.data.users[idx], ...updates };
-      this.save();
-      return this.data.users[idx];
+    const user = this.findUserById(id);
+    if (!user) return null;
+    if (updates.password) {
+      user.passwordHash = crypto.createHash('sha256').update(updates.password).digest('hex');
+      delete updates.password;
     }
-    return null;
+    Object.assign(user, updates);
+    this.save();
+    return user;
   }
 
   // ----------------------------------------------------
@@ -1439,47 +1487,6 @@ class Database {
     this.data.settingsCustomized = true;
     this.save();
     return this.data.settings;
-  }
-
-  // Users
-  findUserById(id) {
-    return this.data.users.find(u => u.id === id);
-  }
-
-  findUserByEmailOrUsername(identifier) {
-    return this.data.users.find(u => u.email === identifier || u.username === identifier);
-  }
-
-  createUser(userData) {
-    const newUser = {
-      id: `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
-      role: 'user',
-      walletBalance: 0.00,
-      points: 50, // Welcome gift 50 points
-      tier: 'Bronze',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      ...userData
-    };
-    if (userData.password) {
-      newUser.passwordHash = crypto.createHash('sha256').update(userData.password).digest('hex');
-      delete newUser.password;
-    }
-    this.data.users.push(newUser);
-    this.save();
-    return newUser;
-  }
-
-  updateUser(id, updates) {
-    const user = this.findUserById(id);
-    if (!user) return null;
-    if (updates.password) {
-      user.passwordHash = crypto.createHash('sha256').update(updates.password).digest('hex');
-      delete updates.password;
-    }
-    Object.assign(user, updates);
-    this.save();
-    return user;
   }
 
   // Carousel Slides (CMS)
@@ -1842,16 +1849,42 @@ class Database {
   }
 
   createOrder(orderData) {
-    const orderCount = this.data.orders.length + 12570;
+    const orderCount = (this.data.orders ? this.data.orders.length : 0) + 12570;
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
     const orderNumber = `BST-${dateStr}-${orderCount}`;
     
+    // Auto calculate cost price and profit
+    const finalAmount = Number(orderData.finalAmount || orderData.price || 0);
+    const costPrice = orderData.costPrice !== undefined ? Number(orderData.costPrice) : Math.round(finalAmount * 0.85 * 100) / 100;
+    const profit = Math.round((finalAmount - costPrice) * 100) / 100;
+
+    // Auto-check Digital Stock Vault if package / game is a digital code
+    let digitalCode = orderData.digitalCode || null;
+    let vaultId = null;
+    if (!digitalCode && this.data.digitalVault && this.data.digitalVault.length > 0) {
+      const availableCode = this.data.digitalVault.find(item => 
+        (item.status === 'available') && 
+        (item.gameId === orderData.gameId || item.packageId === orderData.packageId || (orderData.gameName && item.gameName && item.gameName.toLowerCase().includes(orderData.gameName.toLowerCase())))
+      );
+      if (availableCode) {
+        availableCode.status = 'delivered';
+        availableCode.orderNumber = orderNumber;
+        availableCode.deliveredAt = now.toISOString();
+        digitalCode = availableCode.code;
+        vaultId = availableCode.id;
+      }
+    }
+
     const newOrder = {
       id: `ord_${orderCount}`,
       orderNumber,
       paymentStatus: 'pending',
       topupStatus: 'processing',
+      costPrice,
+      profit,
+      digitalCode,
+      vaultId,
       createdAt: now.toISOString(),
       ...orderData
     };
@@ -1863,11 +1896,45 @@ class Database {
   updateOrder(id, updates) {
     const idx = this.data.orders.findIndex(o => o.id === id || o.orderNumber === id);
     if (idx !== -1) {
-      this.data.orders[idx] = { 
-        ...this.data.orders[idx], 
-        ...updates,
+      const prevOrder = this.data.orders[idx];
+      const updatedOrder = { 
+        ...prevOrder, 
+        ...updates, 
         updatedAt: new Date().toISOString() 
       };
+
+      // Check if order became paid or completed and affiliate commission needs to be processed
+      const becamePaid = (updatedOrder.paymentStatus === 'paid' || updatedOrder.topupStatus === 'completed');
+      if (becamePaid && !updatedOrder.affiliateCommissionPaid && updatedOrder.userId) {
+        const buyer = this.findUserById(updatedOrder.userId);
+        if (buyer && buyer.referredBy) {
+          const referrer = this.data.users.find(u => u.id === buyer.referredBy || u.referralCode === buyer.referredBy);
+          if (referrer) {
+            const finalAmt = Number(updatedOrder.finalAmount || updatedOrder.price || 0);
+            const commission = Math.round(finalAmt * 0.02 * 100) / 100; // 2% commission
+            if (commission > 0) {
+              referrer.walletBalance = Math.round(((Number(referrer.walletBalance) || 0) + commission) * 100) / 100;
+              referrer.affiliateEarnings = Math.round(((Number(referrer.affiliateEarnings) || 0) + commission) * 100) / 100;
+              
+              // Record commission transaction for referrer
+              this.createTransaction({
+                userId: referrer.id,
+                type: 'affiliate_commission',
+                amount: commission,
+                status: 'completed',
+                orderNumber: updatedOrder.orderNumber,
+                description: `ค่าคอมมิชชั่นแนะนำเพื่อน 2% จากออเดอร์ #${updatedOrder.orderNumber}`
+              });
+
+              updatedOrder.affiliateCommissionPaid = true;
+              updatedOrder.affiliateCommission = commission;
+              updatedOrder.referrerId = referrer.id;
+            }
+          }
+        }
+      }
+
+      this.data.orders[idx] = updatedOrder;
       this.save();
       return this.data.orders[idx];
     }
@@ -1905,14 +1972,19 @@ class Database {
   // Analytics & Stats
   getStats() {
     const orders = this.data.orders || [];
-    const paidOrders = orders.filter(o => o.paymentStatus === 'paid' && o.topupStatus === 'completed');
+    const paidOrders = orders.filter(o => o.paymentStatus === 'paid' || o.topupStatus === 'completed');
     
-    // Today's sales
+    // Today's sales & profit
     const today = new Date().toISOString().slice(0, 10);
     const todayOrders = paidOrders.filter(o => o.createdAt && o.createdAt.startsWith(today));
     const todaySales = todayOrders.reduce((sum, o) => sum + (o.finalAmount || 0), 0);
+    const todayProfit = todayOrders.reduce((sum, o) => sum + (o.profit !== undefined ? o.profit : (o.finalAmount || 0) * 0.15), 0);
     
     const totalSales = paidOrders.reduce((sum, o) => sum + (o.finalAmount || 0), 0);
+    const totalCost = paidOrders.reduce((sum, o) => sum + (o.costPrice !== undefined ? o.costPrice : (o.finalAmount || 0) * 0.85), 0);
+    const totalProfit = paidOrders.reduce((sum, o) => sum + (o.profit !== undefined ? o.profit : ((o.finalAmount || 0) - (o.costPrice || (o.finalAmount || 0) * 0.85))), 0);
+    const profitMargin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : "15.0";
+
     const totalOrders = orders.length;
     const completedOrders = paidOrders.length;
     const successRate = totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(2) : "0.00";
@@ -1924,13 +1996,249 @@ class Database {
       paymentCounts[method] = (paymentCounts[method] || 0) + 1;
     });
 
+    // Top profitable games
+    const gameProfitMap = {};
+    paidOrders.forEach(o => {
+      const gName = o.gameName || 'อื่นๆ';
+      if (!gameProfitMap[gName]) {
+        gameProfitMap[gName] = { name: gName, sales: 0, profit: 0, count: 0 };
+      }
+      gameProfitMap[gName].sales += (o.finalAmount || 0);
+      gameProfitMap[gName].profit += (o.profit !== undefined ? o.profit : (o.finalAmount || 0) * 0.15);
+      gameProfitMap[gName].count += 1;
+    });
+    const topProfitableGames = Object.values(gameProfitMap)
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 5);
+
     return {
-      todaySales: todaySales,
-      totalOrders: totalOrders,
+      todaySales: Math.round(todaySales * 100) / 100,
+      todayProfit: Math.round(todayProfit * 100) / 100,
+      totalOrders,
       totalCustomers: (this.data.users || []).length,
       successRate: parseFloat(successRate),
-      totalSales: totalSales,
+      totalSales: Math.round(totalSales * 100) / 100,
+      totalCost: Math.round(totalCost * 100) / 100,
+      totalProfit: Math.round(totalProfit * 100) / 100,
+      profitMargin: parseFloat(profitMargin),
+      topProfitableGames,
       paymentDistribution: paymentCounts
+    };
+  }
+
+  // ==========================================
+  // Digital Stock Vault Methods
+  // ==========================================
+  getDigitalVault(filter = {}) {
+    let items = this.data.digitalVault || [];
+    if (filter.status) {
+      items = items.filter(i => i.status === filter.status);
+    }
+    if (filter.gameId) {
+      items = items.filter(i => i.gameId === filter.gameId);
+    }
+    return items;
+  }
+
+  getVaultStats() {
+    const vault = this.data.digitalVault || [];
+    const available = vault.filter(i => i.status === 'available').length;
+    const delivered = vault.filter(i => i.status === 'delivered').length;
+    const totalCostValue = vault
+      .filter(i => i.status === 'available')
+      .reduce((sum, i) => sum + (Number(i.costPrice) || 0), 0);
+
+    const inventory = {};
+    vault.forEach(item => {
+      const key = item.gameId || item.gameName || 'unknown';
+      if (!inventory[key]) {
+        inventory[key] = {
+          gameId: item.gameId,
+          gameName: item.gameName || key,
+          total: 0,
+          available: 0,
+          delivered: 0
+        };
+      }
+      inventory[key].total += 1;
+      if (item.status === 'available') inventory[key].available += 1;
+      if (item.status === 'delivered') inventory[key].delivered += 1;
+    });
+
+    return {
+      total: vault.length,
+      available,
+      delivered,
+      totalCostValue: Math.round(totalCostValue * 100) / 100,
+      inventory: Object.values(inventory)
+    };
+  }
+
+  addVaultCodes(codesArray) {
+    if (!this.data.digitalVault) this.data.digitalVault = [];
+    const added = [];
+    for (const item of codesArray) {
+      if (!item.code) continue;
+      const newCode = {
+        id: `vlt_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+        gameId: item.gameId || 'custom',
+        gameName: item.gameName || 'บัตรดิจิทัล / รหัสเติม',
+        packageId: item.packageId || null,
+        packageName: item.packageName || null,
+        code: item.code.trim(),
+        costPrice: Number(item.costPrice || 0),
+        status: 'available',
+        addedAt: new Date().toISOString(),
+        orderNumber: null,
+        deliveredAt: null
+      };
+      this.data.digitalVault.unshift(newCode);
+      added.push(newCode);
+    }
+    this.save();
+    return added;
+  }
+
+  deleteVaultCode(id) {
+    if (!this.data.digitalVault) return false;
+    const idx = this.data.digitalVault.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      this.data.digitalVault.splice(idx, 1);
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // Lucky Wheel & Daily Check-in Methods
+  // ==========================================
+  getLuckyWheelPrizes() {
+    return this.data.luckyWheelPrizes || defaultData.luckyWheelPrizes;
+  }
+
+  dailyCheckin(userId) {
+    const user = this.findUserById(userId);
+    if (!user) return { success: false, message: 'ไม่พบข้อมูลผู้ใช้' };
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const lastCheckin = user.lastDailyCheckin ? user.lastDailyCheckin.slice(0, 10) : null;
+
+    if (lastCheckin === todayStr) {
+      return { 
+        success: false, 
+        message: 'คุณได้เช็คชื่อรับรางวัลของวันนี้ไปแล้ว กลับมาใหม่พรุ่งนี้นะครับ! 🎉',
+        streak: user.checkinStreak || 1,
+        alreadyCheckedIn: true
+      };
+    }
+
+    let streak = 1;
+    if (lastCheckin) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      if (lastCheckin === yesterdayStr) {
+        streak = ((user.checkinStreak || 0) % 7) + 1;
+      }
+    }
+
+    const pointRewards = { 1: 10, 2: 15, 3: 20, 4: 25, 5: 30, 6: 40, 7: 50 };
+    const pointsAwarded = pointRewards[streak] || 10;
+    const ticketsAwarded = streak === 7 ? 1 : 0;
+
+    user.checkinStreak = streak;
+    user.lastDailyCheckin = new Date().toISOString();
+    user.points = (user.points || 0) + pointsAwarded;
+    if (ticketsAwarded > 0) {
+      user.spinTickets = (user.spinTickets || 0) + ticketsAwarded;
+    }
+
+    this.save();
+
+    return {
+      success: true,
+      streak,
+      pointsAwarded,
+      ticketsAwarded,
+      newPoints: user.points,
+      newTickets: user.spinTickets || 0,
+      message: streak === 7 
+        ? `🔥 ยอดเยี่ยมมาก! เช็คชื่อครบ 7 วัน รับ ${pointsAwarded} พอยท์ และตั๋วหมุนวงล้อฟรี 1 ใบ! 🎟️` 
+        : `เช็คชื่อวันที่ ${streak} สำเร็จ! รับ +${pointsAwarded} พอยท์ ✨`
+    };
+  }
+
+  spinLuckyWheel(userId) {
+    const user = this.findUserById(userId);
+    if (!user) return { success: false, message: 'ไม่พบผู้ใช้งาน' };
+
+    const tickets = user.spinTickets || 0;
+    const points = user.points || 0;
+    let costType = 'ticket';
+
+    if (tickets <= 0) {
+      if (points < 20) {
+        return { 
+          success: false, 
+          message: 'สิทธิ์หมุนฟรีหมดแล้ว! และต้องมีอย่างน้อย 20 พอยท์เพื่อแลกหมุน 1 ครั้ง (เช็คชื่อรายวันเพื่อรับสิทธิ์ฟรีได้ครับ)' 
+        };
+      }
+      costType = 'points';
+    }
+
+    if (costType === 'ticket') {
+      user.spinTickets = Math.max(0, tickets - 1);
+    } else {
+      user.points = Math.max(0, points - 20);
+    }
+
+    const prizes = this.getLuckyWheelPrizes();
+    const rand = Math.random();
+    let accumulated = 0;
+    let selectedPrize = prizes[0];
+
+    for (const p of prizes) {
+      accumulated += (p.probability || 0.1);
+      if (rand <= accumulated) {
+        selectedPrize = p;
+        break;
+      }
+    }
+
+    let prizeMessage = '';
+    if (selectedPrize.type === 'points') {
+      user.points = (user.points || 0) + selectedPrize.value;
+      prizeMessage = `ยินดีด้วย! คุณได้รับ ${selectedPrize.value} พอยท์ ✨`;
+    } else if (selectedPrize.type === 'credit') {
+      user.walletBalance = Math.round(((Number(user.walletBalance) || 0) + selectedPrize.value) * 100) / 100;
+      prizeMessage = `สุดยอด! เครดิตเข้ากระเป๋า ${selectedPrize.value} บาท 💰`;
+      this.createTransaction({
+        userId: user.id,
+        type: 'lucky_wheel_reward',
+        amount: selectedPrize.value,
+        status: 'completed',
+        description: `รางวัลจากวงล้อเสี่ยงโชค: เครดิต ${selectedPrize.value} บาท`
+      });
+    } else if (selectedPrize.type === 'ticket') {
+      user.spinTickets = (user.spinTickets || 0) + selectedPrize.value;
+      prizeMessage = `โชคดีมาก! ได้รับตั๋วหมุนวงล้อเพิ่ม ${selectedPrize.value} สิทธิ์ 🎟️`;
+    } else if (selectedPrize.type === 'coupon') {
+      prizeMessage = `คุณได้รับโค้ดส่วนลดพิเศษ: "${selectedPrize.value}" 🏷️`;
+    } else {
+      prizeMessage = `เกือบไปแล้ว! พรุ่งนี้มาลองเสี่ยงโชคใหม่นะครับ 😊`;
+    }
+
+    this.save();
+
+    return {
+      success: true,
+      prize: selectedPrize,
+      prizeIndex: prizes.findIndex(p => p.id === selectedPrize.id),
+      prizeMessage,
+      remainingTickets: user.spinTickets,
+      newPoints: user.points,
+      newBalance: user.walletBalance
     };
   }
 

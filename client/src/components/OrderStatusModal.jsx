@@ -234,6 +234,34 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
                 </span>
               </div>
             </div>
+
+            {order.digitalCode && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/60 shadow-lg space-y-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    🔑 รหัสโค้ด / Serial / PIN ดิจิทัล
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded font-bold">
+                    คลังอัตโนมัติ 24 ชม.
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/60 border border-emerald-500/40">
+                  <span className="font-mono text-sm font-black text-white select-all tracking-wider">
+                    {order.digitalCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(order.digitalCode);
+                      alert('คัดลอกรหัสเรียบร้อยแล้ว!');
+                    }}
+                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 transition-all"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> คัดลอก
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

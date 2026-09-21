@@ -9,6 +9,8 @@ const paymentService = require('../services/paymentService');
 const emailService = require('../services/emailService');
 const otpService = require('../services/otpService');
 const aiChatService = require('../services/aiChatService');
+const ignVerificationService = require('../services/ignVerificationService');
+const slipVerificationService = require('../services/slipVerificationService');
 
 // ==========================================
 // 1. PUBLIC & STOREFRONT APIS
@@ -127,8 +129,13 @@ router.post('/games/verify-player', async (req, res) => {
       return res.status(400).json({ success: false, message: 'กรุณากรอก UID หรือไอดีผู้เล่น' });
     }
 
-    const result = await topupEngine.verifyPlayer(gameId, playerId.trim(), server);
-    res.json({ success: true, ...result, playerName: result.nickname || result.playerName });
+    const result = await ignVerificationService.verifyPlayer(gameId, playerId.trim(), server);
+    res.json({ 
+      success: true, 
+      ...result, 
+      nickname: result.characterName || result.name || result.nickname || result.playerName,
+      playerName: result.characterName || result.name || result.nickname || result.playerName
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -564,9 +571,13 @@ router.get('/admin/stats', (req, res) => {
 
     const dayOrders = paidOrders.filter(o => o.createdAt && o.createdAt.startsWith(dateStr));
     const daySales = dayOrders.reduce((sum, o) => sum + (o.finalAmount || 0), 0);
+    const dayCost = dayOrders.reduce((sum, o) => sum + (o.costPrice !== undefined ? o.costPrice : (o.finalAmount || 0) * 0.85), 0);
+    const dayProfit = dayOrders.reduce((sum, o) => sum + (o.profit !== undefined ? o.profit : ((o.finalAmount || 0) - (o.costPrice || (o.finalAmount || 0) * 0.85))), 0);
     salesChartData.push({
       date: i === 0 ? "วันนี้" : thaiDay,
-      sales: daySales,
+      sales: Math.round(daySales * 100) / 100,
+      cost: Math.round(dayCost * 100) / 100,
+      profit: Math.round(dayProfit * 100) / 100,
       orders: dayOrders.length
     });
   }
@@ -1498,6 +1509,295 @@ router.post('/admin/database/connect-pg', async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 12. IGN PREVIEW (ระบบตรวจสอบชื่อตัวละคร)
+// ==========================================
+router.post('/game/check-ign', async (req, res) => {
+  try {
+    const { gameId, inputId, serverId } = req.body;
+    if (!inputId) {
+      return res.status(400).json({ success: false, message: 'กรุณาระบุไอดี / UID / ชื่อผู้เล่น' });
+    }
+    const result = await ignVerificationService.verifyPlayer(gameId, inputId, serverId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 13. LUCKY WHEEL & DAILY CHECK-IN
+// ==========================================
+router.get('/wheel/prizes', (req, res) => {
+  const prizes = db.getLuckyWheelPrizes();
+  res.json({ success: true, prizes });
+});
+
+router.post('/wheel/spin', (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'กรุณาเข้าสู่ระบบก่อนหมุนวงล้อ' });
+    }
+    const result = db.spinLuckyWheel(userId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/user/daily-checkin', (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'กรุณาเข้าสู่ระบบก่อนเช็คชื่อ' });
+    }
+    const result = db.dailyCheckin(userId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 14. AFFILIATE / REFERRAL SYSTEM
+// ==========================================
+router.get('/user/affiliate/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = db.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้' });
+    }
+
+    const allUsers = db.data.users || [];
+    const referredUsers = allUsers
+      .filter(u => u.referredBy === user.id || u.referredBy === user.referralCode)
+      .map(u => ({
+        id: u.id,
+        name: u.name || u.username || 'สมาชิก',
+        createdAt: u.createdAt
+      }));
+
+    const txns = (db.data.transactions || []).filter(t => t.userId === user.id && t.type === 'affiliate_commission');
+
+    res.json({
+      success: true,
+      affiliate: {
+        referralCode: user.referralCode || `REF${user.id.slice(-6)}`,
+        commissionRate: "2.0%",
+        totalEarnings: Number(user.affiliateEarnings || 0),
+        walletBalance: Number(user.walletBalance || 0),
+        referralCount: referredUsers.length || Number(user.referralCount || 0),
+        referredUsers,
+        recentCommissions: txns.slice(0, 10),
+        spinTickets: user.spinTickets || 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 15. MULTI-ITEM CART CHECKOUT
+// ==========================================
+router.post('/cart/checkout', async (req, res) => {
+  try {
+    const { items, paymentMethod, customerContact, userId, couponCode } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'ไม่มีสินค้าในตะกร้า' });
+    }
+
+    const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+    let discountAmount = 0;
+
+    if (couponCode) {
+      const coupon = (db.data.coupons || []).find(c => c.code === couponCode.toUpperCase() && c.isActive);
+      if (coupon) {
+        if (coupon.discountType === 'percent') {
+          discountAmount = Math.round((totalAmount * (coupon.discountValue / 100)) * 100) / 100;
+        } else {
+          discountAmount = Math.min(totalAmount, coupon.discountValue);
+        }
+      }
+    }
+
+    const finalPayAmount = Math.max(0, totalAmount - discountAmount);
+
+    if (paymentMethod === 'wallet') {
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'กรุณาเข้าสู่ระบบเพื่อชำระด้วยกระเป๋าเงิน' });
+      }
+      const user = db.findUserById(userId);
+      if (!user || Number(user.walletBalance || 0) < finalPayAmount) {
+        return res.status(400).json({ success: false, message: 'ยอดเงินคงเหลือในกระเป๋าไม่เพียงพอ กรุณาเติมเงินก่อนทำรายการ' });
+      }
+
+      user.walletBalance = Math.round((Number(user.walletBalance) - finalPayAmount) * 100) / 100;
+      db.save();
+
+      db.createTransaction({
+        userId,
+        type: 'payment',
+        amount: -finalPayAmount,
+        status: 'completed',
+        description: `ชำระค่าสินค้าในตะกร้า ${items.length} รายการ`
+      });
+    }
+
+    const createdOrders = [];
+    for (const item of items) {
+      const itemPrice = Number(item.price || 0);
+      const ratio = totalAmount > 0 ? (itemPrice / totalAmount) : 1;
+      const itemFinalAmount = Math.round((itemPrice - (discountAmount * ratio)) * 100) / 100;
+
+      const order = db.createOrder({
+        userId: userId || null,
+        gameId: item.gameId,
+        gameName: item.gameName,
+        packageId: item.packageId,
+        packageName: item.packageName,
+        price: itemPrice,
+        finalAmount: itemFinalAmount,
+        costPrice: item.costPrice || Math.round(itemPrice * 0.85 * 100) / 100,
+        playerId: item.playerId || '',
+        serverId: item.serverId || '',
+        playerIgn: item.playerIgn || '',
+        customerContact: customerContact || '',
+        paymentMethod: paymentMethod || 'promptpay',
+        paymentStatus: paymentMethod === 'wallet' ? 'paid' : 'pending',
+        topupStatus: paymentMethod === 'wallet' ? 'completed' : 'processing'
+      });
+
+      if (paymentMethod === 'wallet') {
+        db.updateOrder(order.id, { paymentStatus: 'paid', topupStatus: 'completed' });
+      }
+
+      createdOrders.push(order);
+    }
+
+    let promptpayQr = null;
+    if (paymentMethod === 'promptpay') {
+      const targetPhone = db.getSettings().promptpayNumber || '0899999999';
+      promptpayQr = paymentService.generatePromptPayQR(targetPhone, finalPayAmount);
+    }
+
+    res.json({
+      success: true,
+      message: paymentMethod === 'wallet' ? 'ชำระเงินสำเร็จครบทุกรายการในตะกร้าแล้ว!' : 'สร้างออเดอร์ในตะกร้าสำเร็จ กรุณาสแกนชำระเงิน',
+      orders: createdOrders,
+      totalAmount,
+      discountAmount,
+      finalPayAmount,
+      paymentMethod,
+      promptpayQr
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 16. AUTO SLIP VERIFICATION (ตรวจสลิปอัตโนมัติ)
+// ==========================================
+router.post('/slip/auto-verify', async (req, res) => {
+  try {
+    const { qrRaw, amount, bankAccount, orderNumber, userId, slipImageUrl } = req.body;
+    
+    const verification = slipVerificationService.verifySlip({
+      qrPayload: qrRaw,
+      expectedAmount: amount,
+      targetAccount: bankAccount,
+      orderNumber,
+      userId
+    });
+
+    if (!verification.success) {
+      return res.status(400).json(verification);
+    }
+
+    if (orderNumber) {
+      const order = db.getOrderById(orderNumber);
+      if (order) {
+        db.updateOrder(order.id, {
+          paymentStatus: 'paid',
+          topupStatus: 'completed',
+          slipVerified: true,
+          slipRef: verification.data.transRef,
+          slipVerifiedAt: new Date().toISOString(),
+          slipImage: slipImageUrl || order.slipImage
+        });
+
+        topupEngine.processOrder(order);
+      }
+    } else if (userId && amount) {
+      const user = db.findUserById(userId);
+      if (user) {
+        const depositAmt = Number(amount);
+        user.walletBalance = Math.round(((Number(user.walletBalance) || 0) + depositAmt) * 100) / 100;
+        db.save();
+
+        db.createTransaction({
+          userId: user.id,
+          type: 'deposit',
+          amount: depositAmt,
+          status: 'completed',
+          description: `เติมเงินเข้ากระเป๋าผ่านระบบสแกนสลิปอัจฉริยะ (Ref: ${verification.data.transRef})`
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'ตรวจสอบสลิปสำเร็จ ยอดเงินถูกต้องและเป็นสลิปใหม่ ไม่เคยใช้งานมาก่อน! 🚀',
+      verificationData: verification.data
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ==========================================
+// 17. DIGITAL STOCK VAULT (คลังโค้ดดิจิทัลอัตโนมัติ)
+// ==========================================
+router.get('/admin/vault', (req, res) => {
+  try {
+    const stats = db.getVaultStats();
+    const codes = db.getDigitalVault();
+    res.json({ success: true, stats, codes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/vault/import', (req, res) => {
+  try {
+    const { codes, adminName } = req.body;
+    if (!codes || !Array.isArray(codes) || codes.length === 0) {
+      return res.status(400).json({ success: false, message: 'กรุณาระบุรายการรหัสที่ต้องการนำเข้า' });
+    }
+    const added = db.addVaultCodes(codes);
+    db.logAction('admin', adminName || 'Admin', 'IMPORT_VAULT_CODES', `นำเข้ารหัสโค้ดดิจิทัลสำเร็จ ${added.length} รหัส`);
+    res.json({ success: true, addedCount: added.length, codes: added });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/admin/vault/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = db.deleteVaultCode(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'ไม่พบรหัสที่ต้องการลบ' });
+    }
+    res.json({ success: true, message: 'ลบรหัสออกจากคลังสำเร็จ' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

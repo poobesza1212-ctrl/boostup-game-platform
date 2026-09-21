@@ -16,6 +16,9 @@ import TopupModal from './components/TopupModal';
 import OrderStatusModal from './components/OrderStatusModal';
 import AuthModal from './components/AuthModal';
 import WalletModal from './components/WalletModal';
+import LuckyWheelModal from './components/LuckyWheelModal';
+import AffiliateModal from './components/AffiliateModal';
+import CartModal from './components/CartModal';
 import AdminPortal from './pages/admin/AdminPortal';
 
 export default function App() {
@@ -71,6 +74,17 @@ export default function App() {
   const [activeOrderForStatus, setActiveOrderForStatus] = useState(null);
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login' });
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tw_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [cartModalOpen, setCartModalOpen] = useState(false);
+  const [wheelModalOpen, setWheelModalOpen] = useState(false);
+  const [affiliateModalOpen, setAffiliateModalOpen] = useState(false);
 
   // Global SweetAlert Modal State (Replaces Browser Alerts Everywhere)
   const [globalAlert, setGlobalAlert] = useState({
@@ -148,7 +162,38 @@ export default function App() {
         localStorage.removeItem('tw_user');
       }
     }
+
+    // Capture referral code if present in URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        localStorage.setItem('tw_ref', ref.trim());
+      }
+    }
   }, []);
+
+  const handleAddToCart = (item) => {
+    const updated = [...cartItems, item];
+    setCartItems(updated);
+    localStorage.setItem('tw_cart', JSON.stringify(updated));
+    showGlobalAlert({
+      title: 'เพิ่มลงตะกร้าแล้ว!',
+      message: `เพิ่ม "${item.gameName} - ${item.packageName}" ลงในตะกร้าเรียบร้อย สามารถเลือกสินค้าอื่นต่อหรือเปิดตะกร้าเพื่อรวมบิลชำระเงินได้ทันที`,
+      type: 'success'
+    });
+  };
+
+  const handleRemoveFromCart = (itemId) => {
+    const updated = cartItems.filter(i => i.id !== itemId);
+    setCartItems(updated);
+    localStorage.setItem('tw_cart', JSON.stringify(updated));
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+    localStorage.removeItem('tw_cart');
+  };
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -265,6 +310,10 @@ export default function App() {
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
         onOpenWallet={() => setWalletModalOpen(true)}
+        cartCount={cartItems.length}
+        onOpenCart={() => setCartModalOpen(true)}
+        onOpenWheel={() => setWheelModalOpen(true)}
+        onOpenAffiliate={() => setAffiliateModalOpen(true)}
         siteSettings={siteSettings}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -329,6 +378,7 @@ export default function App() {
           game={selectedProductForCheckout}
           onClose={() => setSelectedProductForCheckout(null)}
           onSubmitOrder={handleSubmitOrder}
+          onAddToCart={handleAddToCart}
           user={user}
           siteSettings={siteSettings}
           onOpenWallet={() => {
@@ -337,6 +387,53 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Lucky Wheel & Daily Check-in Modal */}
+      <LuckyWheelModal
+        isOpen={wheelModalOpen}
+        onClose={() => setWheelModalOpen(false)}
+        user={user}
+        onUpdateUser={(updatedUser) => {
+          setUser(updatedUser);
+          localStorage.setItem('tw_user', JSON.stringify(updatedUser));
+        }}
+        onOpenLogin={() => {
+          setWheelModalOpen(false);
+          handleOpenAuth('login');
+        }}
+      />
+
+      {/* Affiliate / Referral Modal */}
+      <AffiliateModal
+        isOpen={affiliateModalOpen}
+        onClose={() => setAffiliateModalOpen(false)}
+        user={user}
+        onOpenLogin={() => {
+          setAffiliateModalOpen(false);
+          handleOpenAuth('login');
+        }}
+      />
+
+      {/* Multi-item Cart Modal */}
+      <CartModal
+        isOpen={cartModalOpen}
+        onClose={() => setCartModalOpen(false)}
+        cartItems={cartItems}
+        onRemoveFromCart={handleRemoveFromCart}
+        onClearCart={handleClearCart}
+        user={user}
+        onUpdateUser={(updatedUser) => {
+          setUser(updatedUser);
+          localStorage.setItem('tw_user', JSON.stringify(updatedUser));
+        }}
+        onOpenLogin={() => {
+          setCartModalOpen(false);
+          handleOpenAuth('login');
+        }}
+        onOpenTopupStatus={(order) => {
+          setActiveOrderForStatus(order);
+        }}
+      />
 
       {/* Live Order Status Progress Modal */}
       {activeOrderForStatus && (

@@ -87,7 +87,27 @@
     "footerCopyright": "© 2026 BOOSTUP ร้านเติมเงินเกม (PLAY MORE GO FURTHER) All Rights Reserved.",
     "lineContact": "@boostup"
   },
-  "users": [],
+  "users": [
+    {
+      "id": "usr_1790026950357_2ae6f4",
+      "role": "user",
+      "walletBalance": 0,
+      "points": 110,
+      "tier": "Bronze",
+      "status": "active",
+      "referralCode": "REF398977",
+      "referredBy": null,
+      "affiliateEarnings": 0,
+      "referralCount": 0,
+      "spinTickets": 0,
+      "lastDailyCheckin": "2026-09-21T21:42:30.362Z",
+      "checkinStreak": 1,
+      "createdAt": "2026-09-21T21:42:30.357Z",
+      "username": "testplayer",
+      "email": "test@example.com",
+      "passwordHash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+    }
+  ],
   "games": [
     {
       "id": "rov",
@@ -1447,5 +1467,131 @@
   "uploadedImages": {
     "test_img.png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
   },
-  "carouselSlidesCustomized": true
+  "carouselSlidesCustomized": true,
+  "digitalVault": [
+    {
+      "id": "vlt_seed_1",
+      "gameId": "gift_steam_50",
+      "gameName": "บัตร Steam Wallet 50 THB",
+      "packageName": "50 THB",
+      "code": "STEAM-TH-9942-8812-4411",
+      "costPrice": 45,
+      "status": "available",
+      "addedAt": "2026-09-20T12:00:00Z"
+    },
+    {
+      "id": "vlt_seed_2",
+      "gameId": "gift_steam_50",
+      "gameName": "บัตร Steam Wallet 50 THB",
+      "packageName": "50 THB",
+      "code": "STEAM-TH-5531-2290-7710",
+      "costPrice": 45,
+      "status": "available",
+      "addedAt": "2026-09-20T12:00:00Z"
+    },
+    {
+      "id": "vlt_seed_3",
+      "gameId": "gift_roblox_100",
+      "gameName": "บัตร Roblox 100 Robux",
+      "packageName": "100 Robux",
+      "code": "RBLX-CODE-7788-9900-1122",
+      "costPrice": 38,
+      "status": "available",
+      "addedAt": "2026-09-20T12:00:00Z"
+    },
+    {
+      "id": "vlt_seed_4",
+      "gameId": "app_netflix_1m",
+      "gameName": "Netflix 1 เดือน (พรีเมียม 4K)",
+      "packageName": "1 เดือน",
+      "code": "NETFLIX-ACC: boost_user1@vip.com | PIN: 9942",
+      "costPrice": 85,
+      "status": "available",
+      "addedAt": "2026-09-20T12:00:00Z"
+    },
+    {
+      "id": "vlt_seed_5",
+      "gameId": "app_youtube_1m",
+      "gameName": "YouTube Premium 1 เดือน",
+      "packageName": "1 เดือน",
+      "code": "INVITE-LINK: https://youtube.com/family/join?invite=boostup992",
+      "costPrice": 35,
+      "status": "available",
+      "addedAt": "2026-09-20T12:00:00Z"
+    }
+  ],
+  "luckyWheelPrizes": [
+    {
+      "id": "prize_1",
+      "name": "50 พอยท์",
+      "type": "points",
+      "value": 50,
+      "probability": 0.25,
+      "color": "#f59e0b",
+      "icon": "Coins"
+    },
+    {
+      "id": "prize_2",
+      "name": "10 พอยท์",
+      "type": "points",
+      "value": 10,
+      "probability": 0.35,
+      "color": "#3b82f6",
+      "icon": "Coins"
+    },
+    {
+      "id": "prize_3",
+      "name": "เครดิต 5 บาท",
+      "type": "credit",
+      "value": 5,
+      "probability": 0.15,
+      "color": "#10b981",
+      "icon": "Wallet"
+    },
+    {
+      "id": "prize_4",
+      "name": "เครดิต 20 บาท",
+      "type": "credit",
+      "value": 20,
+      "probability": 0.08,
+      "color": "#8b5cf6",
+      "icon": "Gift"
+    },
+    {
+      "id": "prize_5",
+      "name": "โค้ดลด 5%",
+      "type": "coupon",
+      "value": "LUCKY5",
+      "probability": 0.1,
+      "color": "#ec4899",
+      "icon": "Tag"
+    },
+    {
+      "id": "prize_6",
+      "name": "หมุนฟรี 1 ครั้ง",
+      "type": "ticket",
+      "value": 1,
+      "probability": 0.05,
+      "color": "#06b6d4",
+      "icon": "RotateCw"
+    },
+    {
+      "id": "prize_7",
+      "name": "รางวัลใหญ่ 100 บาท",
+      "type": "credit",
+      "value": 100,
+      "probability": 0.01,
+      "color": "#ef4444",
+      "icon": "Trophy"
+    },
+    {
+      "id": "prize_8",
+      "name": "ลองใหม่พรุ่งนี้",
+      "type": "none",
+      "value": 0,
+      "probability": 0.01,
+      "color": "#64748b",
+      "icon": "Smile"
+    }
+  ]
 }

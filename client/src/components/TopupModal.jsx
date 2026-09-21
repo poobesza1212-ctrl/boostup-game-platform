@@ -13,10 +13,11 @@ import {
   HelpCircle,
   Loader2,
   Mail,
-  Key
+  Key,
+  ShoppingCart
 } from 'lucide-react';
 
-export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenWallet, initialPackageId, siteSettings }) {
+export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, user, onOpenWallet, initialPackageId, siteSettings }) {
   // Normalize packages from different product types
   const packagesList = game?.packages || 
     game?.denominations?.map(d => ({ id: d.id, name: d.name, price: d.price, originalPrice: d.price })) ||
@@ -212,6 +213,31 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
     });
   };
 
+  const handleAddToCart = () => {
+    if (!playerId.trim()) {
+      setVerificationError(isCodeDelivery ? 'กรุณาระบุอีเมลสำหรับรับโค้ด' : 'กรุณากรอกไอดีผู้เล่นก่อนทำรายการ');
+      return;
+    }
+    if (!selectedPackage) return;
+    if (onAddToCart) {
+      onAddToCart({
+        id: `cart_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        gameId: game.id || game.slug || 'game_general',
+        gameName: game.name || game.gameName,
+        gameIcon: game.icon,
+        packageId: selectedPackage.id,
+        packageName: selectedPackage.name,
+        price: calculateFinalPrice(),
+        originalPrice: selectedPackage.price,
+        costPrice: selectedPackage.costPrice || Math.round(selectedPackage.price * 0.85 * 100) / 100,
+        playerId: playerId.trim(),
+        server,
+        playerIgn: verifiedPlayer?.nickname || verifiedPlayer?.characterName || ''
+      });
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-[#0e121a] border border-red-800/60 rounded-3xl shadow-2xl overflow-hidden my-8">
@@ -306,16 +332,41 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
 
             {/* Verification Result Feedback */}
             {verifiedPlayer && (
-              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-600/50 flex items-center justify-between text-xs text-emerald-300">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-zinc-900 border border-emerald-500/50 flex items-center justify-between text-xs text-emerald-300 shadow-lg shadow-emerald-950/30">
+                <div className="flex items-center gap-3">
+                  {verifiedPlayer.avatar ? (
+                    <img 
+                      src={verifiedPlayer.avatar} 
+                      alt="Player Avatar" 
+                      className="w-10 h-10 rounded-xl object-cover border border-emerald-400/60 shadow-sm"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-emerald-900/60 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                  )}
                   <div>
-                    <span>ชื่อตัวละคร: </span>
-                    <strong className="text-white text-sm">{verifiedPlayer.nickname}</strong>
-                    {verifiedPlayer.level && <span className="text-zinc-400 ml-2">(Lv. {verifiedPlayer.level})</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-400 text-[11px]">ชื่อตัวละคร:</span>
+                      <strong className="text-white text-sm font-black">{verifiedPlayer.nickname || verifiedPlayer.characterName}</strong>
+                      {verifiedPlayer.level && (
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                          Lv.{verifiedPlayer.level}
+                        </span>
+                      )}
+                    </div>
+                    {verifiedPlayer.serverName && (
+                      <div className="text-[10px] text-zinc-400 mt-0.5">เซิร์ฟเวอร์: {verifiedPlayer.serverName}</div>
+                    )}
                   </div>
                 </div>
-                <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-semibold">ถูกต้อง 100%</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full text-emerald-300 font-bold border border-emerald-500/30">
+                    ✓ พบข้อมูลในเกม
+                  </span>
+                  <span className="text-[9px] text-zinc-500">ตรวจสอบโดยระบบ IGN API</span>
+                </div>
               </div>
             )}
 
@@ -482,18 +533,21 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={onClose}
-              className="w-1/2 sm:w-auto px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold"
-            >
-              ยกเลิก
-            </button>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {onAddToCart && (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="px-4 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-amber-400 border border-amber-500/40 hover:border-amber-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
+              >
+                <ShoppingCart className="w-4 h-4" /> เพิ่มลงตะกร้า
+              </button>
+            )}
             <button
               onClick={handleSubmit}
-              className="w-1/2 sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 active:scale-95"
             >
-              <Zap className="w-4 h-4" /> ชำระเงินและรับสินค้าทันที
+              <Zap className="w-4 h-4" /> ชำระเงินทันที
             </button>
           </div>
         </div>

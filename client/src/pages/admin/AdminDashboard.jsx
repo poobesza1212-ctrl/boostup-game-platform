@@ -69,7 +69,8 @@ import {
   Headphones,
   Volume2,
   VolumeX,
-  Bell
+  Bell,
+  Copy
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -118,6 +119,26 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
   // CMS Sub tab
   const [cmsSubTab, setCmsSubTab] = useState('slides'); // 'slides' | 'categories' | 'trust'
+
+  // Digital Stock Vault State
+  const [vaultCodes, setVaultCodes] = useState([]);
+  const [vaultStats, setVaultStats] = useState(null);
+  const [vaultFilter, setVaultFilter] = useState('all'); // 'all' | 'available' | 'delivered'
+  const [vaultSearch, setVaultSearch] = useState('');
+  const [vaultImportModalOpen, setVaultImportModalOpen] = useState(false);
+  const [vaultImportGameId, setVaultImportGameId] = useState('gift_steam_50');
+  const [vaultImportGameName, setVaultImportGameName] = useState('บัตร Steam Wallet 50 THB');
+  const [vaultImportPackageName, setVaultImportPackageName] = useState('50 THB');
+  const [vaultImportCostPrice, setVaultImportCostPrice] = useState(45);
+  const [vaultImportText, setVaultImportText] = useState('');
+  const [isImportingVault, setIsImportingVault] = useState(false);
+
+  // Auto Slip Verification Test State
+  const [autoSlipTesterOpen, setAutoSlipTesterOpen] = useState(false);
+  const [autoSlipTestQr, setAutoSlipTestQr] = useState('');
+  const [autoSlipTestAmount, setAutoSlipTestAmount] = useState('100');
+  const [isTestingSlip, setIsTestingSlip] = useState(false);
+  const [slipTestResult, setSlipTestResult] = useState(null);
 
   // Filters
   const [orderFilterStatus, setOrderFilterStatus] = useState('all');
@@ -457,18 +478,23 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const loadData = async (isBackgroundPoll = false) => {
     try {
       if (isBackgroundPoll) {
-        // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, audit logs, and db status
-        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes, dbRes] = await Promise.all([
+        // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, audit logs, db status and vault
+        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes, dbRes, vaultRes] = await Promise.all([
           fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/customers').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
           fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
           fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
-          fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({}))
+          fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({})),
+          fetch('/api/admin/vault').then(r => r.json()).catch(() => ({}))
         ]);
         if (statsRes?.success) setStats(statsRes);
         if (ordersRes?.success) setOrders(ordersRes.orders);
+        if (vaultRes?.success) {
+          setVaultStats(vaultRes.stats);
+          setVaultCodes(vaultRes.codes || []);
+        }
         if (custRes?.success && !customerEditModal.open) {
           setCustomers(custRes.customers || []);
           if (custRes.customers && custRes.customers.length > 0) {
@@ -526,7 +552,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
 
       // Initial or explicit full load
-      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes, dbRes] = await Promise.all([
+      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes, dbRes, vaultRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/providers').then(r => r.json()).catch(() => ({})),
@@ -543,11 +569,16 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
         fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
         fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
-        fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({}))
+        fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({})),
+        fetch('/api/admin/vault').then(r => r.json()).catch(() => ({}))
       ]);
 
       if (statsRes?.success) setStats(statsRes);
       if (ordersRes?.success) setOrders(ordersRes.orders);
+      if (vaultRes?.success) {
+        setVaultStats(vaultRes.stats);
+        setVaultCodes(vaultRes.codes || []);
+      }
       if (provRes?.success) {
         setProviders(provRes.providers);
         setGameRoutes(provRes.routes || {});
@@ -631,6 +662,105 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', type: 'error' });
     } finally {
       setRetryingId(null);
+    }
+  };
+
+  // Handle Import Vault Codes
+  const handleImportVaultCodes = async () => {
+    if (!vaultImportText.trim()) {
+      showAlert({ title: 'กรุณากรอกรหัส', message: 'กรุณาวางรหัสโค้ดที่ต้องการนำเข้าอย่างน้อย 1 รายการ', type: 'warning' });
+      return;
+    }
+
+    const lines = vaultImportText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    if (lines.length === 0) {
+      showAlert({ title: 'ไม่พบรหัสที่ถูกต้อง', message: 'กรุณากรอกรหัสโค้ด 1 รหัสต่อ 1 บรรทัด', type: 'warning' });
+      return;
+    }
+
+    setIsImportingVault(true);
+    try {
+      const payload = lines.map(code => ({
+        gameId: vaultImportGameId,
+        gameName: vaultImportGameName,
+        packageName: vaultImportPackageName,
+        code,
+        costPrice: Number(vaultImportCostPrice || 0)
+      }));
+
+      const res = await fetch('/api/admin/vault/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes: payload, adminName: adminUser?.name || 'Admin' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert({ title: 'นำเข้ารหัสสำเร็จ!', message: `นำเข้ารหัสโค้ดเข้าคลังสำเร็จ ${data.addedCount} รายการ`, type: 'success' });
+        setVaultImportText('');
+        setVaultImportModalOpen(false);
+        loadData(false);
+      } else {
+        showAlert({ title: 'นำเข้าไม่สำเร็จ', message: data.message || 'เกิดข้อผิดพลาด', type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', type: 'error' });
+    } finally {
+      setIsImportingVault(false);
+    }
+  };
+
+  // Handle Delete Vault Code
+  const handleDeleteVaultCode = async (codeId) => {
+    if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรหัสนี้ออกจากคลัง?')) return;
+    try {
+      const res = await fetch(`/api/admin/vault/${codeId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setVaultCodes(prev => prev.filter(c => c.id !== codeId));
+        showAlert({ title: 'ลบสำเร็จ', message: 'ลบรหัสออกจากคลังเรียบร้อย', type: 'success' });
+        loadData(false);
+      } else {
+        showAlert({ title: 'ลบไม่สำเร็จ', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการลบ', type: 'error' });
+    }
+  };
+
+  // Handle Test Auto Slip Verification
+  const handleTestAutoSlip = async () => {
+    if (!autoSlipTestQr.trim()) {
+      showAlert({ title: 'กรุณากรอกข้อมูล', message: 'กรุณาวางข้อความ QR Raw Payload ของสลิป', type: 'warning' });
+      return;
+    }
+
+    setIsTestingSlip(true);
+    setSlipTestResult(null);
+
+    try {
+      const res = await fetch('/api/slip/auto-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qrRaw: autoSlipTestQr.trim(),
+          amount: Number(autoSlipTestAmount || 100)
+        })
+      });
+      const data = await res.json();
+      setSlipTestResult(data);
+      if (data.success) {
+        showAlert({ title: 'ตรวจสลิปสำเร็จ!', message: 'AI ยืนยันสลิปถูกต้อง ไม่เคยใช้งานมาก่อน และยอดเงินตรง 100%', type: 'success' });
+      } else {
+        showAlert({ title: 'สลิปไม่ผ่านการตรวจสอบ', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถตรวจสอบสลิปได้', type: 'error' });
+    } finally {
+      setIsTestingSlip(false);
     }
   };
 
@@ -1754,6 +1884,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     { id: 'overview', label: 'แผงควบคุม', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'slips', label: 'อนุมัติสลิปเติมเงิน', icon: <FileCheck className="w-4 h-4 text-emerald-400" />, count: pendingDepositsCount },
     { id: 'orders', label: 'คำสั่งซื้อ', icon: <ShoppingCart className="w-4 h-4" />, count: orders.length },
+    { id: 'vault', label: 'คลังโค้ดดิจิทัล (Stock Vault)', icon: <Key className="w-4 h-4 text-cyan-400" />, count: vaultCodes.filter(c => c.status === 'available').length },
     { id: 'live_chat', label: 'แชทสดลูกค้า (Live Chat)', icon: <MessageSquare className="w-4 h-4 text-emerald-400" />, count: liveChatUnread },
     { id: 'autotopup', label: 'เติมเงินอัตโนมัติ', icon: <Zap className="w-4 h-4" /> },
     { id: 'games', label: 'จัดการเกม & แพ็กเกจ', icon: <Gamepad2 className="w-4 h-4" />, count: games.length },
@@ -2062,6 +2193,74 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 </div>
               </div>
 
+              {/* Profit & Margin Analytics Cards */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <span>ระบบวิเคราะห์กำไรสุทธิและต้นทุน (Profit & Margin Analytics)</span>
+                  </h3>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                    คำนวณอัตโนมัติเรียลไทม์
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-zinc-900 to-black border border-emerald-500/40 shadow-lg shadow-emerald-950/20">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-1">
+                      <span>กำไรสุทธิรวม (Total Profit)</span>
+                      <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="text-2xl font-black text-emerald-400 font-['Kanit'] tracking-tight">
+                      ฿{Number(stats?.stats?.totalProfit ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="mt-2 text-xs text-zinc-400 flex items-center gap-1.5">
+                      <span>วันนี้ทำกำไร:</span>
+                      <strong className="text-emerald-300 font-bold">฿{Number(stats?.stats?.todayProfit ?? 0).toFixed(2)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-950/40 via-zinc-900 to-black border border-blue-500/40 shadow-lg shadow-blue-950/20">
+                    <div className="flex items-center justify-between text-xs font-bold text-blue-400 mb-1">
+                      <span>ต้นทุนสินค้ารวม (Total Cost)</span>
+                      <DollarSign className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="text-2xl font-black text-white font-['Kanit'] tracking-tight">
+                      ฿{Number(stats?.stats?.totalCost ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="mt-2 text-xs text-zinc-400">
+                      ต้นทุน API และรหัสคลังเฉลี่ย
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/40 via-zinc-900 to-black border border-amber-500/40 shadow-lg shadow-amber-950/20">
+                    <div className="flex items-center justify-between text-xs font-bold text-amber-400 mb-1">
+                      <span>อัตรากำไรขั้นต้น (Profit Margin)</span>
+                      <Tag className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div className="text-2xl font-black text-amber-400 font-['Kanit'] tracking-tight">
+                      {Number(stats?.stats?.profitMargin ?? 15.0).toFixed(1)}%
+                    </div>
+                    <div className="mt-2 text-xs text-amber-300/80">
+                      กำไรคิดเทียบจากยอดขายทั้งหมด
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-950/40 via-zinc-900 to-black border border-cyan-500/40 shadow-lg shadow-cyan-950/20">
+                    <div className="flex items-center justify-between text-xs font-bold text-cyan-400 mb-1">
+                      <span>คลังโค้ดดิจิทัล (Vault Stock)</span>
+                      <Key className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    <div className="text-2xl font-black text-cyan-300 font-['Kanit'] tracking-tight">
+                      {vaultCodes.filter(c => c.status === 'available').length} <span className="text-xs font-normal text-zinc-400">พร้อมส่ง</span>
+                    </div>
+                    <div className="mt-2 text-xs text-zinc-400">
+                      ส่งมอบแล้ว {vaultCodes.filter(c => c.status === 'delivered').length} รหัส
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-8 p-6 rounded-2xl bg-cyber-card border border-zinc-800">
@@ -2135,6 +2334,65 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                   </div>
                 </div>
               </div>
+
+              {/* Top Profitable Products Ranking Table */}
+              <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-emerald-400" />
+                      <span>อันดับเกม / สินค้าที่สร้างกำไรสูงสุด (Top Profitable Products)</span>
+                    </h3>
+                    <p className="text-xs text-zinc-400">เปรียบเทียบยอดขาย ต้นทุน และกำไรสุทธิ</p>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
+                    Real-time Ranking
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-zinc-900/80 text-zinc-400 border-b border-zinc-800">
+                      <tr>
+                        <th className="py-3 px-4"># อันดับ</th>
+                        <th className="py-3 px-4">ชื่อเกม / สินค้า</th>
+                        <th className="py-3 px-4 text-right">จำนวนออเดอร์</th>
+                        <th className="py-3 px-4 text-right">ยอดขายรวม</th>
+                        <th className="py-3 px-4 text-right">กำไรสุทธิ</th>
+                        <th className="py-3 px-4 text-right">มาร์จิ้น (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60">
+                      {(stats?.stats?.topProfitableGames && stats.stats.topProfitableGames.length > 0) ? (
+                        stats.stats.topProfitableGames.map((item, idx) => {
+                          const margin = item.sales > 0 ? ((item.profit / item.sales) * 100).toFixed(1) : "0.0";
+                          return (
+                            <tr key={idx} className="hover:bg-zinc-900/40 transition-colors">
+                              <td className="py-3 px-4 font-bold text-amber-400">#{idx + 1}</td>
+                              <td className="py-3 px-4 font-bold text-white">{item.name}</td>
+                              <td className="py-3 px-4 text-right text-zinc-300">{item.count} รายการ</td>
+                              <td className="py-3 px-4 text-right text-zinc-300 font-mono">฿{Number(item.sales || 0).toFixed(2)}</td>
+                              <td className="py-3 px-4 text-right text-emerald-400 font-bold font-mono">+฿{Number(item.profit || 0).toFixed(2)}</td>
+                              <td className="py-3 px-4 text-right">
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                                  {margin}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-zinc-500">
+                            ยังไม่มีข้อมูลคำสั่งซื้อที่เสร็จสมบูรณ์เพื่อจัดอันดับกำไร
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -2156,6 +2414,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
                 <div className="flex items-center gap-3">
                   <button
+                    type="button"
+                    onClick={() => setAutoSlipTesterOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>ทดสอบระบบตรวจสลิป AI</span>
+                  </button>
+                  <button
                     onClick={() => loadData(false)}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
                   >
@@ -2163,6 +2429,33 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                     <span>รีเฟรชข้อมูล</span>
                   </button>
                 </div>
+              </div>
+
+              {/* AI Auto Slip Status Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-zinc-950 border border-emerald-500/40 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span>ระบบตรวจสลิปอัตโนมัติ (AI QR Auto Verification Engine)</span>
+                      <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                        ACTIVE • ทำงาน 24 ชม.
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      ป้องกันสลิปซ้ำ (Duplicate Replay Prevention), ตรวจสอบธนาคารและยอดเงินตรง 100% เติมเงินเข้ากระเป๋าใน 2 วินาที
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoSlipTesterOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-emerald-500/40 text-emerald-300 font-bold text-xs shrink-0"
+                >
+                  ยิงทดสอบสลิป
+                </button>
               </div>
 
               {/* Status Counters */}
@@ -2492,6 +2785,272 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DIGITAL VAULT (Stock & Auto-Delivery) */}
+          {activeTab === 'vault' && (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <Key className="w-6 h-6 text-cyan-400" />
+                    <span>คลังโค้ดดิจิทัลอัตโนมัติ (Digital Stock Vault)</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                      Auto-Delivery
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    สต็อกรหัสบัตรเติมเงิน / ไอดีเกม / PIN พร้อมระบบตัดสต็อกและส่งมอบให้ลูกค้าในหน้าคำสั่งซื้อทันทีที่ชำระเงินสำเร็จ
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => loadData(false)}
+                    className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>รีเฟรช</span>
+                  </button>
+                  <button
+                    onClick={() => setVaultImportModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>+ นำเข้ารหัสโค้ดเข้าคลัง</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                  <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+                    <span>โค้ดทั้งหมด</span>
+                    <Database className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-white font-mono">{vaultCodes.length}</div>
+                  <div className="text-[11px] text-zinc-500 mt-1">รวมทุกสถานะในระบบ</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-emerald-500/20 bg-emerald-500/5">
+                  <div className="flex items-center justify-between text-emerald-400 text-xs mb-1">
+                    <span>พร้อมส่งมอบ (In Stock)</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-400 font-mono">
+                    {vaultCodes.filter(c => c.status === 'available').length}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">ระบบจะดึงรหัสนี้ไปส่งลูกค้า</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-blue-500/20 bg-blue-500/5">
+                  <div className="flex items-center justify-between text-blue-400 text-xs mb-1">
+                    <span>ส่งมอบแล้ว (Delivered)</span>
+                    <ShieldCheck className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-blue-400 font-mono">
+                    {vaultCodes.filter(c => c.status === 'delivered').length}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">ออเดอร์ตัดไปแล้ว</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-amber-500/20 bg-amber-500/5">
+                  <div className="flex items-center justify-between text-amber-400 text-xs mb-1">
+                    <span>มูลค่าสต็อกคงเหลือ</span>
+                    <DollarSign className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-amber-400 font-mono">
+                    {vaultCodes
+                      .filter(c => c.status === 'available')
+                      .reduce((sum, c) => sum + (c.costPrice || 0), 0)
+                      .toLocaleString()}{' '}
+                    <span className="text-xs font-normal text-zinc-400">฿</span>
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">ประเมินจากราคาทุน</div>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-900/40 p-3 rounded-2xl border border-zinc-800">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                  <button
+                    onClick={() => setVaultFilter('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      vaultFilter === 'all'
+                        ? 'bg-zinc-800 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    ทั้งหมด ({vaultCodes.length})
+                  </button>
+                  <button
+                    onClick={() => setVaultFilter('available')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      vaultFilter === 'available'
+                        ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-500/30'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    พร้อมส่ง ({vaultCodes.filter(c => c.status === 'available').length})
+                  </button>
+                  <button
+                    onClick={() => setVaultFilter('delivered')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      vaultFilter === 'delivered'
+                        ? 'bg-blue-600/30 text-blue-400 border border-blue-500/30'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    ส่งมอบแล้ว ({vaultCodes.filter(c => c.status === 'delivered').length})
+                  </button>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={vaultSearch}
+                    onChange={(e) => setVaultSearch(e.target.value)}
+                    placeholder="ค้นหาโค้ด, ชื่อเกม, ออเดอร์..."
+                    className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-300">
+                    <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[11px] border-b border-zinc-800">
+                      <tr>
+                        <th className="py-3 px-4">รายการสินค้า / เกม</th>
+                        <th className="py-3 px-4">รหัสโค้ดดิจิทัล (Key / PIN)</th>
+                        <th className="py-3 px-4">ราคาทุน</th>
+                        <th className="py-3 px-4">สถานะ</th>
+                        <th className="py-3 px-4">วันที่นำเข้า</th>
+                        <th className="py-3 px-4">ออเดอร์ที่ตัดส่ง</th>
+                        <th className="py-3 px-4 text-center">จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                      {vaultCodes
+                        .filter(code => {
+                          if (vaultFilter === 'available') return code.status === 'available';
+                          if (vaultFilter === 'delivered') return code.status === 'delivered';
+                          return true;
+                        })
+                        .filter(code => {
+                          if (!vaultSearch.trim()) return true;
+                          const q = vaultSearch.toLowerCase();
+                          return (
+                            (code.code && code.code.toLowerCase().includes(q)) ||
+                            (code.gameName && code.gameName.toLowerCase().includes(q)) ||
+                            (code.packageName && code.packageName.toLowerCase().includes(q)) ||
+                            (code.orderId && code.orderId.toLowerCase().includes(q))
+                          );
+                        })
+                        .length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-zinc-500">
+                            <Key className="w-8 h-8 text-zinc-600 mx-auto mb-2 opacity-50" />
+                            <p className="font-medium text-zinc-400">ยังไม่พบรหัสโค้ดในคลัง</p>
+                            <p className="text-[11px] text-zinc-500 mt-1">
+                              กดปุ่ม "+ นำเข้ารหัสโค้ดเข้าคลัง" เพื่อเติมสต็อกรหัสสินค้า
+                            </p>
+                          </td>
+                        </tr>
+                      ) : (
+                        vaultCodes
+                          .filter(code => {
+                            if (vaultFilter === 'available') return code.status === 'available';
+                            if (vaultFilter === 'delivered') return code.status === 'delivered';
+                            return true;
+                          })
+                          .filter(code => {
+                            if (!vaultSearch.trim()) return true;
+                            const q = vaultSearch.toLowerCase();
+                            return (
+                              (code.code && code.code.toLowerCase().includes(q)) ||
+                              (code.gameName && code.gameName.toLowerCase().includes(q)) ||
+                              (code.packageName && code.packageName.toLowerCase().includes(q)) ||
+                              (code.orderId && code.orderId.toLowerCase().includes(q))
+                            );
+                          })
+                          .map((code) => (
+                            <tr key={code.id} className="hover:bg-zinc-900/40 transition-colors">
+                              <td className="py-3 px-4 font-medium text-white">
+                                <div className="flex flex-col">
+                                  <span>{code.gameName || code.gameId}</span>
+                                  <span className="text-[11px] text-zinc-500">{code.packageName || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800 text-cyan-300 select-all font-semibold">
+                                    {code.code}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(code.code);
+                                      showAlert({ title: 'คัดลอกแล้ว', message: `คัดลอก ${code.code} เรียบร้อย`, type: 'success' });
+                                    }}
+                                    className="p-1 hover:text-white text-zinc-500 transition-colors"
+                                    title="คัดลอกโค้ด"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 font-mono text-zinc-300">
+                                {code.costPrice ? `${Number(code.costPrice).toLocaleString()} ฿` : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                {code.status === 'available' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    พร้อมส่ง
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                    ส่งมอบแล้ว
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-[11px] text-zinc-400">
+                                {code.createdAt ? new Date(code.createdAt).toLocaleString('th-TH') : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                {code.orderId ? (
+                                  <div className="flex flex-col text-[11px]">
+                                    <span className="font-mono text-cyan-400 font-semibold">{code.orderId}</span>
+                                    <span className="text-zinc-500">
+                                      {code.deliveredAt ? new Date(code.deliveredAt).toLocaleTimeString('th-TH') : ''}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-zinc-600">-</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {code.status === 'available' && (
+                                  <button
+                                    onClick={() => handleDeleteVaultCode(code.id)}
+                                    className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                                    title="ลบออกจากคลัง"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -5898,6 +6457,288 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
               >
                 ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Import Vault Digital Codes */}
+      {vaultImportModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-['Kanit']">นำเข้ารหัสโค้ดดิจิทัล (Bulk Import)</h3>
+                  <p className="text-[11px] text-zinc-400">เติมสต็อกรหัสบัตร/ไอดี พร้อมตั้งราคาทุน</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setVaultImportModalOpen(false)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ชื่อสินค้า / เกม</label>
+                  <input
+                    type="text"
+                    value={vaultImportGameName}
+                    onChange={(e) => setVaultImportGameName(e.target.value)}
+                    placeholder="เช่น บัตร Steam Wallet 50 THB"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">รหัสเกม / Game ID</label>
+                  <input
+                    type="text"
+                    value={vaultImportGameId}
+                    onChange={(e) => setVaultImportGameId(e.target.value)}
+                    placeholder="เช่น steam, roblox, ff"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ชื่อแพ็กเกจ</label>
+                  <input
+                    type="text"
+                    value={vaultImportPackageName}
+                    onChange={(e) => setVaultImportPackageName(e.target.value)}
+                    placeholder="เช่น 50 THB หรือ 100 Robux"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">ราคาทุนต่อชิ้น (บาท)</label>
+                  <input
+                    type="number"
+                    value={vaultImportCostPrice}
+                    onChange={(e) => setVaultImportCostPrice(e.target.value)}
+                    placeholder="เช่น 45"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-zinc-400">รายการรหัสโค้ด (1 รหัสต่อ 1 บรรทัด)</label>
+                  <span className="text-[11px] text-cyan-400 font-mono">
+                    {vaultImportText.split('\n').filter(l => l.trim().length > 0).length} รายการ
+                  </span>
+                </div>
+                <textarea
+                  rows={6}
+                  value={vaultImportText}
+                  onChange={(e) => setVaultImportText(e.target.value)}
+                  placeholder={`AAAA-BBBB-CCCC-1111\nAAAA-BBBB-CCCC-2222\nAAAA-BBBB-CCCC-3333`}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 font-mono text-xs text-zinc-200 focus:outline-none focus:border-cyan-500 resize-none"
+                />
+              </div>
+
+              {vaultImportText.trim() && (
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] flex items-center justify-between">
+                  <span>ประมาณการต้นทุนรวม:</span>
+                  <span className="font-bold font-mono">
+                    {(
+                      vaultImportText.split('\n').filter(l => l.trim().length > 0).length *
+                      Number(vaultImportCostPrice || 0)
+                    ).toLocaleString()}{' '}
+                    ฿
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setVaultImportModalOpen(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleImportVaultCodes}
+                disabled={isImportingVault}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-500/25 active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isImportingVault ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังนำเข้า...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    <span>ยืนยันนำเข้าคลัง</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Auto Slip Verification Tester Sandbox */}
+      {autoSlipTesterOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-['Kanit']">AI Slip Verification Sandbox</h3>
+                  <p className="text-[11px] text-zinc-400">ทดสอบระบบสแกนสลิป ตรวจยอดเงิน และดักสลิปซ้ำ</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setAutoSlipTesterOpen(false);
+                  setSlipTestResult(null);
+                }}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sampleRef = 'TEST' + Date.now();
+                    setAutoSlipTestQr(`00020101021229370016A000000677010111011300660000000005303764540${autoSlipTestAmount || '100'}.005802TH62150511${sampleRef}6304`);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 transition-colors"
+                >
+                  ⚡ สลิปใหม่จำลอง
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoSlipTestQr('00020101021229370016A00000067701011101130066000000000530376454050.005802TH62150511DUPREF123456304');
+                    setAutoSlipTestAmount('100');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-[11px] text-red-400 transition-colors"
+                >
+                  ⚠️ ยอดไม่ตรงจำลอง (50฿ vs 100฿)
+                </button>
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1">ยอดเงินที่คาดหวังจากคำสั่งซื้อ (บาท)</label>
+                <input
+                  type="number"
+                  value={autoSlipTestAmount}
+                  onChange={(e) => setAutoSlipTestAmount(e.target.value)}
+                  placeholder="เช่น 100"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1">QR Raw Payload ของสลิปโอนเงิน</label>
+                <textarea
+                  rows={4}
+                  value={autoSlipTestQr}
+                  onChange={(e) => setAutoSlipTestQr(e.target.value)}
+                  placeholder="วางข้อความที่ถอดได้จาก QR Code บนสลิป..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 font-mono text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              {slipTestResult && (
+                <div
+                  className={`p-3.5 rounded-2xl border ${
+                    slipTestResult.success
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-red-500/10 border-red-500/30 text-red-300'
+                  } space-y-1.5`}
+                >
+                  <div className="flex items-center gap-2 font-bold text-sm">
+                    {slipTestResult.success ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        <span>ผ่านการตรวจสอบ (AI Verified)</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                        <span>ไม่ผ่าน: {slipTestResult.message}</span>
+                      </>
+                    )}
+                  </div>
+                  {slipTestResult.verification && (
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-white/10">
+                      <div>
+                        <span className="text-zinc-400">Ref No.: </span>
+                        <span className="font-mono font-semibold">{slipTestResult.verification.transactionRef}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">ยอดที่ตรวจพบ: </span>
+                        <span className="font-mono font-semibold">{slipTestResult.verification.amount} ฿</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">AI Confidence: </span>
+                        <span className="font-mono font-semibold">
+                          {Math.round((slipTestResult.verification.aiConfidence || 0.99) * 100)}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">ธนาคาร: </span>
+                        <span>{slipTestResult.verification.senderBank || 'PromptPay'}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoSlipTesterOpen(false);
+                  setSlipTestResult(null);
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
+              >
+                ปิด
+              </button>
+              <button
+                type="button"
+                onClick={handleTestAutoSlip}
+                disabled={isTestingSlip}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isTestingSlip ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังตรวจสอบ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>รัน AI ตรวจสอบ</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -1332,4 +1332,65 @@ router.get('/admin/audit-logs', (req, res) => {
   }
 });
 
+// ==========================================
+// 11. DATABASE PERSISTENCE & BACKUP APIS
+// ==========================================
+
+// Get database persistence status
+router.get('/admin/database/status', (req, res) => {
+  try {
+    const status = db.getDatabaseStatus();
+    res.json({ success: true, status });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Download full backup JSON file
+router.get('/admin/database/backup', (req, res) => {
+  try {
+    const backup = db.exportDatabase();
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `boostup_db_backup_${dateStr}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(backup, null, 2));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Restore database from uploaded JSON
+router.post('/admin/database/restore', (req, res) => {
+  try {
+    const { backupData, adminName } = req.body;
+    if (!backupData) {
+      return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลไฟล์สำรอง' });
+    }
+    const result = db.importDatabase(backupData);
+    db.logAction('admin', adminName || 'Admin', 'RESTORE_DATABASE', `กู้คืนข้อมูลระบบจากไฟล์สำรอง (สมาชิก ${result.usersCount} คน, ออเดอร์ ${result.ordersCount} รายการ)`);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Connect to external PostgreSQL cloud database
+router.post('/admin/database/connect-pg', async (req, res) => {
+  try {
+    const { databaseUrl, adminName } = req.body;
+    if (!databaseUrl) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอก DATABASE_URL' });
+    }
+    await db.connectPostgres(databaseUrl);
+    db.logAction('admin', adminName || 'Admin', 'CONNECT_POSTGRES', 'เชื่อมต่อและซิงค์ฐานข้อมูลไปยัง Cloud PostgreSQL สำเร็จ');
+    res.json({
+      success: true,
+      message: 'เชื่อมต่อและซิงค์ฐานข้อมูลไปยัง Cloud PostgreSQL สำเร็จเรียบร้อย ข้อมูลจะถูกเก็บถาวร 100%'
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

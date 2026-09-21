@@ -2,7 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DB_FILE = path.join(__dirname, '..', 'data', 'database.json');
+// Smart Persistent Path Resolution (Render Persistent Disk / Custom DATA_DIR)
+const getDbDirectory = () => {
+  if (process.env.DATA_DIR && fs.existsSync(process.env.DATA_DIR)) {
+    return process.env.DATA_DIR;
+  }
+  // Check Render default persistent disk mount path
+  if (fs.existsSync('/var/data')) {
+    return '/var/data';
+  }
+  return path.join(__dirname, '..', 'data');
+};
+
+const DB_DIR = getDbDirectory();
+const DB_FILE = path.join(DB_DIR, 'database.json');
+const BACKUP_DIR = path.join(DB_DIR, 'backups');
+const AUTO_BACKUP_FILE = path.join(BACKUP_DIR, 'latest_customers.json');
 
 // Initial schema and rich Thai seed data matching mockup
 const defaultData = {
@@ -611,36 +626,56 @@ const defaultData = {
 
 class Database {
   constructor() {
+    this.isPgConnected = false;
+    this.pgUrl = null;
+    this.pgPool = null;
     this.ensureDir();
     this.load();
     this.initPg();
   }
 
   ensureDir() {
-    const dir = path.dirname(DB_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+      }
+      if (!fs.existsSync(BACKUP_DIR)) {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      }
+    } catch (e) {
+      console.error("ensureDir error:", e.message);
     }
   }
 
-  async initPg() {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) return;
+  async initPg(customUrl = null) {
+    const dbUrl = customUrl || process.env.DATABASE_URL;
+    if (!dbUrl || !dbUrl.trim()) {
+      this.isPgConnected = false;
+      return false;
+    }
 
     try {
       let pg = null;
       try {
         pg = require('pg');
       } catch (e) {
-        return;
+        console.warn("pg module not found, continuing with local persistent file storage");
+        this.isPgConnected = false;
+        return false;
       }
 
-      this.pgPool = new pg.Pool({
-        connectionString: dbUrl,
-        ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false }
+      const cleanUrl = dbUrl.trim();
+      const pool = new pg.Pool({
+        connectionString: cleanUrl,
+        ssl: cleanUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 7000
       });
 
-      await this.pgPool.query(`
+      // Test connection
+      await pool.query('SELECT NOW()');
+
+      // Ensure KV storage table exists
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS system_kv (
           key VARCHAR(64) PRIMARY KEY,
           data JSONB NOT NULL,
@@ -648,53 +683,160 @@ class Database {
         );
       `);
 
-      const res = await this.pgPool.query(`SELECT data FROM system_kv WHERE key = 'store_data'`);
+      this.pgPool = pool;
+      this.isPgConnected = true;
+      this.pgUrl = cleanUrl;
+
+      // On startup: Check if PostgreSQL already has stored data
+      const res = await this.pgPool.query(`SELECT data, updated_at FROM system_kv WHERE key = 'store_data'`);
       if (res.rows.length > 0 && res.rows[0].data) {
-        console.log("📦 Loaded persistent state from PostgreSQL database!");
-        this.data = res.rows[0].data;
-        this.saveToFileOnly();
+        const pgData = res.rows[0].data;
+        const pgUserCount = pgData.users?.length || 0;
+        const localUserCount = this.data?.users?.length || 0;
+
+        console.log(`📦 [PostgreSQL Cloud] Connected! PG records: ${pgUserCount} users, Local records: ${localUserCount} users.`);
+
+        // Master Truth: If Postgres has data, it takes precedence over git/local files
+        if (pgUserCount >= localUserCount) {
+          this.data = pgData;
+          this.safeMergeDefaults();
+          this.saveToFileOnly();
+          console.log(`✅ [PostgreSQL Cloud] Successfully loaded live production database into memory!`);
+        } else {
+          // If local has more recent users, sync local to Postgres
+          await this.syncToPostgres();
+          console.log(`✅ [PostgreSQL Cloud] Synchronized local data to PostgreSQL cloud database.`);
+        }
       } else {
-        await this.pgPool.query(
-          `INSERT INTO system_kv (key, data, updated_at) VALUES ('store_data', $1, CURRENT_TIMESTAMP)
-           ON CONFLICT (key) DO UPDATE SET data = $1, updated_at = CURRENT_TIMESTAMP`,
-          [this.data]
-        );
+        // Initialize first state in Postgres
+        await this.syncToPostgres();
+        console.log(`✅ [PostgreSQL Cloud] Initialized first store state into PostgreSQL.`);
       }
+
+      return true;
     } catch (err) {
       console.error("PostgreSQL cloud sync notice:", err.message);
+      this.isPgConnected = false;
+      return false;
     }
+  }
+
+  async syncToPostgres() {
+    if (!this.pgPool) return false;
+    try {
+      await this.pgPool.query(
+        `INSERT INTO system_kv (key, data, updated_at) VALUES ('store_data', $1, CURRENT_TIMESTAMP)
+         ON CONFLICT (key) DO UPDATE SET data = $1, updated_at = CURRENT_TIMESTAMP`,
+        [this.data]
+      );
+      return true;
+    } catch (err) {
+      console.error("Failed to sync state to PostgreSQL:", err.message);
+      return false;
+    }
+  }
+
+  async connectPostgres(dbUrl) {
+    if (!dbUrl || !dbUrl.trim()) throw new Error('กรุณาระบุ Connection String ของ PostgreSQL (DATABASE_URL)');
+    const success = await this.initPg(dbUrl.trim());
+    if (!success) {
+      throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูล PostgreSQL ได้ โปรดตรวจสอบ Connection String');
+    }
+    // Update .env file if writable
+    try {
+      const envPath = path.join(__dirname, '..', '..', '.env');
+      if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, 'utf8');
+        if (envContent.includes('DATABASE_URL=')) {
+          envContent = envContent.replace(/DATABASE_URL=.*/g, `DATABASE_URL=${dbUrl.trim()}`);
+        } else {
+          envContent += `\nDATABASE_URL=${dbUrl.trim()}\n`;
+        }
+        fs.writeFileSync(envPath, envContent, 'utf8');
+      }
+    } catch (e) {
+      console.warn("Could not write DATABASE_URL to .env:", e.message);
+    }
+    process.env.DATABASE_URL = dbUrl.trim();
+    // Sync current state into the new database immediately
+    await this.syncToPostgres();
+    return true;
+  }
+
+  safeMergeDefaults() {
+    if (!this.data || typeof this.data !== 'object') this.data = {};
+    if (!this.data.settings) this.data.settings = defaultData.settings;
+    else {
+      this.data.settings = { ...defaultData.settings, ...this.data.settings };
+      if (!this.data.settings.trustPoints) this.data.settings.trustPoints = defaultData.settings.trustPoints;
+      if (!this.data.settings.bankAccounts) this.data.settings.bankAccounts = defaultData.settings.bankAccounts;
+    }
+    if (!this.data.users) this.data.users = [];
+    if (!this.data.admins) this.data.admins = defaultData.admins || [];
+    if (!this.data.games || this.data.games.length === 0) this.data.games = defaultData.games;
+    if (!this.data.quickCategories || this.data.quickCategories.length === 0) this.data.quickCategories = defaultData.quickCategories;
+    if (!this.data.flashSales || this.data.flashSales.length === 0) this.data.flashSales = defaultData.flashSales;
+    if (!this.data.giftCards || this.data.giftCards.length === 0) this.data.giftCards = defaultData.giftCards;
+    if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) this.data.appSubscriptions = defaultData.appSubscriptions;
+    if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) this.data.carouselSlides = defaultData.carouselSlides || [];
+    if (!this.data.orders) this.data.orders = [];
+    if (!this.data.transactions) this.data.transactions = [];
+    if (!this.data.chats) this.data.chats = [];
+    if (!this.data.auditLogs) this.data.auditLogs = [];
   }
 
   load() {
     try {
+      let loaded = false;
+
+      // 1. Try loading main DB_FILE
       if (fs.existsSync(DB_FILE)) {
-        const raw = fs.readFileSync(DB_FILE, 'utf8');
-        this.data = JSON.parse(raw);
-        if (!this.data.settings) this.data.settings = defaultData.settings;
-        else {
-          this.data.settings = { ...defaultData.settings, ...this.data.settings };
-          if (!this.data.settings.trustPoints) this.data.settings.trustPoints = defaultData.settings.trustPoints;
-          if (!this.data.settings.bankAccounts) this.data.settings.bankAccounts = defaultData.settings.bankAccounts;
+        try {
+          const raw = fs.readFileSync(DB_FILE, 'utf8');
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            this.data = parsed;
+            loaded = true;
+          }
+        } catch (e) {
+          console.error("Corrupted DB_FILE, attempting backup recovery:", e.message);
         }
-        if (!this.data.quickCategories || this.data.quickCategories.length === 0) {
-          this.data.quickCategories = defaultData.quickCategories;
-        }
-        if (!this.data.flashSales || this.data.flashSales.length === 0) {
-          this.data.flashSales = defaultData.flashSales;
-        }
-        if (!this.data.giftCards || this.data.giftCards.length === 0) {
-          this.data.giftCards = defaultData.giftCards;
-        }
-        if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) {
-          this.data.appSubscriptions = defaultData.appSubscriptions;
-        }
-        this.saveToFileOnly();
-      } else {
-        this.data = JSON.parse(JSON.stringify(defaultData));
-        this.saveToFileOnly();
       }
+
+      // 2. Anti-Reset Recovery: If DB_FILE had no users, check AUTO_BACKUP_FILE
+      if ((!loaded || !this.data.users || this.data.users.length === 0) && fs.existsSync(AUTO_BACKUP_FILE)) {
+        try {
+          const backupRaw = fs.readFileSync(AUTO_BACKUP_FILE, 'utf8');
+          const backupParsed = JSON.parse(backupRaw);
+          if (backupParsed && backupParsed.users && backupParsed.users.length > 0) {
+            console.log(`🛡️ [Safety Recovery] Restored ${backupParsed.users.length} users from rolling auto-backup!`);
+            if (!this.data) this.data = backupParsed;
+            else {
+              this.data.users = backupParsed.users;
+              if (backupParsed.transactions && (!this.data.transactions || this.data.transactions.length === 0)) {
+                this.data.transactions = backupParsed.transactions;
+              }
+              if (backupParsed.orders && (!this.data.orders || this.data.orders.length === 0)) {
+                this.data.orders = backupParsed.orders;
+              }
+            }
+            loaded = true;
+          }
+        } catch (e) {
+          console.error("Backup recovery error:", e.message);
+        }
+      }
+
+      // 3. Fallback to default template if fresh install
+      if (!loaded || !this.data) {
+        this.data = JSON.parse(JSON.stringify(defaultData));
+      }
+
+      // 4. Safe merge defaults (only fill missing keys, NEVER wipe existing data!)
+      this.safeMergeDefaults();
+      this.saveToFileOnly();
     } catch (err) {
-      console.error("Error loading database, resetting to default:", err);
+      console.error("Critical error in load():", err);
       this.data = JSON.parse(JSON.stringify(defaultData));
       this.saveToFileOnly();
     }
@@ -714,12 +856,73 @@ class Database {
 
   saveToFileOnly() {
     try {
+      this.ensureDir();
       const tempPath = `${DB_FILE}.tmp`;
       fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf8');
       fs.renameSync(tempPath, DB_FILE);
+
+      // Rolling auto-backup if we have users or orders
+      if (this.data && ((this.data.users && this.data.users.length > 0) || (this.data.orders && this.data.orders.length > 0))) {
+        if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        fs.writeFileSync(AUTO_BACKUP_FILE, JSON.stringify(this.data, null, 2), 'utf8');
+      }
     } catch (err) {
       console.error("Error saving database:", err);
     }
+  }
+
+  exportDatabase() {
+    return {
+      exportedAt: new Date().toISOString(),
+      platform: "BOOSTUP Thailand",
+      version: "1.0.0",
+      stats: {
+        usersCount: (this.data.users || []).length,
+        ordersCount: (this.data.orders || []).length,
+        gamesCount: (this.data.games || []).length,
+        bankAccountsCount: (this.data.settings?.bankAccounts || []).length,
+        depositsCount: (this.data.transactions || []).filter(t => t.type === 'deposit').length
+      },
+      data: this.data
+    };
+  }
+
+  importDatabase(importedJson) {
+    if (!importedJson || typeof importedJson !== 'object') {
+      throw new Error('ไฟล์ข้อมูลไม่ถูกต้อง');
+    }
+    const incomingData = importedJson.data || importedJson;
+    if (!incomingData.games || !incomingData.settings) {
+      throw new Error('โครงสร้างไฟล์สำรองไม่ถูกต้อง ไม่พบข้อมูลเกมหรือการตั้งค่า');
+    }
+    this.data = incomingData;
+    this.safeMergeDefaults();
+    this.save();
+    return {
+      success: true,
+      usersCount: (this.data.users || []).length,
+      ordersCount: (this.data.orders || []).length,
+      message: 'กู้คืนฐานข้อมูลสำเร็จเรียบร้อย'
+    };
+  }
+
+  getDatabaseStatus() {
+    return {
+      engine: this.isPgConnected ? 'PostgreSQL (Cloud Database)' : 'Local File Storage',
+      isPgConnected: !!this.isPgConnected,
+      storagePath: this.isPgConnected ? (this.pgUrl ? this.pgUrl.replace(/:[^:]*@/, ':****@') : 'PostgreSQL Cloud') : DB_FILE,
+      isPersistentDisk: DB_FILE.startsWith('/var/data') || !!process.env.DATA_DIR,
+      counts: {
+        users: (this.data.users || []).length,
+        orders: (this.data.orders || []).length,
+        games: (this.data.games || []).length,
+        bankAccounts: (this.data.settings?.bankAccounts || []).length,
+        slides: (this.data.carouselSlides || []).length,
+        auditLogs: (this.data.auditLogs || []).length,
+        transactions: (this.data.transactions || []).length
+      },
+      lastSaved: new Date().toISOString()
+    };
   }
 
   get(collection) {

@@ -56,7 +56,11 @@ import {
   ArrowUp,
   ArrowDown,
   EyeOff,
-  Loader2
+  Loader2,
+  Database,
+  HardDrive,
+  Cloud,
+  Server
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -143,6 +147,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [multiUploadProgress, setMultiUploadProgress] = useState({ isUploading: false, current: 0, total: 0, message: '' });
   const [editSlideModal, setEditSlideModal] = useState(null); // slide object or null
 
+  // Database Persistence & Cloud DB States
+  const [dbStatus, setDbStatus] = useState(null);
+  const [pgUrlInput, setPgUrlInput] = useState('');
+  const [isConnectingPg, setIsConnectingPg] = useState(false);
+  const [pgConnectMsg, setPgConnectMsg] = useState({ type: '', text: '' });
+  const [showPgGuide, setShowPgGuide] = useState(false);
+
   // Bank Account Modal
   const [newBankModal, setNewBankModal] = useState(false);
   const [bankForm, setBankForm] = useState({
@@ -183,18 +194,19 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const loadData = async (isBackgroundPoll = false) => {
     try {
       if (isBackgroundPoll) {
-        // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, and audit logs
-        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes] = await Promise.all([
+        // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, audit logs, and db status
+        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes, dbRes] = await Promise.all([
           fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/customers').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
           fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
-          fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] }))
+          fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
+          fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({}))
         ]);
         if (statsRes?.success) setStats(statsRes);
         if (ordersRes?.success) setOrders(ordersRes.orders);
-        if (custRes?.success) setCustomers(custRes.customers);
+        if (custRes?.success && !customerEditModal.open) setCustomers(custRes.customers);
         if (chatsRes?.success) {
           setChats(chatsRes.chats);
           setLiveChatUnread(chatsRes.totalUnread || 0);
@@ -206,11 +218,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         if (logRes?.success) {
           setAuditLogs(logRes.logs || []);
         }
+        if (dbRes?.success) {
+          setDbStatus(dbRes.status);
+        }
         return;
       }
 
       // Initial or explicit full load
-      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes] = await Promise.all([
+      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes, dbRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/providers').then(r => r.json()).catch(() => ({})),
@@ -226,7 +241,8 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         fetch('/api/admin/quick-categories').then(r => r.json()).catch(() => ({ categories: [] })),
         fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
         fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
-        fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] }))
+        fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
+        fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({}))
       ]);
 
       if (statsRes?.success) setStats(statsRes);
@@ -237,7 +253,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
       if (gamesRes?.success) setGames(gamesRes.games);
       if (cpnRes?.success) setCoupons(cpnRes.coupons);
-      if (custRes?.success) setCustomers(custRes.customers);
+      if (custRes?.success && !customerEditModal.open) setCustomers(custRes.customers);
       if (setRes?.success) setSiteSettings(setRes.settings);
       if (admRes?.success) setAdmins(admRes.admins);
       if (sldRes?.success) setSlides(sldRes.slides);
@@ -258,6 +274,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
       if (logRes?.success) {
         setAuditLogs(logRes.logs || []);
+      }
+      if (dbRes?.success) {
+        setDbStatus(dbRes.status);
       }
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -880,6 +899,78 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
     } catch (e) {
       console.error("Failed to auto-save after bank deletion:", e);
+    }
+  };
+
+  // Database Backup, Restore & PostgreSQL Handlers
+  const handleDownloadBackup = () => {
+    window.open('/api/admin/database/backup', '_blank');
+  };
+
+  const handleRestoreBackup = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(`คุณต้องการกู้คืนข้อมูลระบบจากไฟล์ "${file.name}" ใช่หรือไม่? ข้อมูลปัจจุบันจะถูกแทนที่ด้วยข้อมูลจากไฟล์สำรองนี้`)) {
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        const res = await fetch('/api/admin/database/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ backupData: json, adminName: adminUser?.name || 'Admin' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`กู้คืนฐานข้อมูลสำเร็จเรียบร้อย! (สมาชิก ${data.usersCount} คน, ออเดอร์ ${data.ordersCount} รายการ)`);
+          loadData(false);
+        } else {
+          alert(data.message || 'กู้คืนฐานข้อมูลไม่สำเร็จ');
+        }
+      } catch (err) {
+        alert('ไฟล์สำรองไม่ถูกต้อง: ' + err.message);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConnectPostgres = async (e) => {
+    if (e) e.preventDefault();
+    if (!pgUrlInput.trim()) {
+      setPgConnectMsg({ type: 'error', text: 'กรุณากรอก DATABASE_URL' });
+      return;
+    }
+
+    setIsConnectingPg(true);
+    setPgConnectMsg({ type: '', text: '' });
+
+    try {
+      const res = await fetch('/api/admin/database/connect-pg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          databaseUrl: pgUrlInput.trim(),
+          adminName: adminUser?.name || 'Admin'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPgConnectMsg({ type: 'success', text: data.message });
+        loadData(false);
+      } else {
+        setPgConnectMsg({ type: 'error', text: data.message || 'เชื่อมต่อไม่สำเร็จ' });
+      }
+    } catch (err) {
+      setPgConnectMsg({ type: 'error', text: 'เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message });
+    } finally {
+      setIsConnectingPg(false);
     }
   };
 
@@ -3394,6 +3485,181 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* 5. DATABASE PERSISTENCE, BACKUP & CLOUD POSTGRESQL */}
+              <div className="p-6 rounded-2xl bg-cyber-card border border-amber-600/40 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <Database className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <h3 className="text-sm font-bold text-white font-['Kanit']">
+                        ความปลอดภัยฐานข้อมูล & ป้องกันข้อมูลรีเซ็ต (Data Persistence)
+                      </h3>
+                      <p className="text-xs text-zinc-400">
+                        จัดเก็บข้อมูลสมาชิก, ยอดเงิน, ประวัติคำสั่งซื้อ และสลิป ให้คงอยู่ถาวรไม่สูญหายเมื่ออัปเดตโค้ด
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-md">
+                    {dbStatus?.isPgConnected ? (
+                      <span className="text-emerald-400 border-emerald-800/60 bg-emerald-950/60 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        🟢 Cloud PostgreSQL (ถาวร 100%)
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 border-amber-800/60 bg-amber-950/60 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        💾 Local Storage + Rolling Auto-Backup
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Database Metrics Overview */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
+                    <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-blue-400" /> สมาชิกในระบบ
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">
+                      {dbStatus?.counts?.users ?? customers.length} คน
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
+                    <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> คำสั่งซื้อทั้งหมด
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">
+                      {dbStatus?.counts?.orders ?? orders.length} รายการ
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
+                    <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-400" /> บัญชีธนาคาร
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">
+                      {siteSettings.bankAccounts?.length || 0} บัญชี
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
+                    <div className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <FileCheck className="w-3.5 h-3.5 text-purple-400" /> รายการสลิปโอน
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">
+                      {deposits.length} รายการ
+                    </div>
+                  </div>
+                </div>
+
+                {/* Backup & Restore Action Buttons */}
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-xs text-zinc-300">
+                    <strong className="text-white block">สำรองและกู้คืนฐานข้อมูล (One-Click Backup & Restore)</strong>
+                    ดาวน์โหลดข้อมูลสำรองเก็บไว้ในคอมพิวเตอร์ของคุณ หรือนำไฟล์มาอัปโหลดเพื่อกู้คืนได้ทุกเมื่อ
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleDownloadBackup}
+                      className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow"
+                      title="ดาวน์โหลดไฟล์สำรองข้อมูล JSON ลงเครื่อง"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400" />
+                      <span>ดาวน์โหลดไฟล์สำรอง</span>
+                    </button>
+
+                    <label className="flex-1 sm:flex-initial cursor-pointer px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow">
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>กู้คืนจากไฟล์</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleRestoreBackup}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Cloud PostgreSQL Connect Box */}
+                <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Cloud className="w-4 h-4 text-cyan-400" />
+                      <span>เชื่อมต่อ Cloud Database (PostgreSQL) เพื่อให้ข้อมูลอยู่ถาวร 100%</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPgGuide(!showPgGuide)}
+                      className="text-[11px] text-amber-400 hover:underline flex items-center gap-1"
+                    >
+                      {showPgGuide ? 'ซ่อนคำแนะนำ' : '📖 วิธีสร้าง Render Postgres ฟรีใน 2 นาที'}
+                    </button>
+                  </div>
+
+                  {/* Collapsible Step-by-step Guide */}
+                  {showPgGuide && (
+                    <div className="p-3.5 rounded-xl bg-black/60 border border-zinc-700/80 text-[11px] text-zinc-300 space-y-2 leading-relaxed">
+                      <div className="font-bold text-amber-400">ขั้นตอนสร้าง PostgreSQL ฟรีบน Render:</div>
+                      <ol className="list-decimal list-inside space-y-1 text-zinc-300">
+                        <li>เข้าสู่ระบบที่ <a href="https://dashboard.render.com" target="_blank" rel="noreferrer" className="text-cyan-400 underline">dashboard.render.com</a></li>
+                        <li>กดปุ่ม <strong>"New +"</strong> ที่มุมขวาบน แล้วเลือก <strong>"PostgreSQL"</strong></li>
+                        <li>ตั้งชื่อฐานข้อมูล เช่น <code>boostup-db</code> แล้วกดปุ่ม <strong>"Create Database"</strong> (ฟรี 100%)</li>
+                        <li>เมื่อสร้างเสร็จ ในหน้าฐานข้อมูล เลื่อนลงมาที่หัวข้อ <strong>"Connections"</strong></li>
+                        <li>กด Copy ที่ <strong>"Internal Database URL"</strong> (หากเว็บรันบน Render) หรือ <strong>"External Database URL"</strong></li>
+                        <li>นำ URL มาวางในช่องด้านล่างนี้ แล้วกดปุ่ม <strong>"ทดสอบและเชื่อมต่อทันที"</strong></li>
+                      </ol>
+                      <div className="text-emerald-400 text-[10px] pt-1">
+                        ✓ เมื่อเชื่อมต่อสำเร็จ ข้อมูลสมาชิก, เงินในกระเป๋า, และออเดอร์ทั้งหมดจะถูกเก็บใน PostgreSQL ข้อมูลจะไม่มีวันสูญหายหรือรีเซ็ตเมื่ออัปเดตโค้ดอีกต่อไป!
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleConnectPostgres} className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="เช่น postgresql://postgres:password@ep-sample.render.com/boostup_db"
+                      value={pgUrlInput}
+                      onChange={(e) => setPgUrlInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs font-mono"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isConnectingPg}
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white text-xs font-bold shadow transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {isConnectingPg ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>กำลังเชื่อมต่อ...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>ทดสอบและเชื่อมต่อทันที</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {pgConnectMsg.text && (
+                    <div className={`text-xs p-2.5 rounded-xl border flex items-center gap-2 ${
+                      pgConnectMsg.type === 'success' 
+                        ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' 
+                        : 'bg-red-950/60 border-red-800 text-red-300'
+                    }`}>
+                      {pgConnectMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
+                      <span>{pgConnectMsg.text}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -22,3 +22,8 @@ client/dist/
 # Test sockets & temporary logs
 test.sock
 *.log
+
+# Database backups & temp files
+server/data/backups/
+server/data/*.tmp
+server/data/*.bak

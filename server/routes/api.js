@@ -1308,7 +1308,8 @@ router.post('/chat/message', async (req, res) => {
     const currentMode = chat.mode || 'ai';
     if (currentMode === 'ai') {
       const userObj = userId ? db.getUserById(userId) : null;
-      const aiReply = await aiChatService.generateReply(text, { chat, db, user: userObj });
+      const siteSettings = db.getSettings();
+      const aiReply = await aiChatService.generateReply(text, { chat, db, user: userObj, siteSettings });
 
       if (aiReply.shouldHandoffToHuman) {
         db.setChatMode(chat.id, 'human');

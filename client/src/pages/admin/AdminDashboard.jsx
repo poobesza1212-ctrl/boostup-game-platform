@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
@@ -66,7 +66,10 @@ import {
   Building2,
   Bot,
   Sparkles,
-  Headphones
+  Headphones,
+  Volume2,
+  VolumeX,
+  Bell
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -121,6 +124,127 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [retryingId, setRetryingId] = useState(null);
+
+  // Web Audio API Sound Synthesizer & Notification Chimes
+  const audioCtxRef = useRef(null);
+  const prevOrdersCountRef = useRef(null);
+  const prevPendingDepositsRef = useRef(null);
+  const prevHumanRequiredRef = useRef(null);
+  const isFirstLoadDoneRef = useRef(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('boostup_admin_sound') !== 'false';
+  });
+
+  const getAudioContext = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      return audioCtxRef.current;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const playNotificationSound = (type = 'order') => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const now = ctx.currentTime;
+
+      if (type === 'order') {
+        // High-energy upbeat 4-tone coin chime (C5 -> E5 -> G5 -> C6) Cash Register Arpeggio
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.3, now + idx * 0.08 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.28);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.3);
+        });
+      } else if (type === 'slip') {
+        // 2-tone bright alert chime (A5 -> D6)
+        const notes = [880.00, 1174.66];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.25, now + idx * 0.12 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.12 + 0.35);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + idx * 0.12);
+          osc.stop(now + idx * 0.12 + 0.38);
+        });
+      } else if (type === 'chat') {
+        // Double bell chime (E5 -> B5)
+        const notes = [659.25, 987.77];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.2, now + idx * 0.1 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.3);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + idx * 0.1);
+          osc.stop(now + idx * 0.1 + 0.32);
+        });
+      }
+    } catch (e) {
+      console.warn("Sound play error:", e);
+    }
+  };
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem('boostup_admin_sound', next ? 'true' : 'false');
+    if (next) {
+      setTimeout(() => playNotificationSound('order'), 50);
+    }
+  };
+
+  // Unlock Web Audio context on user interaction (browser policy)
+  useEffect(() => {
+    const unlockAudio = () => {
+      getAudioContext();
+    };
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, []);
 
   // Modals
   const [gameEditorModal, setGameEditorModal] = useState({ open: false, game: null });
@@ -374,6 +498,30 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         if (dbRes?.success) {
           setDbStatus(dbRes.status);
         }
+
+        // Sound alert triggers for new incoming orders, slips, or chat attention
+        if (isFirstLoadDoneRef.current) {
+          const newOrdersCount = ordersRes?.orders?.length || 0;
+          const newPendingCount = depRes?.pendingCount || 0;
+          const newHumanCount = chatsRes?.humanRequiredCount || 0;
+
+          if (prevOrdersCountRef.current !== null && newOrdersCount > prevOrdersCountRef.current) {
+            playNotificationSound('order');
+          } else if (prevPendingDepositsRef.current !== null && newPendingCount > prevPendingDepositsRef.current) {
+            playNotificationSound('slip');
+          } else if (prevHumanRequiredRef.current !== null && newHumanCount > prevHumanRequiredRef.current) {
+            playNotificationSound('chat');
+          }
+
+          prevOrdersCountRef.current = newOrdersCount;
+          prevPendingDepositsRef.current = newPendingCount;
+          prevHumanRequiredRef.current = newHumanCount;
+        } else {
+          prevOrdersCountRef.current = ordersRes?.orders?.length || 0;
+          prevPendingDepositsRef.current = depRes?.pendingCount || 0;
+          prevHumanRequiredRef.current = chatsRes?.humanRequiredCount || 0;
+          isFirstLoadDoneRef.current = true;
+        }
         return;
       }
 
@@ -446,6 +594,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
       if (dbRes?.success) {
         setDbStatus(dbRes.status);
+      }
+
+      if (!isFirstLoadDoneRef.current) {
+        prevOrdersCountRef.current = ordersRes?.orders?.length || 0;
+        prevPendingDepositsRef.current = depRes?.pendingCount || 0;
+        prevHumanRequiredRef.current = chatsRes?.humanRequiredCount || 0;
+        isFirstLoadDoneRef.current = true;
       }
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -1712,7 +1867,33 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Sound Notification Toggle & Test Chime */}
+            <div className="flex items-center gap-1.5 p-1 px-2.5 rounded-xl bg-zinc-900 border border-zinc-800 shadow-sm">
+              <button
+                type="button"
+                onClick={toggleSound}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  soundEnabled
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                    : 'bg-zinc-800/80 text-zinc-500 hover:text-zinc-300'
+                }`}
+                title={soundEnabled ? "คลิกเพื่อปิดเสียงแจ้งเตือนออเดอร์" : "คลิกเพื่อเปิดเสียงแจ้งเตือนออเดอร์"}
+              >
+                {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+                <span>{soundEnabled ? 'เสียงเตือน: เปิด' : 'เสียงเตือน: ปิด'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => playNotificationSound('order')}
+                className="px-2 py-1 rounded-lg text-[10px] text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all cursor-pointer font-medium"
+                title="คลิกเพื่อทดสอบฟังเสียงกระดิ่งรับเงิน"
+              >
+                ทดสอบเสียง
+              </button>
+            </div>
+
             <button
               onClick={handleResetStats}
               title="รีเซ็ตสถิติและคำสั่งซื้อทั้งหมดเป็น 0"
@@ -4223,6 +4404,63 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       onChange={(e) => setSiteSettings({ ...siteSettings, contactDiscord: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* 5.5. AI Chatbot Intelligence & Google Gemini Settings */}
+              <div className="p-6 rounded-2xl bg-cyber-card border border-purple-500/30 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-purple-400" />
+                      <span>ตั้งค่า AI Chatbot อัจฉริยะ (Google Gemini AI)</span>
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      เพิ่มความฉลาดให้ AI ตอบคำถามลูกค้าได้ทุกเรื่องในโลก (คุยเล่น, มุกตลก, ทริคเกม, วิทยาศาสตร์, ทั่วไป) โดยใส่ API Key ฟรีจาก Google AI Studio
+                    </p>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 shrink-0 self-start sm:self-auto ${
+                    siteSettings.geminiApiKey?.trim()
+                      ? 'bg-purple-950/80 text-purple-300 border-purple-700/60'
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  }`}>
+                    {siteSettings.geminiApiKey?.trim() ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                        <span>🟢 เปิดใช้งาน Gemini 1.5 Flash (ตอบได้ทุกเรื่อง)</span>
+                      </>
+                    ) : (
+                      <span>⚪ ใช้งาน Local AI ภายในร้าน (ออฟไลน์)</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-zinc-300 font-medium">Google Gemini API Key (ฟรี)</label>
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-400 hover:text-purple-300 text-[11px] flex items-center gap-1 hover:underline"
+                      >
+                        <span>ขอ API Key ฟรีจาก Google AI Studio</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <input
+                      type="password"
+                      value={siteSettings.geminiApiKey || ''}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, geminiApiKey: e.target.value })}
+                      placeholder="AIzaSy..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-all"
+                    />
+                    <p className="text-[10px] text-zinc-500 mt-1">
+                      * ไม่บังคับ หากไม่ใส่ คีย์เวิร์ดคุยเล่น, มุกตลก, แนะนำเกม และแก้ปัญหา จะทำงานผ่านระบบสมองกล Local AI ของร้านให้อัตโนมัติอยู่แล้วครับ
+                    </p>
                   </div>
                 </div>
               </div>

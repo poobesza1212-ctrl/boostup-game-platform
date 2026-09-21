@@ -921,11 +921,21 @@ class Database {
     }
 
     if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) this.data.appSubscriptions = defaultData.appSubscriptions;
-    if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) this.data.carouselSlides = defaultData.carouselSlides || [];
+    
+    // Carousel Slides: ONLY populate defaults if carouselSlides has NEVER been customized
+    if (!this.data.carouselSlidesCustomized) {
+      if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) {
+        this.data.carouselSlides = defaultData.carouselSlides || [];
+      }
+    } else {
+      if (!this.data.carouselSlides) this.data.carouselSlides = [];
+    }
+
     if (!this.data.orders) this.data.orders = [];
     if (!this.data.transactions) this.data.transactions = [];
     if (!this.data.chats) this.data.chats = [];
     if (!this.data.auditLogs) this.data.auditLogs = [];
+    if (!this.data.uploadedImages) this.data.uploadedImages = {};
     if (!this.data.gameRoutes) {
       this.data.gameRoutes = defaultData.gameRoutes;
     } else if (!this.data.gameRoutes.roblox) {
@@ -951,24 +961,39 @@ class Database {
         }
       }
 
-      // 2. Anti-Reset Recovery: If DB_FILE had no users, check AUTO_BACKUP_FILE
-      if ((!loaded || !this.data.users || this.data.users.length === 0) && fs.existsSync(AUTO_BACKUP_FILE)) {
+      // 2. Anti-Reset Recovery: Check AUTO_BACKUP_FILE (survives container recreation)
+      if (fs.existsSync(AUTO_BACKUP_FILE)) {
         try {
           const backupRaw = fs.readFileSync(AUTO_BACKUP_FILE, 'utf8');
           const backupParsed = JSON.parse(backupRaw);
-          if (backupParsed && backupParsed.users && backupParsed.users.length > 0) {
-            console.log(`🛡️ [Safety Recovery] Restored ${backupParsed.users.length} users from rolling auto-backup!`);
-            if (!this.data) this.data = backupParsed;
-            else {
-              this.data.users = backupParsed.users;
+          if (backupParsed && typeof backupParsed === 'object') {
+            if (!loaded || !this.data) {
+              this.data = backupParsed;
+              loaded = true;
+              console.log("🛡️ [Safety Recovery] Successfully recovered full database state from auto-backup file!");
+            } else {
+              // Deep merge recovery: ensure customized CMS, banners, and users are restored
+              if (backupParsed.users && backupParsed.users.length > (this.data.users?.length || 0)) {
+                this.data.users = backupParsed.users;
+              }
               if (backupParsed.transactions && (!this.data.transactions || this.data.transactions.length === 0)) {
                 this.data.transactions = backupParsed.transactions;
               }
               if (backupParsed.orders && (!this.data.orders || this.data.orders.length === 0)) {
                 this.data.orders = backupParsed.orders;
               }
+              if (backupParsed.carouselSlidesCustomized && backupParsed.carouselSlides) {
+                this.data.carouselSlides = backupParsed.carouselSlides;
+                this.data.carouselSlidesCustomized = true;
+              }
+              if (backupParsed.settingsCustomized && backupParsed.settings) {
+                this.data.settings = { ...this.data.settings, ...backupParsed.settings };
+                this.data.settingsCustomized = true;
+              }
+              if (backupParsed.uploadedImages) {
+                this.data.uploadedImages = { ...(this.data.uploadedImages || {}), ...backupParsed.uploadedImages };
+              }
             }
-            loaded = true;
           }
         } catch (e) {
           console.error("Backup recovery error:", e.message);
@@ -1009,14 +1034,32 @@ class Database {
       fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf8');
       fs.renameSync(tempPath, DB_FILE);
 
-      // Rolling auto-backup if we have users or orders
-      if (this.data && ((this.data.users && this.data.users.length > 0) || (this.data.orders && this.data.orders.length > 0))) {
+      // Rolling auto-backup on ANY modification (banners, CMS, settings, users, orders)
+      if (this.data) {
         if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
         fs.writeFileSync(AUTO_BACKUP_FILE, JSON.stringify(this.data, null, 2), 'utf8');
       }
     } catch (err) {
       console.error("Error saving database:", err);
     }
+  }
+
+  // Uploaded Image Cache in Database (Survives Ephemeral Disk Redeploys)
+  storeUploadedImage(filename, base64Data) {
+    if (!this.data) return;
+    if (!this.data.uploadedImages) this.data.uploadedImages = {};
+    // Keep up to 50 most recent uploaded images in DB cache
+    const keys = Object.keys(this.data.uploadedImages);
+    if (keys.length > 50) {
+      delete this.data.uploadedImages[keys[0]];
+    }
+    this.data.uploadedImages[filename] = base64Data;
+    this.save();
+  }
+
+  getUploadedImage(filename) {
+    if (!this.data || !this.data.uploadedImages) return null;
+    return this.data.uploadedImages[filename] || null;
   }
 
   exportDatabase() {
@@ -1327,15 +1370,63 @@ class Database {
     this.save();
   }
 
+  updateSettings(newSettings) {
+    this.data.settings = { ...this.data.settings, ...newSettings };
+    this.data.settingsCustomized = true;
+    this.save();
+    return this.data.settings;
+  }
+
+  // Users
+  findUserById(id) {
+    return this.data.users.find(u => u.id === id);
+  }
+
+  findUserByEmailOrUsername(identifier) {
+    return this.data.users.find(u => u.email === identifier || u.username === identifier);
+  }
+
+  createUser(userData) {
+    const newUser = {
+      id: `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+      role: 'user',
+      walletBalance: 0.00,
+      points: 50, // Welcome gift 50 points
+      tier: 'Bronze',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      ...userData
+    };
+    if (userData.password) {
+      newUser.passwordHash = crypto.createHash('sha256').update(userData.password).digest('hex');
+      delete newUser.password;
+    }
+    this.data.users.push(newUser);
+    this.save();
+    return newUser;
+  }
+
+  updateUser(id, updates) {
+    const user = this.findUserById(id);
+    if (!user) return null;
+    if (updates.password) {
+      user.passwordHash = crypto.createHash('sha256').update(updates.password).digest('hex');
+      delete updates.password;
+    }
+    Object.assign(user, updates);
+    this.save();
+    return user;
+  }
+
   // Carousel Slides (CMS)
   getCarouselSlides() {
-    const active = (this.data.carouselSlides || []).filter(s => s.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
-    if (active.length > 0) return active;
-    return this.resetCarouselSlidesToDefaults();
+    return (this.data.carouselSlides || [])
+      .filter(s => s.isActive)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }
 
   getAllCarouselSlidesAdmin() {
-    if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) {
+    if (!this.data.carouselSlidesCustomized && (!this.data.carouselSlides || this.data.carouselSlides.length === 0)) {
       return this.resetCarouselSlidesToDefaults();
     }
     return (this.data.carouselSlides || []).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
@@ -1343,6 +1434,7 @@ class Database {
 
   saveCarouselSlide(slide) {
     if (!this.data.carouselSlides) this.data.carouselSlides = [];
+    this.data.carouselSlidesCustomized = true;
     const idx = this.data.carouselSlides.findIndex(s => s.id === slide.id);
     if (idx !== -1) {
       this.data.carouselSlides[idx] = { ...this.data.carouselSlides[idx], ...slide };
@@ -1363,6 +1455,7 @@ class Database {
 
   saveCarouselSlidesBatch(slidesArray) {
     if (!this.data.carouselSlides) this.data.carouselSlides = [];
+    this.data.carouselSlidesCustomized = true;
     const added = [];
     let currentOrder = this.data.carouselSlides.length;
     for (const slide of slidesArray) {
@@ -1389,6 +1482,7 @@ class Database {
 
   updateCarouselSlide(id, updates) {
     if (!this.data.carouselSlides) return null;
+    this.data.carouselSlidesCustomized = true;
     const idx = this.data.carouselSlides.findIndex(s => s.id === id);
     if (idx !== -1) {
       this.data.carouselSlides[idx] = { ...this.data.carouselSlides[idx], ...updates };
@@ -1400,6 +1494,7 @@ class Database {
 
   reorderCarouselSlides(orderedIds) {
     if (!this.data.carouselSlides || !Array.isArray(orderedIds)) return this.data.carouselSlides || [];
+    this.data.carouselSlidesCustomized = true;
     orderedIds.forEach((id, index) => {
       const slide = this.data.carouselSlides.find(s => s.id === id);
       if (slide) slide.displayOrder = index + 1;
@@ -1410,6 +1505,7 @@ class Database {
   }
 
   resetCarouselSlidesToDefaults() {
+    this.data.carouselSlidesCustomized = false;
     this.data.carouselSlides = [
       {
         id: "slide_rov",
@@ -1470,11 +1566,13 @@ class Database {
 
   deleteCarouselSlide(id) {
     if (!this.data.carouselSlides) return;
+    this.data.carouselSlidesCustomized = true;
     this.data.carouselSlides = this.data.carouselSlides.filter(s => s.id !== id);
     this.save();
   }
 
   clearAllCarouselSlides() {
+    this.data.carouselSlidesCustomized = true;
     this.data.carouselSlides = [];
     this.save();
     return true;

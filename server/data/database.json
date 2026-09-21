@@ -967,6 +967,13 @@
       "displayOrder": 4,
       "isActive": true,
       "isPureGraphic": true
+    },
+    {
+      "id": "slide_1790005913882",
+      "displayOrder": 5,
+      "isActive": true,
+      "title": "Custom Banner",
+      "image": "/banners/custom.png"
     }
   ],
   "auditLogs": [
@@ -1412,5 +1419,9 @@
       ]
     }
   ],
-  "chats": []
+  "chats": [],
+  "uploadedImages": {
+    "test_img.png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+  },
+  "carouselSlidesCustomized": true
 }

@@ -38,8 +38,33 @@ app.get('/health', (req, res) => {
 
 const fs = require('fs');
 
-// Serve uploaded images
+// Serve uploaded images with Auto-Recovery from Database Image Cache
 const uploadsDir = path.join(__dirname, 'uploads');
+app.get('/uploads/:filename', (req, res, next) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, filename);
+
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+
+  // Recover from DB image cache if file was lost due to ephemeral disk redeploy
+  if (db && typeof db.getUploadedImage === 'function') {
+    const cachedBase64 = db.getUploadedImage(filename);
+    if (cachedBase64) {
+      try {
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+        const matches = cachedBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        const buffer = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(cachedBase64, 'base64');
+        fs.writeFileSync(filePath, buffer);
+        return res.sendFile(filePath);
+      } catch (err) {
+        console.error("Failed to restore image from DB cache:", err.message);
+      }
+    }
+  }
+  next();
+});
 app.use('/uploads', express.static(uploadsDir, { dotfiles: 'allow' }));
 
 // Serve frontend in production or if build exists

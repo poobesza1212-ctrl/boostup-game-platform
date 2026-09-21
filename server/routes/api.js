@@ -90,6 +90,11 @@ router.post('/upload', (req, res) => {
     const filePath = path.join(uploadsDir, uniqueName);
     fs.writeFileSync(filePath, dataBuffer);
 
+    // Store in DB image cache to survive Render container restarts & ephemeral disk wipes
+    if (db && typeof db.storeUploadedImage === 'function') {
+      db.storeUploadedImage(uniqueName, imageBase64);
+    }
+
     const publicUrl = `/uploads/${uniqueName}`;
     res.json({
       success: true,

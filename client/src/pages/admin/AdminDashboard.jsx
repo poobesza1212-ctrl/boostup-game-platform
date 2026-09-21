@@ -187,6 +187,57 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [customerSearch, setCustomerSearch] = useState('');
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
+  // Modern SweetAlert2-Style Action Confirmation Modal (Matches User Design)
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: 'ยืนยันการทำรายการ',
+    message: 'คุณแน่ใจใช่ไหมที่จะดำเนินการนี้ ?',
+    confirmText: 'ตกลง',
+    cancelText: 'ยกเลิก',
+    type: 'warning',
+    onConfirm: null,
+    onCancel: null
+  });
+
+  // Modern Alert Notification Modal (Success / Error / Info)
+  const [alertModal, setAlertModal] = useState({
+    open: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
+
+  const showConfirm = ({
+    title = 'ยืนยันการทำรายการ',
+    message = 'คุณแน่ใจใช่ไหมที่จะดำเนินการนี้ ?',
+    confirmText = 'ตกลง',
+    cancelText = 'ยกเลิก',
+    type = 'warning',
+    onConfirm,
+    onCancel
+  }) => {
+    setConfirmDialog({
+      open: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      type,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+        if (onConfirm) await onConfirm();
+      },
+      onCancel: () => {
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+        if (onCancel) onCancel();
+      }
+    });
+  };
+
+  const showAlert = ({ title, message, type = 'success' }) => {
+    setAlertModal({ open: true, title, message, type });
+  };
+
   // Admin Audit Logs Management
   const [auditLogs, setAuditLogs] = useState([]);
   const [logSearch, setLogSearch] = useState('');
@@ -352,25 +403,35 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   };
 
   // Handle Delete Game
-  const handleDeleteGame = async (gameId) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบเกมนี้ออกจากระบบ?')) return;
-    try {
-      const res = await fetch(`/api/admin/games/${gameId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        alert('ลบเกมเรียบร้อยแล้ว');
-        loadData();
+  const handleDeleteGame = (gameId) => {
+    showConfirm({
+      title: 'ยืนยันการลบเกม',
+      message: 'คุณแน่ใจใช่ไหมที่จะลบเกมนี้ออกจากระบบ ? ข้อมูลแพ็กเกจและราคาทั้งหมดของเกมนี้จะถูกลบออก',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/games/${gameId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            showAlert({ title: 'ลบเกมสำเร็จ', message: 'ลบเกมออกจากระบบเรียบร้อยแล้ว' });
+            loadData();
+          } else {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'ไม่สามารถลบเกมได้', type: 'error' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', type: 'error' });
+        }
       }
-    } catch (e) {
-      alert('เกิดข้อผิดพลาด');
-    }
+    });
   };
 
   // Handle Create / Delete Slide
   const handleCreateSlide = async (e) => {
     e.preventDefault();
     if (!slideForm.image) {
-      alert('กรุณาอัปโหลดรูปภาพแบนเนอร์');
+      showAlert({ title: 'แจ้งเตือน', message: 'กรุณาอัปโหลดรูปภาพแบนเนอร์', type: 'error' });
       return;
     }
     try {
@@ -384,19 +445,33 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         setNewSlideModal(false);
         setSlideForm({ title: '', subtitle: '', badge: '⚡ ดีลพิเศษ', badgeColor: 'bg-red-600 text-white', image: '', ctaText: 'ช้อปดีลทันที', ctaTarget: 'popular-games' });
         loadData();
+        showAlert({ title: 'สร้างแบนเนอร์สำเร็จ', message: 'เพิ่มแบนเนอร์ใหม่เข้าระบบเรียบร้อยแล้ว' });
       }
     } catch (e) {
-      alert('สร้างแบนเนอร์ไม่สำเร็จ');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'สร้างแบนเนอร์ไม่สำเร็จ', type: 'error' });
     }
   };
 
-  const handleDeleteSlide = async (slideId) => {
-    if (!confirm('ต้องการลบแบนเนอร์สไลด์นี้หรือไม่?')) return;
-    try {
-      const res = await fetch(`/api/admin/slides/${slideId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) loadData();
-    } catch (e) {}
+  const handleDeleteSlide = (slideId) => {
+    showConfirm({
+      title: 'ยืนยันการลบแบนเนอร์',
+      message: 'คุณแน่ใจใช่ไหมที่จะลบแบนเนอร์สไลด์นี้ออกจากหน้าแรก ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/slides/${slideId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบแบนเนอร์เรียบร้อยแล้ว' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', type: 'error' });
+        }
+      }
+    });
   };
 
   // Handle Multiple File Selection for Banner Carousel
@@ -545,31 +620,49 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   };
 
   // Restore Default Demo Banners
-  const handleRestoreDefaultSlides = async () => {
-    if (!confirm('ต้องการคืนค่าแบนเนอร์เกมตัวอย่าง (ROV, Free Fire, Valorant, Genshin) หรือไม่?')) return;
-    try {
-      const res = await fetch('/api/admin/slides/reset-defaults', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        loadData();
-        alert('คืนค่าแบนเนอร์เกมตัวอย่างสำเร็จเรียบร้อย!');
+  const handleRestoreDefaultSlides = () => {
+    showConfirm({
+      title: 'ยืนยันการคืนค่าแบนเนอร์',
+      message: 'ต้องการคืนค่าแบนเนอร์เกมตัวอย่าง (ROV, Free Fire, Valorant, Genshin) หรือไม่ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/admin/slides/reset-defaults', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'คืนค่าสำเร็จ', message: 'คืนค่าแบนเนอร์เกมตัวอย่างสำเร็จเรียบร้อย!' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการคืนค่า', type: 'error' });
+        }
       }
-    } catch (e) {
-      alert('เกิดข้อผิดพลาดในการคืนค่า');
-    }
+    });
   };
 
   // Clear All Slides
-  const handleClearAllSlides = async () => {
-    if (!confirm('คำเตือน: คุณต้องการลบแบนเนอร์ทั้งหมดในระบบใช่หรือไม่?')) return;
-    try {
-      const res = await fetch('/api/admin/slides/all', { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        loadData();
-        alert('ลบแบนเนอร์ทั้งหมดเรียบร้อยแล้ว');
+  const handleClearAllSlides = () => {
+    showConfirm({
+      title: 'คำเตือน: ลบแบนเนอร์ทั้งหมด',
+      message: 'คุณแน่ใจใช่ไหมว่าต้องการลบแบนเนอร์ทั้งหมดในระบบ ? หน้าร้านจะไม่มีสไลด์แสดงผล',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/admin/slides/all', { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบแบนเนอร์ทั้งหมดเรียบร้อยแล้ว' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการลบแบนเนอร์', type: 'error' });
+        }
       }
-    } catch (e) {}
+    });
   };
 
   // Save Edit Slide
@@ -586,43 +679,59 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (data.success) {
         setEditSlideModal(null);
         loadData();
-        alert('บันทึกการแก้ไขแบนเนอร์สำเร็จ');
+        showAlert({ title: 'บันทึกสำเร็จ', message: 'บันทึกการแก้ไขแบนเนอร์สำเร็จเรียบร้อย' });
       }
     } catch (e) {
-      alert('แก้ไขแบนเนอร์ไม่สำเร็จ');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'แก้ไขแบนเนอร์ไม่สำเร็จ', type: 'error' });
     }
   };
 
   // Handle Delete Admin
-  const handleDeleteAdmin = async (adminId) => {
-    if (!confirm('ต้องการลบบัญชีผู้ดูแลระบบนี้หรือไม่?')) return;
-    try {
-      const res = await fetch(`/api/admin/admins/${adminId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        alert('ลบบัญชีผู้ดูแลเรียบร้อย');
-        loadData();
-      } else {
-        alert(data.message || 'ลบไม่สำเร็จ');
+  const handleDeleteAdmin = (adminId) => {
+    showConfirm({
+      title: 'ยืนยันการลบผู้ดูแลระบบ',
+      message: 'ต้องการลบบัญชีผู้ดูแลระบบนี้หรือไม่ ? การกระทำนี้ไม่สามารถยกเลิกได้',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/admins/${adminId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบบัญชีผู้ดูแลเรียบร้อยแล้ว' });
+            loadData();
+          } else {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'ลบไม่สำเร็จ', type: 'error' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', type: 'error' });
+        }
       }
-    } catch (e) {
-      alert('เกิดข้อผิดพลาด');
-    }
+    });
   };
 
   // Handle Reset Stats & Orders to 0
-  const handleResetStats = async () => {
-    if (!confirm('ยืนยันการรีเซ็ตข้อมูลคำสั่งซื้อและสถิติหลังบ้านทั้งหมดให้เป็น 0 หรือไม่?')) return;
-    try {
-      const res = await fetch('/api/admin/reset-stats', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        loadData();
+  const handleResetStats = () => {
+    showConfirm({
+      title: 'ยืนยันการรีเซ็ตข้อมูล',
+      message: 'ยืนยันการรีเซ็ตข้อมูลคำสั่งซื้อและสถิติหลังบ้านทั้งหมดให้เป็น 0 หรือไม่ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/admin/reset-stats', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            showAlert({ title: 'รีเซ็ตสำเร็จ', message: data.message || 'รีเซ็ตข้อมูลเรียบร้อยแล้ว' });
+            loadData();
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการรีเซ็ต', type: 'error' });
+        }
       }
-    } catch (e) {
-      alert('เกิดข้อผิดพลาดในการรีเซ็ต');
-    }
+    });
   };
 
   // Handle Adjust Customer Wallet
@@ -640,12 +749,15 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`ปรับยอดเงินกระเป๋าสำเร็จ ยอดใหม่: ฿${data.user.walletBalance.toFixed(2)}`);
+        showAlert({
+          title: 'ปรับยอดเงินสำเร็จ!',
+          message: `ปรับยอดเงินกระเป๋าเรียบร้อย ยอดใหม่: ฿${data.user.walletBalance.toFixed(2)}`
+        });
         setSelectedCustomer(null);
         loadData(false);
       }
     } catch (e) {
-      alert('ไม่สามารถปรับยอดเงินได้');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถปรับยอดเงินได้', type: 'error' });
     }
   };
 
@@ -665,32 +777,54 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     });
   };
 
-  const handleSaveCustomer = async (e) => {
+  const handleSaveCustomer = (e) => {
     if (e) e.preventDefault();
     if (!customerEditModal.customer) return;
-    setIsSavingCustomer(true);
-    try {
-      const res = await fetch(`/api/admin/customers/${customerEditModal.customer.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...customerEditModal.form,
-          adminName: adminUser?.name || adminUser?.username || 'Admin'
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('✅ บันทึกการแก้ไขข้อมูลลูกค้าเรียบร้อยแล้ว');
-        setCustomerEditModal({ open: false, customer: null, form: {} });
-        loadData(false);
-      } else {
-        alert(data.message || 'ไม่สามารถบันทึกข้อมูลลูกค้าได้');
+
+    showConfirm({
+      title: 'ยืนยันการอัปเดตสมาชิก',
+      message: 'คุณแน่ใจใช่ไหมที่จะแก้ไขสมาชิกนี้ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsSavingCustomer(true);
+        try {
+          const res = await fetch(`/api/admin/customers/${customerEditModal.customer.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...customerEditModal.form,
+              adminName: adminUser?.name || adminUser?.username || 'Admin'
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setCustomerEditModal({ open: false, customer: null, form: {} });
+            loadData(false);
+            showAlert({
+              title: 'อัปเดตสมาชิกสำเร็จ!',
+              message: `บันทึกข้อมูลของ ${customerEditModal.form.name || customerEditModal.customer.username} เรียบร้อยแล้ว`,
+              type: 'success'
+            });
+          } else {
+            showAlert({
+              title: 'เกิดข้อผิดพลาด',
+              message: data.message || 'ไม่สามารถบันทึกข้อมูลลูกค้าได้',
+              type: 'error'
+            });
+          }
+        } catch (err) {
+          showAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์',
+            type: 'error'
+          });
+        } finally {
+          setIsSavingCustomer(false);
+        }
       }
-    } catch (err) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setIsSavingCustomer(false);
-    }
+    });
   };
 
   // Export Audit Logs to CSV
@@ -743,15 +877,26 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     }
   };
 
-  const handleDeleteFlashSale = async (id) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบดีล Flash Sale นี้?')) return;
-    try {
-      const res = await fetch(`/api/admin/flash-sales/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) loadData();
-    } catch (e) {
-      alert('เกิดข้อผิดพลาด');
-    }
+  const handleDeleteFlashSale = (id) => {
+    showConfirm({
+      title: 'ยืนยันการลบดีล Flash Sale',
+      message: 'คุณแน่ใจใช่ไหมที่จะลบดีล Flash Sale นี้ออกจากระบบ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/flash-sales/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบดีล Flash Sale เรียบร้อยแล้ว' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการลบดีล', type: 'error' });
+        }
+      }
+    });
   };
 
   // ----------------------------------------------------
@@ -771,23 +916,35 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (data.success) {
         setGiftCardModal({ open: false, item: null });
         loadData();
+        showAlert({ title: 'บันทึกสำเร็จ', message: 'บันทึกบัตรเติมเงินเรียบร้อยแล้ว' });
       } else {
-        alert(data.message || 'บันทึกบัตรเติมเงินไม่สำเร็จ');
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'บันทึกบัตรเติมเงินไม่สำเร็จ', type: 'error' });
       }
     } catch (e) {
-      alert('เกิดข้อผิดพลาด');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการบันทึก', type: 'error' });
     }
   };
 
-  const handleDeleteGiftCard = async (id) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบบัตรเติมเงินนี้?')) return;
-    try {
-      const res = await fetch(`/api/admin/gift-cards/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) loadData();
-    } catch (e) {
-      alert('เกิดข้อผิดพลาด');
-    }
+  const handleDeleteGiftCard = (id) => {
+    showConfirm({
+      title: 'ยืนยันการลบบัตรเติมเงิน',
+      message: 'คุณแน่ใจใช่ไหมที่จะลบบัตรเติมเงินนี้ออกจากระบบ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/gift-cards/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบบัตรเติมเงินเรียบร้อยแล้ว' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการลบ', type: 'error' });
+        }
+      }
+    });
   };
 
   // ----------------------------------------------------
@@ -807,23 +964,35 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (data.success) {
         setAppSubModal({ open: false, item: null });
         loadData();
+        showAlert({ title: 'บันทึกสำเร็จ', message: 'บันทึกบริการแอปเรียบร้อยแล้ว' });
       } else {
-        alert(data.message || 'บันทึกบริการแอปไม่สำเร็จ');
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'บันทึกบริการแอปไม่สำเร็จ', type: 'error' });
       }
     } catch (e) {
-      alert('เกิดข้อผิดพลาด');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการบันทึก', type: 'error' });
     }
   };
 
-  const handleDeleteAppSub = async (id) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบบริการแอปนี้?')) return;
-    try {
-      const res = await fetch(`/api/admin/app-subscriptions/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) loadData();
-    } catch (e) {
-      alert('เกิดข้อผิดพลาด');
-    }
+  const handleDeleteAppSub = (id) => {
+    showConfirm({
+      title: 'ยืนยันการลบบริการแอป',
+      message: 'คุณแน่ใจใช่ไหมที่จะลบบริการแอปนี้ออกจากระบบ ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/app-subscriptions/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            loadData();
+            showAlert({ title: 'ลบสำเร็จ', message: 'ลบบริการแอปเรียบร้อยแล้ว' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการลบ', type: 'error' });
+        }
+      }
+    });
   };
 
   // ----------------------------------------------------
@@ -977,38 +1146,49 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     window.open('/api/admin/database/backup', '_blank');
   };
 
-  const handleRestoreBackup = async (e) => {
+  const handleRestoreBackup = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm(`คุณต้องการกู้คืนข้อมูลระบบจากไฟล์ "${file.name}" ใช่หรือไม่? ข้อมูลปัจจุบันจะถูกแทนที่ด้วยข้อมูลจากไฟล์สำรองนี้`)) {
-      e.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const json = JSON.parse(event.target.result);
-        const res = await fetch('/api/admin/database/restore', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ backupData: json, adminName: adminUser?.name || 'Admin' })
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert(`กู้คืนฐานข้อมูลสำเร็จเรียบร้อย! (สมาชิก ${data.usersCount} คน, ออเดอร์ ${data.ordersCount} รายการ)`);
-          loadData(false);
-        } else {
-          alert(data.message || 'กู้คืนฐานข้อมูลไม่สำเร็จ');
-        }
-      } catch (err) {
-        alert('ไฟล์สำรองไม่ถูกต้อง: ' + err.message);
-      } finally {
+    showConfirm({
+      title: 'ยืนยันการกู้คืนฐานข้อมูล',
+      message: `คุณต้องการกู้คืนข้อมูลระบบจากไฟล์ "${file.name}" ใช่หรือไม่ ? ข้อมูลปัจจุบันจะถูกแทนที่ด้วยข้อมูลจากไฟล์สำรองนี้ทั้งหมด`,
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: () => {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const json = JSON.parse(event.target.result);
+            const res = await fetch('/api/admin/database/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ backupData: json, adminName: adminUser?.name || 'Admin' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              showAlert({
+                title: 'กู้คืนฐานข้อมูลสำเร็จ!',
+                message: `กู้คืนข้อมูลเรียบร้อย (สมาชิก ${data.usersCount} คน, ออเดอร์ ${data.ordersCount} รายการ)`,
+                type: 'success'
+              });
+              loadData(false);
+            } else {
+              showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'กู้คืนฐานข้อมูลไม่สำเร็จ', type: 'error' });
+            }
+          } catch (err) {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไฟล์สำรองไม่ถูกต้อง: ' + err.message, type: 'error' });
+          } finally {
+            e.target.value = '';
+          }
+        };
+        reader.readAsText(file);
+      },
+      onCancel: () => {
         e.target.value = '';
       }
-    };
-    reader.readAsText(file);
+    });
   };
 
   const handleConnectPostgres = async (e) => {
@@ -1095,56 +1275,81 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   });
 
   // Deposit Slip Approval Handlers
-  const handleApproveDeposit = async (id) => {
-    if (!window.confirm('ยืนยันอนุมัติสลิปนี้ และเติมเงินเข้ากระเป๋าลูกค้าทันที?')) return;
-    setIsProcessingSlip(true);
-    try {
-      const res = await fetch(`/api/admin/deposits/${id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminName: adminUser?.name || 'Admin' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('✅ อนุมัติสลิปและเติมเงินเข้ากระเป๋าลูกค้าเรียบร้อยแล้ว!');
-        setSelectedSlipModal(null);
-        loadData(false);
-      } else {
-        alert(`❌ ไม่สามารถอนุมัติได้: ${data.message}`);
+  const handleApproveDeposit = (id) => {
+    showConfirm({
+      title: 'ยืนยันการอนุมัติสลิป',
+      message: 'คุณแน่ใจใช่ไหมที่จะอนุมัติสลิปนี้ และเติมเงินเข้ากระเป๋าลูกค้าทันที ?',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsProcessingSlip(true);
+        try {
+          const res = await fetch(`/api/admin/deposits/${id}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminUser?.name || 'Admin' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setSelectedSlipModal(null);
+            loadData(false);
+            showAlert({
+              title: 'อนุมัติสลิปสำเร็จ!',
+              message: 'อนุมัติสลิปและเติมเงินเข้ากระเป๋าลูกค้าเรียบร้อยแล้ว',
+              type: 'success'
+            });
+          } else {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: `ไม่สามารถอนุมัติได้: ${data.message}`, type: 'error' });
+          }
+        } catch (err) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', type: 'error' });
+        } finally {
+          setIsProcessingSlip(false);
+        }
       }
-    } catch (err) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setIsProcessingSlip(false);
-    }
+    });
   };
 
-  const handleRejectDeposit = async () => {
+  const handleRejectDeposit = () => {
     if (!rejectReasonModal) return;
-    setIsProcessingSlip(true);
-    try {
-      const res = await fetch(`/api/admin/deposits/${rejectReasonModal.id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reason: rejectReasonText.trim() || 'สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง',
-          adminName: adminUser?.name || 'Admin'
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('ปฏิเสธรายการสลิปเรียบร้อยแล้ว');
-        setRejectReasonModal(null);
-        setSelectedSlipModal(null);
-        loadData(false);
-      } else {
-        alert(`❌ ไม่สามารถปฏิเสธได้: ${data.message}`);
+    showConfirm({
+      title: 'ยืนยันการปฏิเสธสลิป',
+      message: 'คุณแน่ใจใช่ไหมที่จะปฏิเสธรายการสลิปนี้ ? ยอดเงินจะไม่เข้ากระเป๋าลูกค้า',
+      confirmText: 'ตกลง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsProcessingSlip(true);
+        try {
+          const res = await fetch(`/api/admin/deposits/${rejectReasonModal.id}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reason: rejectReasonText.trim() || 'สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง',
+              adminName: adminUser?.name || 'Admin'
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setRejectReasonModal(null);
+            setSelectedSlipModal(null);
+            loadData(false);
+            showAlert({
+              title: 'ปฏิเสธสลิปเรียบร้อย',
+              message: 'ปฏิเสธรายการสลิปและแจ้งให้ลูกค้าทราบแล้ว',
+              type: 'info'
+            });
+          } else {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: `ไม่สามารถปฏิเสธได้: ${data.message}`, type: 'error' });
+          }
+        } catch (err) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', type: 'error' });
+        } finally {
+          setIsProcessingSlip(false);
+        }
       }
-    } catch (err) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setIsProcessingSlip(false);
-    }
+    });
   };
 
   // Filtered deposits list
@@ -5002,6 +5207,84 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-lg shadow-red-600/30 cursor-pointer disabled:opacity-50"
               >
                 ยืนยันปฏิเสธสลิป
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Universal Action Confirmation Modal (Matches User Design) */}
+      {confirmDialog.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
+            {/* Warning Icon */}
+            <div className="w-24 h-24 rounded-full border-[3px] border-[#ffedd5] bg-white flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <span className="text-5xl font-light text-[#f97316] font-serif select-none leading-none -mt-1">
+                !
+              </span>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-[#374151] font-['Kanit',sans-serif] tracking-tight">
+              {confirmDialog.title}
+            </h3>
+
+            {/* Subtitle / Question */}
+            <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed px-2">
+              {confirmDialog.message}
+            </p>
+
+            {/* Buttons */}
+            <div className="flex items-center gap-3 mt-7 w-full">
+              <button
+                type="button"
+                onClick={confirmDialog.onCancel}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-700 font-bold text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
+              >
+                {confirmDialog.cancelText || 'ยกเลิก'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDialog.onConfirm}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
+              >
+                {confirmDialog.confirmText || 'ตกลง'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert / Notification Modal (Success / Error / Info) */}
+      {alertModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
+            {alertModal.type === 'error' ? (
+              <div className="w-20 h-20 rounded-full border-[3px] border-red-200 bg-red-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <X className="w-10 h-10 text-red-500 stroke-[3]" />
+              </div>
+            ) : alertModal.type === 'info' ? (
+              <div className="w-20 h-20 rounded-full border-[3px] border-blue-200 bg-blue-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <span className="text-4xl font-bold text-blue-500 font-serif select-none">i</span>
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-full border-[3px] border-emerald-200 bg-emerald-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <Check className="w-10 h-10 text-emerald-500 stroke-[3]" />
+              </div>
+            )}
+            <h3 className="text-xl font-bold text-[#374151] font-['Kanit',sans-serif]">
+              {alertModal.title}
+            </h3>
+            <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed">
+              {alertModal.message}
+            </p>
+            <div className="mt-6 w-full">
+              <button
+                type="button"
+                onClick={() => setAlertModal({ open: false, title: '', message: '', type: 'success' })}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 cursor-pointer"
+              >
+                ตกลง
               </button>
             </div>
           </div>

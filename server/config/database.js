@@ -605,7 +605,8 @@ const defaultData = {
       ]
     }
   ],
-  chats: []
+  chats: [],
+  auditLogs: []
 };
 
 class Database {
@@ -1093,15 +1094,20 @@ class Database {
   logAction(adminId, adminName, action, details) {
     if (!this.data.auditLogs) this.data.auditLogs = [];
     this.data.auditLogs.unshift({
-      id: `log_${Date.now()}`,
-      adminId,
-      adminName,
+      id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      adminId: adminId || 'admin',
+      adminName: adminName || 'Admin',
       action,
       details,
       createdAt: new Date().toISOString()
     });
-    if (this.data.auditLogs.length > 200) this.data.auditLogs.pop();
+    if (this.data.auditLogs.length > 1000) this.data.auditLogs.pop();
     this.save();
+  }
+
+  getAuditLogs() {
+    if (!this.data.auditLogs) this.data.auditLogs = [];
+    return [...this.data.auditLogs].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
   // Games

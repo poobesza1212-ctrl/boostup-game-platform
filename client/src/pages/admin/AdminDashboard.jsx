@@ -46,7 +46,12 @@ import {
   XCircle,
   Check,
   X,
-  Mail
+  Mail,
+  History,
+  Download,
+  Filter,
+  Phone,
+  UserCog
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -142,17 +147,40 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState('100');
 
+  // Customer Edit Modal & Search
+  const [customerEditModal, setCustomerEditModal] = useState({
+    open: false,
+    customer: null,
+    form: {
+      name: '',
+      phone: '',
+      email: '',
+      password: '',
+      tier: 'Bronze',
+      walletBalance: 0
+    }
+  });
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+
+  // Admin Audit Logs Management
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [logSearch, setLogSearch] = useState('');
+  const [logActionFilter, setLogActionFilter] = useState('all');
+  const [logDateFilter, setLogDateFilter] = useState('all');
+
   // Load Admin Data
   const loadData = async (isBackgroundPoll = false) => {
     try {
       if (isBackgroundPoll) {
-        // Fast background poll: only refresh live stats, orders, customers, chats, and slip deposits
-        const [statsRes, ordersRes, custRes, chatsRes, depRes] = await Promise.all([
+        // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, and audit logs
+        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes] = await Promise.all([
           fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/customers').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
-          fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 }))
+          fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
+          fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] }))
         ]);
         if (statsRes?.success) setStats(statsRes);
         if (ordersRes?.success) setOrders(ordersRes.orders);
@@ -165,11 +193,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
           setDeposits(depRes.deposits || []);
           setPendingDepositsCount(depRes.pendingCount || 0);
         }
+        if (logRes?.success) {
+          setAuditLogs(logRes.logs || []);
+        }
         return;
       }
 
       // Initial or explicit full load
-      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes] = await Promise.all([
+      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/providers').then(r => r.json()).catch(() => ({})),
@@ -184,7 +215,8 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         fetch('/api/admin/app-subscriptions').then(r => r.json()).catch(() => ({ appSubscriptions: [] })),
         fetch('/api/admin/quick-categories').then(r => r.json()).catch(() => ({ categories: [] })),
         fetch('/api/admin/chats').then(r => r.json()).catch(() => ({ chats: [], totalUnread: 0 })),
-        fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 }))
+        fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
+        fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] }))
       ]);
 
       if (statsRes?.success) setStats(statsRes);
@@ -213,6 +245,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (depRes?.success) {
         setDeposits(depRes.deposits || []);
         setPendingDepositsCount(depRes.pendingCount || 0);
+      }
+      if (logRes?.success) {
+        setAuditLogs(logRes.logs || []);
       }
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -371,17 +406,90 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const res = await fetch(`/api/admin/customers/${selectedCustomer.id}/wallet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(adjustAmount), action })
+        body: JSON.stringify({
+          amount: Number(adjustAmount),
+          action,
+          adminName: adminUser?.name || adminUser?.username || 'Admin'
+        })
       });
       const data = await res.json();
       if (data.success) {
         alert(`ปรับยอดเงินกระเป๋าสำเร็จ ยอดใหม่: ฿${data.user.walletBalance.toFixed(2)}`);
         setSelectedCustomer(null);
-        loadData();
+        loadData(false);
       }
     } catch (e) {
-        alert('ไม่สามารถปรับยอดเงินได้');
+      alert('ไม่สามารถปรับยอดเงินได้');
     }
+  };
+
+  // Handle Edit Customer Profile (Name, Phone, Email, Password, Tier, Wallet)
+  const handleOpenEditCustomer = (cust) => {
+    setCustomerEditModal({
+      open: true,
+      customer: cust,
+      form: {
+        name: cust.name || '',
+        phone: cust.phone || '',
+        email: cust.email || '',
+        password: '',
+        tier: cust.tier || 'Bronze',
+        walletBalance: cust.walletBalance || 0
+      }
+    });
+  };
+
+  const handleSaveCustomer = async (e) => {
+    if (e) e.preventDefault();
+    if (!customerEditModal.customer) return;
+    setIsSavingCustomer(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${customerEditModal.customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...customerEditModal.form,
+          adminName: adminUser?.name || adminUser?.username || 'Admin'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ บันทึกการแก้ไขข้อมูลลูกค้าเรียบร้อยแล้ว');
+        setCustomerEditModal({ open: false, customer: null, form: {} });
+        loadData(false);
+      } else {
+        alert(data.message || 'ไม่สามารถบันทึกข้อมูลลูกค้าได้');
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
+
+  // Export Audit Logs to CSV
+  const handleExportAuditLogsCSV = () => {
+    if (!auditLogs || auditLogs.length === 0) {
+      alert('ยังไม่มีข้อมูลประวัติกิจกรรมให้ส่งออก');
+      return;
+    }
+    const headers = ['รหัสอ้างอิง (Log ID)', 'วันที่และเวลา (Timestamp)', 'ผู้ดำเนินการ (Admin)', 'ประเภทกิจกรรม (Action)', 'รายละเอียด (Details)'];
+    const rows = auditLogs.map(log => [
+      `"${log.id || ''}"`,
+      `"${new Date(log.createdAt).toLocaleString('th-TH')}"`,
+      `"${log.adminName || log.adminId || ''}"`,
+      `"${log.action || ''}"`,
+      `"${(log.details || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `boostup_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // ----------------------------------------------------
@@ -687,6 +795,49 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     return true;
   });
 
+  // Filtered customers list
+  const filteredCustomers = customers.filter(c => {
+    if (!customerSearch) return true;
+    const q = customerSearch.toLowerCase();
+    return (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.username && c.username.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.toLowerCase().includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q));
+  });
+
+  // Filtered audit logs list
+  const filteredAuditLogs = auditLogs.filter(log => {
+    // Action filter
+    if (logActionFilter === 'admin_only' && log.adminId === 'user') return false;
+    if (logActionFilter !== 'all' && logActionFilter !== 'admin_only') {
+      if (logActionFilter === 'APPROVE_SLIP' && log.action !== 'APPROVE_SLIP') return false;
+      if (logActionFilter === 'REJECT_SLIP' && log.action !== 'REJECT_SLIP') return false;
+      if (logActionFilter === 'UPDATE_CUSTOMER' && log.action !== 'UPDATE_CUSTOMER') return false;
+      if (logActionFilter === 'ADJUST_WALLET' && log.action !== 'ADJUST_WALLET') return false;
+      if (logActionFilter === 'SETTINGS' && !['UPDATE_SETTINGS', 'SAVE_GAME', 'DELETE_GAME', 'SAVE_SLIDE', 'DELETE_SLIDE', 'CREATE_COUPON', 'DELETE_COUPON', 'SAVE_FLASH_SALE', 'DELETE_FLASH_SALE'].includes(log.action)) return false;
+      if (logActionFilter === 'AUTH' && !['ADMIN_LOGIN_SUCCESS', 'ADMIN_LOGIN_FAILED', 'PASSWORD_RESET_SUCCESS', 'OTP_REQUESTED'].includes(log.action)) return false;
+    }
+
+    // Date filter
+    if (logDateFilter === 'today') {
+      const today = new Date().toISOString().slice(0, 10);
+      if (!log.createdAt || !log.createdAt.startsWith(today)) return false;
+    } else if (logDateFilter === 'week') {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (new Date(log.createdAt) < weekAgo) return false;
+    }
+
+    // Search query
+    if (logSearch) {
+      const q = logSearch.toLowerCase();
+      return (log.id && log.id.toLowerCase().includes(q)) ||
+        (log.adminName && log.adminName.toLowerCase().includes(q)) ||
+        (log.action && log.action.toLowerCase().includes(q)) ||
+        (log.details && log.details.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
   const navItems = [
     { id: 'overview', label: 'แผงควบคุม', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'slips', label: 'อนุมัติสลิปเติมเงิน', icon: <FileCheck className="w-4 h-4 text-emerald-400" />, count: pendingDepositsCount },
@@ -700,8 +851,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     { id: 'cms', label: 'แบนเนอร์ & หน้าร้าน (CMS)', icon: <LayoutGrid className="w-4 h-4 text-emerald-400" /> },
     { id: 'providers', label: 'ผู้ให้บริการ API', icon: <GitFork className="w-4 h-4" /> },
     { id: 'coupons', label: 'โปรโมชั่น & คูปอง', icon: <Tag className="w-4 h-4" /> },
-    { id: 'customers', label: 'ลูกค้า & กระเป๋าเงิน', icon: <Users className="w-4 h-4" /> },
+    { id: 'customers', label: 'ลูกค้า & กระเป๋าเงิน', icon: <Users className="w-4 h-4" />, count: customers.length },
     { id: 'admins', label: 'ผู้ดูแล & สิทธิ์ (RBAC)', icon: <Shield className="w-4 h-4" />, count: admins.length },
+    { id: 'audit_logs', label: 'ประวัติกิจกรรมแอดมิน', icon: <History className="w-4 h-4 text-amber-400" />, count: auditLogs.length },
     { id: 'settings', label: 'ตั้งค่าเว็บไซต์ & ชำระเงิน', icon: <Settings className="w-4 h-4" /> }
   ];
 
@@ -2246,56 +2398,114 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
           {/* TAB 8: CUSTOMERS */}
           {activeTab === 'customers' && (
-            <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 overflow-x-auto">
-              <h3 className="text-sm font-bold text-white font-['Kanit'] mb-4">รายชื่อสมาชิกและลูกค้าในระบบ</h3>
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400 uppercase text-[10px]">
-                    <th className="py-3 px-3">ชื่อ / Username</th>
-                    <th className="py-3 px-3">อีเมล</th>
-                    <th className="py-3 px-3">ระดับ (Tier)</th>
-                    <th className="py-3 px-3">ยอดเงินกระเป๋า</th>
-                    <th className="py-3 px-3">แต้มสะสม</th>
-                    <th className="py-3 px-3 text-right">ปรับยอดเงิน</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {customers.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-12 text-center text-zinc-500 text-xs">
-                        ยังไม่มีสมาชิกลงทะเบียนในระบบ (ระบบพร้อมรับผู้ใช้งานใหม่)
-                      </td>
+            <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <Users className="w-4 h-4 text-red-500" />
+                    รายชื่อสมาชิกและลูกค้าในระบบ ({customers.length} บัญชี)
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    ตรวจสอบยอดเงินในกระเป๋า แก้ไขข้อมูลติดต่อ (เบอร์โทร, ชื่อ, อีเมล, รีเซ็ตรหัสผ่าน) และปรับยอดเงิน
+                  </p>
+                </div>
+                
+                {/* Search Bar */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-72">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder="ค้นหาชื่อ, @username, เบอร์โทร, อีเมล..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 transition-colors"
+                    />
+                  </div>
+                  {customerSearch && (
+                    <button
+                      onClick={() => setCustomerSearch('')}
+                      className="px-2.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs whitespace-nowrap"
+                    >
+                      ล้างค้นหา
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-400 uppercase text-[10px]">
+                      <th className="py-3 px-3">ชื่อ / Username</th>
+                      <th className="py-3 px-3">เบอร์โทรศัพท์</th>
+                      <th className="py-3 px-3">อีเมล</th>
+                      <th className="py-3 px-3">ระดับ (Tier)</th>
+                      <th className="py-3 px-3">ยอดเงินกระเป๋า</th>
+                      <th className="py-3 px-3">แต้มสะสม</th>
+                      <th className="py-3 px-3 text-right">การจัดการ</th>
                     </tr>
-                  ) : (
-                    customers.map((cust) => (
-                      <tr key={cust.id} className="hover:bg-zinc-900/40">
-                        <td className="py-3.5 px-3">
-                          <span className="font-bold text-white">{cust.name}</span>
-                          <span className="block text-[10px] text-zinc-500">@{cust.username}</span>
-                        </td>
-                        <td className="py-3.5 px-3 text-zinc-400">{cust.email}</td>
-                        <td className="py-3.5 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/50">
-                            {cust.tier || 'Bronze'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-3 font-bold font-['Kanit'] text-emerald-400">
-                          ฿{Number(cust.walletBalance || 0).toFixed(2)}
-                        </td>
-                        <td className="py-3.5 px-3 text-zinc-300">{cust.points || 0} Coins</td>
-                        <td className="py-3.5 px-3 text-right">
-                          <button
-                            onClick={() => setSelectedCustomer(cust)}
-                            className="px-3 py-1 rounded bg-zinc-800 hover:bg-red-600 text-[10px] font-bold text-white transition-colors"
-                          >
-                            + ปรับเงินกระเป๋า
-                          </button>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60">
+                    {filteredCustomers.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="py-12 text-center text-zinc-500 text-xs">
+                          {customerSearch ? `ไม่พบข้อมูลลูกค้าที่ตรงกับ "${customerSearch}"` : 'ยังไม่มีสมาชิกลงทะเบียนในระบบ (ระบบพร้อมรับผู้ใช้งานใหม่)'}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredCustomers.map((cust) => (
+                        <tr key={cust.id} className="hover:bg-zinc-900/40">
+                          <td className="py-3.5 px-3">
+                            <span className="font-bold text-white block">{cust.name}</span>
+                            <span className="text-[10px] text-zinc-500">@{cust.username}</span>
+                          </td>
+                          <td className="py-3.5 px-3">
+                            {cust.phone ? (
+                              <span className="inline-flex items-center gap-1 font-mono text-zinc-200 bg-zinc-900/80 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                                <Phone className="w-2.5 h-2.5 text-emerald-400" />
+                                {cust.phone}
+                              </span>
+                            ) : (
+                              <span className="text-zinc-600 text-[11px] italic">ยังไม่ระบุ</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-zinc-400 font-mono text-[11px]">{cust.email}</td>
+                          <td className="py-3.5 px-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800/50">
+                              {cust.tier || 'Bronze'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 font-bold font-['Kanit'] text-emerald-400 text-sm">
+                            ฿{Number(cust.walletBalance || 0).toFixed(2)}
+                          </td>
+                          <td className="py-3.5 px-3 text-zinc-300">{cust.points || 0} Coins</td>
+                          <td className="py-3.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditCustomer(cust)}
+                                className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-amber-600 hover:text-white text-zinc-300 text-[11px] font-semibold transition-all flex items-center gap-1 border border-zinc-700"
+                                title="แก้ไขข้อมูลลูกค้า เช่น เบอร์, ชื่อ, อีเมล, รหัสผ่าน"
+                              >
+                                <Edit3 className="w-3 h-3 text-amber-400" />
+                                <span>แก้ไข</span>
+                              </button>
+                              <button
+                                onClick={() => setSelectedCustomer(cust)}
+                                className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-red-600 text-white text-[11px] font-semibold transition-all flex items-center gap-1 border border-zinc-700"
+                                title="ปรับยอดเงินในกระเป๋า"
+                              >
+                                <Wallet className="w-3 h-3 text-emerald-400" />
+                                <span>ปรับเงิน</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -2762,6 +2972,326 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
             </div>
           )}
 
+          {/* TAB 11: ADMIN AUDIT LOGS & ACTIVITY HISTORY */}
+          {activeTab === 'audit_logs' && (
+            <div className="space-y-6">
+              
+              {/* Top Banner / Summary */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-amber-950/50 via-zinc-900 to-black border border-amber-900/40">
+                <div>
+                  <h3 className="text-lg font-black text-white font-['Kanit'] flex items-center gap-2.5">
+                    <History className="w-6 h-6 text-amber-400" />
+                    <span>บันทึกและประวัติกิจกรรมแอดมิน (Admin Audit Logs & Activity History)</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    เก็บบันทึกประวัติการทำรายการทุกขั้นตอนของผู้ดูแลระบบอย่างละเอียด เช่น อนุมัติสลิป, ปฏิเสธสลิป, แก้ไขข้อมูลลูกค้า, ปรับเงิน, แก้ไขเกม/โปรโมชั่น และตั้งค่าร้านค้า
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={handleExportAuditLogsCSV}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 text-xs font-semibold text-amber-300 hover:text-white transition-all cursor-pointer shadow-sm"
+                    title="ดาวน์โหลดประวัติเป็นไฟล์ CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>ส่งออก CSV</span>
+                  </button>
+                  <button
+                    onClick={() => loadData(false)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>รีเฟรช</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Counters */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-amber-500/40">
+                  <div className="text-xs text-amber-400 font-bold flex items-center justify-between">
+                    <span>กิจกรรมทั้งหมด</span>
+                    <History className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-white font-['Kanit'] mt-1">
+                    {auditLogs.length} <span className="text-xs font-normal text-zinc-400">รายการ</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-emerald-500/40">
+                  <div className="text-xs text-emerald-400 font-bold flex items-center justify-between">
+                    <span>อนุมัติสลิปเติมเงิน</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-emerald-400 font-['Kanit'] mt-1">
+                    {auditLogs.filter(l => l.action === 'APPROVE_SLIP').length} <span className="text-xs font-normal text-zinc-400">ครั้ง</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-red-500/40">
+                  <div className="text-xs text-red-400 font-bold flex items-center justify-between">
+                    <span>ปฏิเสธสลิปโอนเงิน</span>
+                    <XCircle className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-red-400 font-['Kanit'] mt-1">
+                    {auditLogs.filter(l => l.action === 'REJECT_SLIP').length} <span className="text-xs font-normal text-zinc-400">ครั้ง</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-purple-500/40">
+                  <div className="text-xs text-purple-400 font-bold flex items-center justify-between">
+                    <span>แก้ไขลูกค้า & ปรับเงิน</span>
+                    <UserCog className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-purple-400 font-['Kanit'] mt-1">
+                    {auditLogs.filter(l => l.action === 'UPDATE_CUSTOMER' || l.action === 'ADJUST_WALLET').length} <span className="text-xs font-normal text-zinc-400">ครั้ง</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  
+                  {/* Search Input */}
+                  <div className="relative flex-1 w-full sm:w-auto">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder="ค้นหาชื่อแอดมิน, รายการกิจกรรม, หรือข้อความรายละเอียด..."
+                      value={logSearch}
+                      onChange={(e) => setLogSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/50 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Date Filter */}
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0 text-xs">
+                    <span className="text-zinc-400 text-[11px]">ช่วงเวลา:</span>
+                    {[
+                      { id: 'all', label: 'ทั้งหมด' },
+                      { id: 'today', label: 'วันนี้' },
+                      { id: 'week', label: '7 วันล่าสุด' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setLogDateFilter(tab.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          logDateFilter === tab.id
+                            ? 'bg-amber-600 text-white font-bold'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                </div>
+
+                {/* Category Filter Pills */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-zinc-800/60 text-xs">
+                  <span className="text-zinc-400 text-[11px] mr-1 flex items-center gap-1">
+                    <Filter className="w-3 h-3 text-amber-400" />
+                    กรองประเภท:
+                  </span>
+                  {[
+                    { id: 'all', label: 'ทั้งหมด', count: auditLogs.length },
+                    { id: 'admin_only', label: 'เฉพาะแอดมิน', count: auditLogs.filter(l => l.adminId !== 'user').length },
+                    { id: 'APPROVE_SLIP', label: 'อนุมัติสลิป', count: auditLogs.filter(l => l.action === 'APPROVE_SLIP').length },
+                    { id: 'REJECT_SLIP', label: 'ปฏิเสธสลิป', count: auditLogs.filter(l => l.action === 'REJECT_SLIP').length },
+                    { id: 'UPDATE_CUSTOMER', label: 'แก้ไขข้อมูลลูกค้า', count: auditLogs.filter(l => l.action === 'UPDATE_CUSTOMER').length },
+                    { id: 'ADJUST_WALLET', label: 'ปรับเงินกระเป๋า', count: auditLogs.filter(l => l.action === 'ADJUST_WALLET').length },
+                    { id: 'SETTINGS', label: 'จัดการร้าน & เกม', count: auditLogs.filter(l => ['UPDATE_SETTINGS', 'SAVE_GAME', 'DELETE_GAME', 'SAVE_SLIDE', 'DELETE_SLIDE', 'CREATE_COUPON', 'DELETE_COUPON', 'SAVE_FLASH_SALE', 'DELETE_FLASH_SALE'].includes(l.action)).length },
+                    { id: 'AUTH', label: 'ความปลอดภัย/ล็อกอิน', count: auditLogs.filter(l => ['ADMIN_LOGIN_SUCCESS', 'ADMIN_LOGIN_FAILED', 'PASSWORD_RESET_SUCCESS', 'OTP_REQUESTED'].includes(l.action)).length }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setLogActionFilter(cat.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors flex items-center gap-1.5 ${
+                        logActionFilter === cat.id
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 font-bold'
+                          : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 border border-transparent'
+                      }`}
+                    >
+                      <span>{cat.label}</span>
+                      <span className={`px-1 py-0.2 rounded text-[10px] ${
+                        logActionFilter === cat.id ? 'bg-amber-500 text-black font-bold' : 'bg-zinc-700 text-zinc-300'
+                      }`}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Logs List Table */}
+              <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 overflow-x-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-xs text-zinc-400">
+                    แสดง <strong>{filteredAuditLogs.length}</strong> รายการ จากทั้งหมด {auditLogs.length} รายการ
+                  </div>
+                  {logSearch && (
+                    <button
+                      onClick={() => setLogSearch('')}
+                      className="text-xs text-amber-400 hover:underline"
+                    >
+                      ล้างคำค้นหา
+                    </button>
+                  )}
+                </div>
+
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-400 uppercase text-[10px]">
+                      <th className="py-3 px-3">วันที่ & เวลา</th>
+                      <th className="py-3 px-3">ผู้ดำเนินการ</th>
+                      <th className="py-3 px-3">ประเภทกิจกรรม</th>
+                      <th className="py-3 px-3">รายละเอียดการทำรายการ</th>
+                      <th className="py-3 px-3 text-right">รหัสอ้างอิง</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60">
+                    {filteredAuditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="py-16 text-center text-zinc-500">
+                          <History className="w-8 h-8 mx-auto mb-2 text-zinc-600 opacity-60" />
+                          <div className="text-xs">ไม่พบรายการประวัติกิจกรรมตามเงื่อนไขที่เลือก</div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAuditLogs.map((log) => {
+                        // Action Badge styling
+                        let badgeColor = 'bg-zinc-800 text-zinc-300 border-zinc-700';
+                        let actionLabel = log.action;
+                        let actionIcon = <History className="w-3 h-3" />;
+
+                        if (log.action === 'APPROVE_SLIP') {
+                          badgeColor = 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60';
+                          actionLabel = 'อนุมัติสลิปเงินเข้า';
+                          actionIcon = <CheckCircle2 className="w-3 h-3 text-emerald-400" />;
+                        } else if (log.action === 'REJECT_SLIP') {
+                          badgeColor = 'bg-red-950/80 text-red-300 border-red-800/60';
+                          actionLabel = 'ปฏิเสธสลิปโอนเงิน';
+                          actionIcon = <XCircle className="w-3 h-3 text-red-400" />;
+                        } else if (log.action === 'UPDATE_CUSTOMER') {
+                          badgeColor = 'bg-amber-950/80 text-amber-300 border-amber-800/60';
+                          actionLabel = 'แก้ไขข้อมูลลูกค้า';
+                          actionIcon = <UserCog className="w-3 h-3 text-amber-400" />;
+                        } else if (log.action === 'ADJUST_WALLET') {
+                          badgeColor = 'bg-purple-950/80 text-purple-300 border-purple-800/60';
+                          actionLabel = 'ปรับยอดเงินกระเป๋า';
+                          actionIcon = <Wallet className="w-3 h-3 text-purple-400" />;
+                        } else if (log.action === 'UPDATE_SETTINGS') {
+                          badgeColor = 'bg-sky-950/80 text-sky-300 border-sky-800/60';
+                          actionLabel = 'ตั้งค่าร้าน & ชำระเงิน';
+                          actionIcon = <Settings className="w-3 h-3 text-sky-400" />;
+                        } else if (log.action === 'SAVE_GAME' || log.action === 'DELETE_GAME') {
+                          badgeColor = 'bg-indigo-950/80 text-indigo-300 border-indigo-800/60';
+                          actionLabel = log.action === 'SAVE_GAME' ? 'บันทึกข้อมูลเกม' : 'ลบเกม';
+                          actionIcon = <Gamepad2 className="w-3 h-3 text-indigo-400" />;
+                        } else if (log.action === 'CREATE_COUPON' || log.action === 'DELETE_COUPON') {
+                          badgeColor = 'bg-orange-950/80 text-orange-300 border-orange-800/60';
+                          actionLabel = log.action === 'CREATE_COUPON' ? 'สร้างคูปองส่วนลด' : 'ลบคูปอง';
+                          actionIcon = <Tag className="w-3 h-3 text-orange-400" />;
+                        } else if (log.action === 'ADMIN_LOGIN_SUCCESS') {
+                          badgeColor = 'bg-cyan-950/80 text-cyan-300 border-cyan-800/60';
+                          actionLabel = 'แอดมินเข้าสู่ระบบ';
+                          actionIcon = <ShieldCheck className="w-3 h-3 text-cyan-400" />;
+                        } else if (log.action === 'ADMIN_LOGIN_FAILED') {
+                          badgeColor = 'bg-rose-950/80 text-rose-300 border-rose-800/60';
+                          actionLabel = 'ล็อกอินไม่สำเร็จ';
+                          actionIcon = <AlertTriangle className="w-3 h-3 text-rose-400" />;
+                        } else if (log.action === 'PASSWORD_RESET_SUCCESS') {
+                          badgeColor = 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60';
+                          actionLabel = 'รีเซ็ตรหัสผ่านสำเร็จ';
+                          actionIcon = <Key className="w-3 h-3 text-emerald-400" />;
+                        } else if (log.action === 'CHAT_REPLY') {
+                          badgeColor = 'bg-teal-950/80 text-teal-300 border-teal-800/60';
+                          actionLabel = 'ตอบแชทลูกค้า';
+                          actionIcon = <MessageSquare className="w-3 h-3 text-teal-400" />;
+                        } else if (log.action === 'RESET_STATS') {
+                          badgeColor = 'bg-yellow-950/80 text-yellow-300 border-yellow-800/60';
+                          actionLabel = 'รีเซ็ตสถิติระบบ';
+                          actionIcon = <RotateCw className="w-3 h-3 text-yellow-400" />;
+                        } else if (log.action === 'SLIP_SUBMITTED') {
+                          badgeColor = 'bg-blue-950/80 text-blue-300 border-blue-800/60';
+                          actionLabel = 'ลูกค้าส่งสลิปโอน';
+                          actionIcon = <Clock className="w-3 h-3 text-blue-400" />;
+                        }
+
+                        // Time formatting
+                        const logDate = log.createdAt ? new Date(log.createdAt) : new Date();
+                        const timeThai = logDate.toLocaleString('th-TH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        });
+
+                        return (
+                          <tr key={log.id} className="hover:bg-zinc-900/40 transition-colors">
+                            
+                            {/* Date & Time */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className="font-mono text-white text-[11px] block">{timeThai}</span>
+                              <span className="text-[10px] text-zinc-500">
+                                {Math.floor((Date.now() - logDate.getTime()) / 60000) < 60
+                                  ? `${Math.max(1, Math.floor((Date.now() - logDate.getTime()) / 60000))} นาทีที่แล้ว`
+                                  : Math.floor((Date.now() - logDate.getTime()) / 3600000) < 24
+                                  ? `${Math.floor((Date.now() - logDate.getTime()) / 3600000)} ชั่วโมงที่แล้ว`
+                                  : `${Math.floor((Date.now() - logDate.getTime()) / 86400000)} วันที่แล้ว`}
+                              </span>
+                            </td>
+
+                            {/* Operator / Admin */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
+                                  log.adminId === 'user'
+                                    ? 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                                    : 'bg-red-950/80 text-red-300 border-red-800/60'
+                                }`}>
+                                  <Shield className="w-2.5 h-2.5 text-red-400" />
+                                  {log.adminName || log.adminId || 'Admin'}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Action Type */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${badgeColor}`}>
+                                {actionIcon}
+                                <span>{actionLabel}</span>
+                              </span>
+                            </td>
+
+                            {/* Details */}
+                            <td className="py-3.5 px-3 text-zinc-200">
+                              <span className="font-medium text-xs leading-relaxed">{log.details}</span>
+                            </td>
+
+                            {/* Log ID */}
+                            <td className="py-3.5 px-3 text-right whitespace-nowrap">
+                              <span className="font-mono text-[10px] text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-800">
+                                {log.id ? `#${log.id.replace('log_', '').slice(0, 12)}` : '-'}
+                              </span>
+                            </td>
+
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          )}
+
         </div>
 
       </main>
@@ -2868,6 +3398,166 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 - ลดเงิน
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Edit Modal (Edit Name, Phone, Email, Password, Tier, Wallet) */}
+      {customerEditModal.open && customerEditModal.customer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-[#0e121a] border border-amber-600/50 rounded-3xl p-6 space-y-4 shadow-2xl text-slate-100 font-['Prompt',sans-serif]">
+            
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                  <UserCog className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-['Kanit']">
+                    แก้ไขข้อมูลลูกค้า (@{customerEditModal.customer.username})
+                  </h3>
+                  <div className="text-[10px] text-zinc-400">
+                    รหัสลูกค้า: {customerEditModal.customer.id}
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCustomerEditModal({ open: false, customer: null, form: {} })} 
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomer} className="space-y-4 text-xs">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">ชื่อ-นามสกุล / ชื่อแสดง *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customerEditModal.form.name || ''}
+                    onChange={(e) => setCustomerEditModal({
+                      ...customerEditModal,
+                      form: { ...customerEditModal.form, name: e.target.value }
+                    })}
+                    placeholder="เช่น สมชาย ใจดี"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">เบอร์โทรศัพท์ (Phone)</label>
+                  <div className="relative">
+                    <Phone className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="tel"
+                      value={customerEditModal.form.phone || ''}
+                      onChange={(e) => setCustomerEditModal({
+                        ...customerEditModal,
+                        form: { ...customerEditModal.form, phone: e.target.value }
+                      })}
+                      placeholder="เช่น 0812345678"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">อีเมลติดต่อ (Email) *</label>
+                  <input
+                    type="email"
+                    required
+                    value={customerEditModal.form.email || ''}
+                    onChange={(e) => setCustomerEditModal({
+                      ...customerEditModal,
+                      form: { ...customerEditModal.form, email: e.target.value }
+                    })}
+                    placeholder="customer@example.com"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">
+                    รีเซ็ตรหัสผ่านใหม่ <span className="text-zinc-500 font-normal">(เว้นว่างหากไม่เปลี่ยน)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customerEditModal.form.password || ''}
+                    onChange={(e) => setCustomerEditModal({
+                      ...customerEditModal,
+                      form: { ...customerEditModal.form, password: e.target.value }
+                    })}
+                    placeholder="ตั้งรหัสผ่านใหม่ให้ลูกค้า"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-zinc-800/80">
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">ระดับสมาชิก (Tier)</label>
+                  <select
+                    value={customerEditModal.form.tier || 'Bronze'}
+                    onChange={(e) => setCustomerEditModal({
+                      ...customerEditModal,
+                      form: { ...customerEditModal.form, tier: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Bronze">Bronze (สมาชิกทั่วไป)</option>
+                    <option value="Silver">Silver</option>
+                    <option value="Gold">Gold</option>
+                    <option value="Platinum">Platinum</option>
+                    <option value="VIP">VIP (สิทธิพิเศษสูงสุด)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-zinc-300 block mb-1 font-semibold">ยอดเงินในกระเป๋า (บาท)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">฿</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customerEditModal.form.walletBalance}
+                      onChange={(e) => setCustomerEditModal({
+                        ...customerEditModal,
+                        form: { ...customerEditModal.form, walletBalance: parseFloat(e.target.value) || 0 }
+                      })}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-emerald-400 font-bold font-['Kanit'] text-sm focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300/90 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>การแก้ไขนี้จะมีผลต่อบัญชีลูกค้าทันที และจะถูกบันทึกประวัติลงใน Audit Logs อัตโนมัติ</span>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerEditModal({ open: false, customer: null, form: {} })}
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCustomer}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:brightness-110 text-white font-bold shadow-lg shadow-red-600/30 disabled:opacity-50 font-['Kanit']"
+                >
+                  {isSavingCustomer ? 'กำลังบันทึก...' : 'บันทึกข้อมูลลูกค้า'}
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}

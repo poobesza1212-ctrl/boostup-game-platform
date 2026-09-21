@@ -332,6 +332,7 @@ router.post('/auth/login', (req, res) => {
       username: user.username,
       name: user.name,
       email: user.email,
+      phone: user.phone || '',
       role: user.role,
       walletBalance: user.walletBalance,
       points: user.points,
@@ -341,7 +342,7 @@ router.post('/auth/login', (req, res) => {
 });
 
 router.post('/auth/register', (req, res) => {
-  const { username, email, password, name } = req.body;
+  const { username, email, password, name, phone } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
   }
@@ -355,7 +356,8 @@ router.post('/auth/register', (req, res) => {
     username,
     email,
     password,
-    name: name || username
+    name: name || username,
+    phone: phone || ''
   });
 
   res.json({
@@ -365,12 +367,55 @@ router.post('/auth/register', (req, res) => {
       username: newUser.username,
       name: newUser.name,
       email: newUser.email,
+      phone: newUser.phone || '',
       role: newUser.role,
       walletBalance: newUser.walletBalance,
       points: newUser.points,
       tier: newUser.tier
     }
   });
+});
+
+// Update Customer Self Profile
+router.put('/user/profile', (req, res) => {
+  try {
+    const { userId, name, phone, email } = req.body;
+    if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบรหัสผู้ใช้' });
+
+    const user = db.findUserById(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้' });
+
+    const updates = {};
+    if (name && name.trim()) updates.name = name.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+    if (email && email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existing = db.findUserByEmail(cleanEmail);
+      if (existing && existing.id !== user.id) {
+        return res.status(400).json({ success: false, message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+      }
+      updates.email = cleanEmail;
+    }
+
+    const updated = db.updateUser(user.id, updates);
+    res.json({
+      success: true,
+      message: 'อัปเดตข้อมูลโปรไฟล์เรียบร้อย',
+      user: {
+        id: updated.id,
+        username: updated.username,
+        name: updated.name,
+        email: updated.email,
+        phone: updated.phone || '',
+        role: updated.role,
+        walletBalance: updated.walletBalance,
+        points: updated.points,
+        tier: updated.tier
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Request Password Reset OTP to registered Email
@@ -975,7 +1020,10 @@ router.post('/admin/coupons', (req, res) => {
 });
 
 router.delete('/admin/coupons/:id', (req, res) => {
+  const coupon = (db.data.coupons || []).find(c => c.id === req.params.id);
+  const code = coupon ? coupon.code : req.params.id;
   db.deleteCoupon(req.params.id);
+  db.logAction('admin', req.query.adminName || 'Admin', 'DELETE_COUPON', `ลบคูปองส่วนลด: "${code}"`);
   res.json({ success: true });
 });
 
@@ -986,6 +1034,7 @@ router.get('/admin/customers', (req, res) => {
     name: u.name,
     username: u.username,
     email: u.email,
+    phone: u.phone || '',
     role: u.role,
     walletBalance: u.walletBalance,
     points: u.points,
@@ -995,8 +1044,81 @@ router.get('/admin/customers', (req, res) => {
   res.json({ success: true, customers: users });
 });
 
+// Admin: Edit customer details (name, phone, email, password, tier, walletBalance)
+router.put('/admin/customers/:id', (req, res) => {
+  try {
+    const { name, phone, email, password, tier, walletBalance, points, adminName } = req.body;
+    const user = db.findUserById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้ที่ระบุ' });
+
+    const updates = {};
+    const changedFields = [];
+
+    if (name !== undefined && name.trim() !== (user.name || '')) {
+      updates.name = name.trim();
+      changedFields.push(`ชื่อ: "${updates.name}"`);
+    }
+    if (phone !== undefined && phone.trim() !== (user.phone || '')) {
+      updates.phone = phone.trim();
+      changedFields.push(`เบอร์โทร: "${updates.phone}"`);
+    }
+    if (email !== undefined && email.trim().toLowerCase() !== (user.email || '').toLowerCase()) {
+      const existing = db.findUserByEmail(email.trim().toLowerCase());
+      if (existing && existing.id !== user.id) {
+        return res.status(400).json({ success: false, message: 'อีเมลนี้ถูกใช้งานโดยบัญชีอื่นแล้ว' });
+      }
+      updates.email = email.trim().toLowerCase();
+      changedFields.push(`อีเมล: "${updates.email}"`);
+    }
+    if (password && password.trim()) {
+      updates.password = password.trim();
+      changedFields.push('รีเซ็ตรหัสผ่านใหม่');
+    }
+    if (tier !== undefined && tier !== user.tier) {
+      updates.tier = tier;
+      changedFields.push(`ระดับ: "${tier}"`);
+    }
+    if (walletBalance !== undefined && !isNaN(walletBalance)) {
+      const numBal = Number(walletBalance);
+      if (numBal !== user.walletBalance) {
+        updates.walletBalance = numBal;
+        changedFields.push(`ยอดเงิน: ฿${numBal.toLocaleString()}`);
+      }
+    }
+    if (points !== undefined && !isNaN(points)) {
+      updates.points = Number(points);
+    }
+
+    const updatedUser = db.updateUser(user.id, updates);
+    const details = changedFields.length > 0
+      ? `แก้ไขข้อมูลลูกค้า @${user.username} (${changedFields.join(', ')})`
+      : `แก้ไขข้อมูลลูกค้า @${user.username} (ไม่มีการเปลี่ยนแปลง)`;
+
+    db.logAction('admin', adminName || 'Admin', 'UPDATE_CUSTOMER', details);
+
+    res.json({
+      success: true,
+      message: 'บันทึกการแก้ไขข้อมูลลูกค้าเรียบร้อย',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        phone: updatedUser.phone || '',
+        role: updatedUser.role,
+        walletBalance: updatedUser.walletBalance,
+        points: updatedUser.points,
+        tier: updatedUser.tier,
+        createdAt: updatedUser.createdAt
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.post('/admin/customers/:id/wallet', (req, res) => {
-  const { amount, action } = req.body;
+  const { amount, action, adminName } = req.body;
   const user = db.findUserById(req.params.id);
   if (!user) return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
 
@@ -1006,14 +1128,16 @@ router.post('/admin/customers/:id/wallet', (req, res) => {
   else newBal = Number(amount);
 
   const updated = db.updateUser(user.id, { walletBalance: newBal });
-  db.logAction('admin', 'Admin', 'ADJUST_WALLET', `ปรับยอดเงินลูกค้า ${user.username} จำนวน ฿${amount}`);
+  const actionText = action === 'add' ? `เพิ่มเงิน +฿${Number(amount).toLocaleString()}` : action === 'subtract' ? `หักเงิน -฿${Number(amount).toLocaleString()}` : `ตั้งยอดเงินเป็น ฿${Number(amount).toLocaleString()}`;
+  db.logAction('admin', adminName || 'Admin', 'ADJUST_WALLET', `ปรับยอดเงินลูกค้า @${user.username}: ${actionText} (ยอดคงเหลือใหม่: ฿${newBal.toLocaleString()})`);
   res.json({ success: true, user: updated });
 });
 
 // Update Website Settings (CMS)
 router.put('/admin/settings', (req, res) => {
-  const settings = db.updateSettings(req.body);
-  db.logAction('admin', 'Admin', 'UPDATE_SETTINGS', 'อัปเดตการตั้งค่าเว็บไซต์และหน้าร้าน');
+  const { adminName, ...settingsData } = req.body;
+  const settings = db.updateSettings(settingsData);
+  db.logAction('admin', adminName || 'Admin', 'UPDATE_SETTINGS', 'อัปเดตการตั้งค่าเว็บไซต์และบัญชีธนาคารรับเงิน');
   res.json({ success: true, settings });
 });
 
@@ -1130,6 +1254,7 @@ router.post('/admin/chats/:id/reply', (req, res) => {
   }
 
   db.markChatAsRead(req.params.id, 'admin');
+  db.logAction('admin', adminName || 'Admin', 'CHAT_REPLY', `ตอบแชทลูกค้า (ห้อง #${req.params.id}): ${text.length > 60 ? text.substring(0, 57) + '...' : text}`);
   res.json({ success: true, chat: result.chat, message: result.message });
 });
 
@@ -1138,6 +1263,20 @@ router.put('/admin/chats/:id/read', (req, res) => {
   const chat = db.markChatAsRead(req.params.id, 'admin');
   if (!chat) return res.status(404).json({ success: false, message: 'ไม่พบห้องแชท' });
   res.json({ success: true, chat });
+});
+
+// ==========================================
+// 10. ADMIN AUDIT LOGS APIS
+// ==========================================
+
+// Admin: Get all Audit Logs
+router.get('/admin/audit-logs', (req, res) => {
+  try {
+    const logs = db.getAuditLogs ? db.getAuditLogs() : (db.data.auditLogs || []).slice().reverse();
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

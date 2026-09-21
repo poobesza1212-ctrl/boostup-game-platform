@@ -322,6 +322,34 @@ const defaultData = {
         { id: "hok_800", name: "800 + 95 Tokens", currencyAmount: 895, originalPrice: 429, price: 349, costPrice: 305, bonus: "+95 ฟรี", isPopular: false },
         { id: "hok_pass", name: "Season Battle Pass", currencyAmount: 1, originalPrice: 350, price: 289, costPrice: 250, bonus: "สกินพิเศษ", isPopular: true }
       ]
+    },
+    {
+      id: "roblox",
+      name: "Roblox (Robux)",
+      publisher: "Roblox Corporation",
+      slug: "roblox",
+      category: "Sandbox / MMO",
+      icon: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      badge: "🔥 เรตถูกสุด เติมไว",
+      currencyName: "Robux",
+      inputType: "username",
+      inputPlaceholder: "กรอกชื่อผู้ใช้ Roblox (Username)",
+      inputHelp: "ดู Username ได้ที่หน้าโปรไฟล์ของคุณใน roblox.com (ไม่ใช่ Display Name)",
+      isPopular: true,
+      displayOrder: 4,
+      isActive: true,
+      packages: [
+        { id: "rob_80", name: "80 Robux", currencyAmount: 80, originalPrice: 39, price: 35, costPrice: 30, bonus: "+0", isPopular: false },
+        { id: "rob_160", name: "160 Robux", currencyAmount: 160, originalPrice: 79, price: 69, costPrice: 60, bonus: "+5 Robux ฟรี", isPopular: false },
+        { id: "rob_400", name: "400 Robux", currencyAmount: 400, originalPrice: 179, price: 159, costPrice: 140, bonus: "+15 Robux ฟรี", isPopular: true },
+        { id: "rob_800", name: "800 Robux", currencyAmount: 800, originalPrice: 359, price: 319, costPrice: 280, bonus: "+40 Robux ฟรี", isPopular: true },
+        { id: "rob_1200", name: "1,200 Robux", currencyAmount: 1200, originalPrice: 540, price: 475, costPrice: 420, bonus: "+80 Robux ฟรี", isPopular: false },
+        { id: "rob_1700", name: "1,700 Robux", currencyAmount: 1700, originalPrice: 740, price: 649, costPrice: 570, bonus: "+150 Robux ฟรี", isPopular: true },
+        { id: "rob_2000", name: "2,000 Robux", currencyAmount: 2000, originalPrice: 890, price: 769, costPrice: 680, bonus: "+200 Robux ฟรี", isPopular: false },
+        { id: "rob_4500", name: "4,500 Robux", currencyAmount: 4500, originalPrice: 1990, price: 1690, costPrice: 1500, bonus: "+500 Robux ฟรี", isPopular: false },
+        { id: "rob_10000", name: "10,000 Robux (VIP Pack)", currencyAmount: 10000, originalPrice: 4200, price: 3590, costPrice: 3200, bonus: "+1,200 Robux ฟรี", isPopular: true },
+        { id: "rob_prem_450", name: "Roblox Premium (450 Robux/เดือน)", currencyAmount: 450, originalPrice: 229, price: 199, costPrice: 175, bonus: "สิทธิพิเศษ + โบนัส 10%", isPopular: true }
+      ]
     }
   ],
   providers: [
@@ -339,7 +367,7 @@ const defaultData = {
       successRate: 99.4,
       priority: 1,
       isActive: true,
-      supportedGames: ["rov", "freefire", "pubg_mobile", "hok"]
+      supportedGames: ["rov", "freefire", "pubg_mobile", "hok", "roblox"]
     },
     {
       id: "prov_unipin",
@@ -355,7 +383,7 @@ const defaultData = {
       successRate: 98.8,
       priority: 2,
       isActive: true,
-      supportedGames: ["rov", "freefire", "pubg_mobile", "genshin", "valorant"]
+      supportedGames: ["rov", "freefire", "pubg_mobile", "genshin", "valorant", "roblox"]
     },
     {
       id: "prov_codashop",
@@ -371,7 +399,7 @@ const defaultData = {
       successRate: 99.7,
       priority: 3,
       isActive: true,
-      supportedGames: ["valorant", "genshin", "pubg_mobile"]
+      supportedGames: ["valorant", "genshin", "pubg_mobile", "roblox"]
     },
     {
       id: "prov_lapak",
@@ -387,7 +415,7 @@ const defaultData = {
       successRate: 97.9,
       priority: 4,
       isActive: true,
-      supportedGames: ["rov", "hok", "freefire"]
+      supportedGames: ["rov", "hok", "freefire", "roblox"]
     }
   ],
   gameRoutes: {
@@ -396,7 +424,8 @@ const defaultData = {
     "pubg_mobile": { primary: "prov_smileone", fallback: "prov_codashop" },
     "valorant": { primary: "prov_codashop", fallback: "prov_unipin" },
     "genshin": { primary: "prov_unipin", fallback: "prov_codashop" },
-    "hok": { primary: "prov_smileone", fallback: "prov_lapak" }
+    "hok": { primary: "prov_smileone", fallback: "prov_lapak" },
+    "roblox": { primary: "prov_smileone", fallback: "prov_unipin" }
   },
   coupons: [
     {
@@ -515,6 +544,34 @@ const defaultData = {
       soldStock: 36,
       currencyAmount: 325,
       currencyName: "UC"
+    },
+    {
+      id: "fs_roblox_800",
+      gameId: "roblox",
+      gameName: "Roblox (Robux)",
+      packageName: "800 Robux (Flash Deal 🔥)",
+      icon: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      originalPrice: 359,
+      flashPrice: 279,
+      discountPercent: 22,
+      totalStock: 50,
+      soldStock: 36,
+      currencyAmount: 800,
+      currencyName: "Robux"
+    },
+    {
+      id: "fs_roblox_1700",
+      gameId: "roblox",
+      gameName: "Roblox (Robux)",
+      packageName: "1,700 Robux (Flash Deal 🔥)",
+      icon: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      originalPrice: 740,
+      flashPrice: 549,
+      discountPercent: 26,
+      totalStock: 40,
+      soldStock: 28,
+      currencyAmount: 1700,
+      currencyName: "Robux"
     }
   ],
   giftCards: [
@@ -554,9 +611,15 @@ const defaultData = {
       icon: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
       badge: "ยอดนิยมในวัยรุ่น",
       denominations: [
-        { id: "gc_rob_100", name: "100 THB (ประมาณ 250 Robux)", price: 105 },
-        { id: "gc_rob_300", name: "300 THB (ประมาณ 800 Robux)", price: 310 },
-        { id: "gc_rob_500", name: "500 THB (ประมาณ 1,400 Robux)", price: 515 }
+        { id: "gc_rob_50", name: "50 THB (รับ ~120 Robux)", price: 55 },
+        { id: "gc_rob_100", name: "100 THB (รับ ~250 Robux)", price: 105 },
+        { id: "gc_rob_150", name: "150 THB (รับ ~380 Robux)", price: 155 },
+        { id: "gc_rob_300", name: "300 THB (รับ ~800 Robux)", price: 310 },
+        { id: "gc_rob_500", name: "500 THB (รับ ~1,400 Robux + Virtual Item)", price: 515 },
+        { id: "gc_rob_750", name: "750 THB (รับ ~2,100 Robux + Virtual Item)", price: 765 },
+        { id: "gc_rob_1000", name: "1,000 THB (รับ ~3,000 Robux + Virtual Item)", price: 1030 },
+        { id: "gc_rob_1500", name: "1,500 THB (รับ ~4,500 Robux + Virtual Item)", price: 1540 },
+        { id: "gc_rob_2000", name: "2,000 THB (รับ ~6,000 Robux + Virtual Item)", price: 2050 }
       ]
     },
     {
@@ -773,16 +836,56 @@ class Database {
     }
     if (!this.data.users) this.data.users = [];
     if (!this.data.admins) this.data.admins = defaultData.admins || [];
-    if (!this.data.games || this.data.games.length === 0) this.data.games = defaultData.games;
+
+    // Games: ensure defaults exist, and merge any missing default games (e.g. roblox)
+    if (!this.data.games || this.data.games.length === 0) {
+      this.data.games = defaultData.games;
+    } else {
+      defaultData.games.forEach(dg => {
+        if (!this.data.games.some(g => g.id === dg.id || g.slug === dg.slug)) {
+          this.data.games.push(dg);
+        }
+      });
+    }
+
     if (!this.data.quickCategories || this.data.quickCategories.length === 0) this.data.quickCategories = defaultData.quickCategories;
-    if (!this.data.flashSales || this.data.flashSales.length === 0) this.data.flashSales = defaultData.flashSales;
-    if (!this.data.giftCards || this.data.giftCards.length === 0) this.data.giftCards = defaultData.giftCards;
+
+    // Flash sales: merge any missing flash sales (e.g. fs_roblox_800)
+    if (!this.data.flashSales || this.data.flashSales.length === 0) {
+      this.data.flashSales = defaultData.flashSales;
+    } else {
+      defaultData.flashSales.forEach(dfs => {
+        if (!this.data.flashSales.some(fs => fs.id === dfs.id)) {
+          this.data.flashSales.push(dfs);
+        }
+      });
+    }
+
+    // Gift cards: merge missing cards and upgrade roblox denominations
+    if (!this.data.giftCards || this.data.giftCards.length === 0) {
+      this.data.giftCards = defaultData.giftCards;
+    } else {
+      defaultData.giftCards.forEach(dgc => {
+        const existing = this.data.giftCards.find(gc => gc.id === dgc.id);
+        if (!existing) {
+          this.data.giftCards.push(dgc);
+        } else if (dgc.id === 'gc_roblox' && (existing.denominations?.length || 0) < dgc.denominations.length) {
+          existing.denominations = dgc.denominations;
+        }
+      });
+    }
+
     if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) this.data.appSubscriptions = defaultData.appSubscriptions;
     if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) this.data.carouselSlides = defaultData.carouselSlides || [];
     if (!this.data.orders) this.data.orders = [];
     if (!this.data.transactions) this.data.transactions = [];
     if (!this.data.chats) this.data.chats = [];
     if (!this.data.auditLogs) this.data.auditLogs = [];
+    if (!this.data.gameRoutes) {
+      this.data.gameRoutes = defaultData.gameRoutes;
+    } else if (!this.data.gameRoutes.roblox) {
+      this.data.gameRoutes.roblox = { primary: "prov_smileone", fallback: "prov_unipin" };
+    }
   }
 
   load() {

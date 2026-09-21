@@ -7,6 +7,7 @@ export default function GameGrid({ games, onSelectGame, searchQuery }) {
   const categories = [
     { id: 'all', label: 'ทั้งหมด' },
     { id: 'popular', label: '🔥 ยอดนิยม' },
+    { id: 'Sandbox / MMO', label: 'Roblox / Sandbox' },
     { id: 'MOBA', label: 'MOBA' },
     { id: 'Battle Royale', label: 'Battle Royale' },
     { id: 'Tactical FPS', label: 'FPS / Shooter' },
@@ -14,9 +15,13 @@ export default function GameGrid({ games, onSelectGame, searchQuery }) {
   ];
 
   const filteredGames = games.filter(game => {
-    const matchesSearch = !searchQuery || 
-      game.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.publisher.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || '').toLowerCase().trim();
+    const matchesSearch = !q || 
+      game.name.toLowerCase().includes(q) ||
+      game.publisher.toLowerCase().includes(q) ||
+      (game.currencyName && game.currencyName.toLowerCase().includes(q)) ||
+      (game.slug && game.slug.toLowerCase().includes(q)) ||
+      (game.id === 'roblox' && (q.includes('robux') || q.includes('roblox') || q.includes('โรบ') || q.includes('บล็อก')));
 
     if (!matchesSearch) return false;
     if (activeCategory === 'all') return true;

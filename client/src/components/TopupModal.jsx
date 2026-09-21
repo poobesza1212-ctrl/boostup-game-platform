@@ -183,7 +183,7 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
               <label className="text-xs font-bold text-white uppercase flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center font-black">1</span>
                 <span>
-                  {isCodeDelivery ? 'ระบุอีเมลสำหรับรับรหัส Serial / ข้อมูลสมาชิก' : `กรอกข้อมูลตัวละคร (${game.inputType === 'riot_id' ? 'Riot ID' : 'UID'})`}
+                  {isCodeDelivery ? 'ระบุอีเมลสำหรับรับรหัส Serial / ข้อมูลสมาชิก' : `กรอกข้อมูลตัวละคร (${game.inputType === 'riot_id' ? 'Riot ID' : game.inputType === 'username' ? 'ชื่อผู้ใช้ (Username)' : 'UID'})`}
                 </span>
               </label>
               {game.inputHelp && !isCodeDelivery && (
@@ -204,7 +204,7 @@ export default function TopupModal({ game, onClose, onSubmitOrder, user, onOpenW
                       setPlayerId(e.target.value);
                       setVerifiedPlayer(null);
                     }}
-                    placeholder={isCodeDelivery ? "เช่น yourname@gmail.com สำหรับจัดส่งโค้ด" : (game.inputPlaceholder || "กรอก UID / Player ID")}
+                    placeholder={isCodeDelivery ? "เช่น yourname@gmail.com สำหรับจัดส่งโค้ด" : (game.inputPlaceholder || (game.inputType === 'username' ? "กรอกชื่อผู้ใช้ Roblox (Username)" : "กรอก UID / Player ID"))}
                     className={`w-full ${isCodeDelivery ? 'pl-10' : 'pl-4'} pr-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-sm focus:border-red-500 focus:outline-none`}
                   />
                 </div>

@@ -154,6 +154,7 @@ export default function GameEditorModal({ game, onClose, onSaveSuccess }) {
                 <option value="Battle Royale">Battle Royale</option>
                 <option value="Tactical FPS">Tactical FPS</option>
                 <option value="Action RPG">Action RPG</option>
+                <option value="Sandbox / MMO">Sandbox / Metaverse / MMO (Roblox, Minecraft)</option>
                 <option value="Sports">Sports / Racing</option>
                 <option value="Casual">Casual / Other</option>
               </select>
@@ -191,6 +192,7 @@ export default function GameEditorModal({ game, onClose, onSaveSuccess }) {
                 className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs focus:border-red-500 focus:outline-none"
               >
                 <option value="uid_only">UID / Player ID อย่างเดียว</option>
+                <option value="username">ชื่อผู้ใช้ (Username / ID เช่น Roblox)</option>
                 <option value="uid_server">UID + เลือกเซิร์ฟเวอร์ (Server)</option>
                 <option value="riot_id">Riot ID + Tagline (เช่น Name#TH1)</option>
               </select>

@@ -549,6 +549,124 @@
           "isPopular": true
         }
       ]
+    },
+    {
+      "id": "roblox",
+      "name": "Roblox (Robux)",
+      "publisher": "Roblox Corporation",
+      "slug": "roblox",
+      "category": "Sandbox / MMO",
+      "icon": "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      "badge": "🔥 เรตถูกสุด เติมไว",
+      "currencyName": "Robux",
+      "inputType": "username",
+      "inputPlaceholder": "กรอกชื่อผู้ใช้ Roblox (Username)",
+      "inputHelp": "ดู Username ได้ที่หน้าโปรไฟล์ของคุณใน roblox.com (ไม่ใช่ Display Name)",
+      "isPopular": true,
+      "displayOrder": 4,
+      "isActive": true,
+      "packages": [
+        {
+          "id": "rob_80",
+          "name": "80 Robux",
+          "currencyAmount": 80,
+          "originalPrice": 39,
+          "price": 35,
+          "costPrice": 30,
+          "bonus": "+0",
+          "isPopular": false
+        },
+        {
+          "id": "rob_160",
+          "name": "160 Robux",
+          "currencyAmount": 160,
+          "originalPrice": 79,
+          "price": 69,
+          "costPrice": 60,
+          "bonus": "+5 Robux ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "rob_400",
+          "name": "400 Robux",
+          "currencyAmount": 400,
+          "originalPrice": 179,
+          "price": 159,
+          "costPrice": 140,
+          "bonus": "+15 Robux ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "rob_800",
+          "name": "800 Robux",
+          "currencyAmount": 800,
+          "originalPrice": 359,
+          "price": 319,
+          "costPrice": 280,
+          "bonus": "+40 Robux ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "rob_1200",
+          "name": "1,200 Robux",
+          "currencyAmount": 1200,
+          "originalPrice": 540,
+          "price": 475,
+          "costPrice": 420,
+          "bonus": "+80 Robux ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "rob_1700",
+          "name": "1,700 Robux",
+          "currencyAmount": 1700,
+          "originalPrice": 740,
+          "price": 649,
+          "costPrice": 570,
+          "bonus": "+150 Robux ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "rob_2000",
+          "name": "2,000 Robux",
+          "currencyAmount": 2000,
+          "originalPrice": 890,
+          "price": 769,
+          "costPrice": 680,
+          "bonus": "+200 Robux ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "rob_4500",
+          "name": "4,500 Robux",
+          "currencyAmount": 4500,
+          "originalPrice": 1990,
+          "price": 1690,
+          "costPrice": 1500,
+          "bonus": "+500 Robux ฟรี",
+          "isPopular": false
+        },
+        {
+          "id": "rob_10000",
+          "name": "10,000 Robux (VIP Pack)",
+          "currencyAmount": 10000,
+          "originalPrice": 4200,
+          "price": 3590,
+          "costPrice": 3200,
+          "bonus": "+1,200 Robux ฟรี",
+          "isPopular": true
+        },
+        {
+          "id": "rob_prem_450",
+          "name": "Roblox Premium (450 Robux/เดือน)",
+          "currencyAmount": 450,
+          "originalPrice": 229,
+          "price": 199,
+          "costPrice": 175,
+          "bonus": "สิทธิพิเศษ + โบนัส 10%",
+          "isPopular": true
+        }
+      ]
     }
   ],
   "providers": [
@@ -660,6 +778,10 @@
     "hok": {
       "primary": "prov_smileone",
       "fallback": "prov_lapak"
+    },
+    "roblox": {
+      "primary": "prov_smileone",
+      "fallback": "prov_unipin"
     }
   },
   "coupons": [
@@ -989,6 +1111,34 @@
       "soldStock": 36,
       "currencyAmount": 325,
       "currencyName": "UC"
+    },
+    {
+      "id": "fs_roblox_800",
+      "gameId": "roblox",
+      "gameName": "Roblox (Robux)",
+      "packageName": "800 Robux (Flash Deal 🔥)",
+      "icon": "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 359,
+      "flashPrice": 279,
+      "discountPercent": 22,
+      "totalStock": 50,
+      "soldStock": 36,
+      "currencyAmount": 800,
+      "currencyName": "Robux"
+    },
+    {
+      "id": "fs_roblox_1700",
+      "gameId": "roblox",
+      "gameName": "Roblox (Robux)",
+      "packageName": "1,700 Robux (Flash Deal 🔥)",
+      "icon": "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=400&q=80",
+      "originalPrice": 740,
+      "flashPrice": 549,
+      "discountPercent": 26,
+      "totalStock": 40,
+      "soldStock": 28,
+      "currencyAmount": 1700,
+      "currencyName": "Robux"
     }
   ],
   "giftCards": [
@@ -1061,19 +1211,49 @@
       "badge": "ยอดนิยมในวัยรุ่น",
       "denominations": [
         {
+          "id": "gc_rob_50",
+          "name": "50 THB (รับ ~120 Robux)",
+          "price": 55
+        },
+        {
           "id": "gc_rob_100",
-          "name": "100 THB (ประมาณ 250 Robux)",
+          "name": "100 THB (รับ ~250 Robux)",
           "price": 105
         },
         {
+          "id": "gc_rob_150",
+          "name": "150 THB (รับ ~380 Robux)",
+          "price": 155
+        },
+        {
           "id": "gc_rob_300",
-          "name": "300 THB (ประมาณ 800 Robux)",
+          "name": "300 THB (รับ ~800 Robux)",
           "price": 310
         },
         {
           "id": "gc_rob_500",
-          "name": "500 THB (ประมาณ 1,400 Robux)",
+          "name": "500 THB (รับ ~1,400 Robux + Virtual Item)",
           "price": 515
+        },
+        {
+          "id": "gc_rob_750",
+          "name": "750 THB (รับ ~2,100 Robux + Virtual Item)",
+          "price": 765
+        },
+        {
+          "id": "gc_rob_1000",
+          "name": "1,000 THB (รับ ~3,000 Robux + Virtual Item)",
+          "price": 1030
+        },
+        {
+          "id": "gc_rob_1500",
+          "name": "1,500 THB (รับ ~4,500 Robux + Virtual Item)",
+          "price": 1540
+        },
+        {
+          "id": "gc_rob_2000",
+          "name": "2,000 THB (รับ ~6,000 Robux + Virtual Item)",
+          "price": 2050
         }
       ]
     },

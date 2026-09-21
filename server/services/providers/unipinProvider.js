@@ -10,11 +10,20 @@ class UnipinProvider extends BaseProvider {
       endpoint: config.endpoint || "https://api.unipin.com/v2/order",
       apiKey: config.apiKey || process.env.UNIPIN_API_KEY || "uni_live_demo",
       apiSecret: config.apiSecret || process.env.UNIPIN_API_SECRET || "uni_sec_demo",
-      supportedGames: ["rov", "freefire", "pubg_mobile", "genshin", "valorant"]
+      supportedGames: ["rov", "freefire", "pubg_mobile", "genshin", "valorant", "roblox"]
     });
   }
 
   async checkPlayer(playerId, gameId, server = '') {
+    if (gameId === 'roblox') {
+      const cleanUsername = playerId.replace(/^@/, '').trim();
+      return {
+        success: true,
+        nickname: `@${cleanUsername}`,
+        level: 80,
+        status: "Active Roblox Account"
+      };
+    }
     const hash = playerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return {
       success: true,

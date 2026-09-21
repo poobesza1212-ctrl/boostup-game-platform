@@ -234,9 +234,41 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     });
   };
 
-  const showAlert = ({ title, message, type = 'success' }) => {
+  const showAlert = (options) => {
+    if (typeof options === 'string') {
+      const text = options;
+      let type = 'info';
+      let title = 'แจ้งเตือน';
+
+      if (text.includes('สำเร็จ') || text.includes('เรียบร้อย') || text.includes('✓')) {
+        type = 'success';
+        title = 'ทำรายการสำเร็จ';
+      } else if (text.includes('ไม่สำเร็จ') || text.includes('ผิดพลาด') || text.includes('ล้มเหลว') || text.includes('ไม่ใช่') || text.includes('เกิน')) {
+        type = 'error';
+        title = 'เกิดข้อผิดพลาด';
+      } else if (text.includes('กรุณา') || text.includes('คำเตือน') || text.includes('เตือน') || text.includes('ระวัง')) {
+        type = 'warning';
+        title = 'แจ้งเตือน';
+      }
+
+      setAlertModal({ open: true, title, message: text, type });
+      return;
+    }
+
+    const { title = 'แจ้งเตือน', message = '', type = 'success' } = options || {};
     setAlertModal({ open: true, title, message, type });
   };
+
+  // Override window.alert inside Admin Dashboard so ALL alerts match SweetAlert design
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (msg) => {
+      showAlert(msg);
+    };
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
 
   // Admin Audit Logs Management
   const [auditLogs, setAuditLogs] = useState([]);
@@ -352,13 +384,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const res = await fetch(`/api/admin/orders/${orderId}/retry`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        alert(`คำสั่งซื้อได้รับการเติมเงินใหม่อัตโนมัติสำเร็จแล้ว!`);
+        showAlert({ title: 'เติมเงินสำเร็จ!', message: 'คำสั่งซื้อได้รับการเติมเงินใหม่อัตโนมัติสำเร็จแล้ว', type: 'success' });
         loadData();
       } else {
-        alert(`การเติมเงินซ้ำล้มเหลว: ${data.error || 'ข้อผิดพลาดจาก API'}`);
+        showAlert({ title: 'เติมเงินไม่สำเร็จ', message: `การเติมเงินซ้ำล้มเหลว: ${data.error || 'ข้อผิดพลาดจาก API'}`, type: 'error' });
       }
     } catch (e) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', type: 'error' });
     } finally {
       setRetryingId(null);
     }
@@ -375,10 +407,10 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const data = await res.json();
       if (data.success) {
         setGameRoutes(data.routes);
-        alert(`บันทึกเส้นทาง API สำหรับเกม ${gameId} สำเร็จแล้ว`);
+        showAlert({ title: 'บันทึกสำเร็จ!', message: `บันทึกเส้นทาง API สำหรับเกม ${gameId} สำเร็จเรียบร้อย`, type: 'success' });
       }
     } catch (e) {
-      alert('ไม่สามารถบันทึกเส้นทาง API ได้');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถบันทึกเส้นทาง API ได้', type: 'error' });
     }
   };
 
@@ -396,9 +428,10 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         setNewCouponModal(false);
         setCouponForm({ code: '', description: '', discountType: 'percent', discountValue: 10, minSpend: 0, maxDiscount: 100 });
         loadData();
+        showAlert({ title: 'สร้างคูปองสำเร็จ!', message: `สร้างคูปอง ${couponForm.code} เรียบร้อยแล้ว`, type: 'success' });
       }
     } catch (e) {
-      alert('สร้างคูปองไม่สำเร็จ');
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'สร้างคูปองไม่สำเร็จ', type: 'error' });
     }
   };
 
@@ -481,11 +514,19 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     
     Array.from(files).forEach((file) => {
       if (!validTypes.includes(file.type)) {
-        alert(`ไฟล์ ${file.name} ไม่ใช่ไฟล์รูปภาพที่รองรับ`);
+        showAlert({
+          title: 'ไฟล์ไม่รองรับ',
+          message: `ไฟล์ "${file.name}" ไม่ใช่ไฟล์รูปภาพที่รองรับ (รองรับเฉพาะ PNG, JPG, WEBP, GIF, SVG)`,
+          type: 'warning'
+        });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert(`ไฟล์ ${file.name} มีขนาดเกิน 5MB`);
+        showAlert({
+          title: 'ขนาดไฟล์เกินกำหนด',
+          message: `ไฟล์ "${file.name}" มีขนาดเกิน 5MB กรุณาเลือกไฟล์ที่มีขนาดไม่เกิน 5MB`,
+          type: 'warning'
+        });
         return;
       }
       
@@ -565,15 +606,31 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         if (batchData.success) {
           setMultiUploadFiles([]);
           loadData();
-          alert(`อัปโหลดและเพิ่มแบนเนอร์ใหม่สำเร็จ ${batchData.count} ภาพเรียบร้อยแล้ว!`);
+          showAlert({
+            title: 'อัปโหลดสำเร็จ!',
+            message: `อัปโหลดและเพิ่มแบนเนอร์ใหม่สำเร็จ ${batchData.count} ภาพเรียบร้อยแล้ว!`,
+            type: 'success'
+          });
         } else {
-          alert(batchData.message || 'บันทึกแบนเนอร์ไม่สำเร็จ');
+          showAlert({
+            title: 'เกิดข้อผิดพลาด',
+            message: batchData.message || 'บันทึกแบนเนอร์ไม่สำเร็จ',
+            type: 'error'
+          });
         }
       } else {
-        alert('อัปโหลดรูปภาพไม่สำเร็จ');
+        showAlert({
+          title: 'อัปโหลดรูปภาพไม่สำเร็จ',
+          message: 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์รูปภาพไปยังเซิร์ฟเวอร์',
+          type: 'error'
+        });
       }
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการอัปโหลดหลายภาพ: ' + err.message);
+      showAlert({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาดในการอัปโหลดหลายภาพ: ' + err.message,
+        type: 'error'
+      });
     } finally {
       setMultiUploadProgress({ isUploading: false, current: 0, total: 0, message: '' });
     }
@@ -830,7 +887,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   // Export Audit Logs to CSV
   const handleExportAuditLogsCSV = () => {
     if (!auditLogs || auditLogs.length === 0) {
-      alert('ยังไม่มีข้อมูลประวัติกิจกรรมให้ส่งออก');
+      showAlert({
+        title: 'ไม่มีข้อมูล',
+        message: 'ยังไม่มีข้อมูลประวัติกิจกรรมของแอดมินให้ส่งออกเป็น CSV',
+        type: 'warning'
+      });
       return;
     }
     const headers = ['รหัสอ้างอิง (Log ID)', 'วันที่และเวลา (Timestamp)', 'ผู้ดำเนินการ (Admin)', 'ประเภทกิจกรรม (Action)', 'รายละเอียด (Details)'];
@@ -869,11 +930,24 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (data.success) {
         setFlashSaleModal({ open: false, item: null });
         loadData();
+        showAlert({
+          title: 'บันทึกสำเร็จ!',
+          message: isEdit ? 'แก้ไขข้อมูล Flash Sale เรียบร้อยแล้ว' : 'เพิ่มดีล Flash Sale ใหม่เรียบร้อยแล้ว',
+          type: 'success'
+        });
       } else {
-        alert(data.message || 'บันทึกดีลฟ้าผ่าไม่สำเร็จ');
+        showAlert({
+          title: 'บันทึกไม่สำเร็จ',
+          message: data.message || 'บันทึกดีลฟ้าผ่าไม่สำเร็จ',
+          type: 'error'
+        });
       }
     } catch (e) {
-      alert('เกิดข้อผิดพลาดในการบันทึก');
+      showAlert({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อบันทึกข้อมูล',
+        type: 'error'
+      });
     }
   };
 
@@ -1012,7 +1086,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
   const handleAddBankAccount = async () => {
     if (!bankForm.accountNo || !bankForm.accountName) {
-      alert('กรุณากรอกเลขที่บัญชีและชื่อบัญชี');
+      showAlert({
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณากรอกเลขที่บัญชีและชื่อบัญชีให้ครบถ้วน',
+        type: 'warning'
+      });
       return;
     }
     const newBank = {
@@ -1135,7 +1213,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedSettings)
       });
-      alert(enable ? 'เปิดใช้งานทุกช่องทางการชำระเงินเรียบร้อยแล้ว' : 'เปิดเฉพาะพร้อมเพย์ และปิดช่องทางอื่นเรียบร้อยแล้ว');
+      showAlert({
+        title: 'บันทึกสถานะเรียบร้อย',
+        message: enable ? 'เปิดใช้งานทุกช่องทางการชำระเงินเรียบร้อยแล้ว' : 'เปิดเฉพาะพร้อมเพย์ และปิดช่องทางอื่นเรียบร้อยแล้ว',
+        type: 'success'
+      });
     } catch (e) {
       console.error("Failed to set all payment methods:", e);
     }
@@ -3053,7 +3135,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(siteSettings)
                         });
-                        alert('บันทึกกล่องการันตีความน่าเชื่อถือเรียบร้อยแล้ว');
+                        showAlert({
+                          title: 'บันทึกสำเร็จ!',
+                          message: 'บันทึกข้อมูลกล่องการันตีความน่าเชื่อถือเรียบร้อยแล้ว มีผลหน้าร้านทันที',
+                          type: 'success'
+                        });
                       }}
                       className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-md shadow-red-600/30"
                     >
@@ -4083,7 +4169,11 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(siteSettings)
                     });
-                    alert('บันทึกการตั้งค่าหน้าร้านเรียบร้อยแล้ว มีผลต่อหน้าเว็บทันที 100%');
+                    showAlert({
+                      title: 'บันทึกสำเร็จ!',
+                      message: 'บันทึกการตั้งค่าหน้าร้านเรียบร้อยแล้ว มีผลต่อหน้าเว็บทันที 100%',
+                      type: 'success'
+                    });
                   }}
                   className="w-full py-3 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:brightness-110 text-white font-bold text-sm shadow-xl shadow-red-600/30 transition-all font-['Kanit']"
                 >
@@ -5215,7 +5305,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
       {/* Universal Action Confirmation Modal (Matches User Design) */}
       {confirmDialog.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
             {/* Warning Icon */}
             <div className="w-24 h-24 rounded-full border-[3px] border-[#ffedd5] bg-white flex items-center justify-center mx-auto mb-6 shadow-sm">
@@ -5255,34 +5345,38 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         </div>
       )}
 
-      {/* Alert / Notification Modal (Success / Error / Info) */}
+      {/* Alert / Notification Modal (Success / Error / Warning / Info) */}
       {alertModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
             {alertModal.type === 'error' ? (
-              <div className="w-20 h-20 rounded-full border-[3px] border-red-200 bg-red-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <X className="w-10 h-10 text-red-500 stroke-[3]" />
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#fecaca] bg-[#fef2f2] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <X className="w-12 h-12 text-[#ef4444] stroke-[3]" />
+              </div>
+            ) : alertModal.type === 'warning' ? (
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#ffedd5] bg-[#fff7ed] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <span className="text-5xl font-light text-[#f97316] font-serif select-none leading-none -mt-1">!</span>
               </div>
             ) : alertModal.type === 'info' ? (
-              <div className="w-20 h-20 rounded-full border-[3px] border-blue-200 bg-blue-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <span className="text-4xl font-bold text-blue-500 font-serif select-none">i</span>
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#bfdbfe] bg-[#eff6ff] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <span className="text-5xl font-bold text-[#3b82f6] font-serif select-none leading-none">i</span>
               </div>
             ) : (
-              <div className="w-20 h-20 rounded-full border-[3px] border-emerald-200 bg-emerald-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <Check className="w-10 h-10 text-emerald-500 stroke-[3]" />
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#bbf7d0] bg-[#f0fdf4] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Check className="w-12 h-12 text-[#22c55e] stroke-[3]" />
               </div>
             )}
-            <h3 className="text-xl font-bold text-[#374151] font-['Kanit',sans-serif]">
+            <h3 className="text-2xl font-bold text-[#374151] font-['Kanit',sans-serif] tracking-tight">
               {alertModal.title}
             </h3>
-            <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed">
+            <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed px-2">
               {alertModal.message}
             </p>
-            <div className="mt-6 w-full">
+            <div className="mt-7 w-full">
               <button
                 type="button"
                 onClick={() => setAlertModal({ open: false, title: '', message: '', type: 'success' })}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
               >
                 ตกลง
               </button>

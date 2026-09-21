@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Check, X } from 'lucide-react';
 import Navbar from './components/Navbar';
 import HeroCarousel from './components/HeroCarousel';
 import QuickCategoryBar from './components/QuickCategoryBar';
@@ -70,6 +71,45 @@ export default function App() {
   const [activeOrderForStatus, setActiveOrderForStatus] = useState(null);
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login' });
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+
+  // Global SweetAlert Modal State (Replaces Browser Alerts Everywhere)
+  const [globalAlert, setGlobalAlert] = useState({
+    open: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
+
+  const showGlobalAlert = (options) => {
+    if (typeof options === 'string') {
+      const text = options;
+      let type = 'info';
+      let title = 'แจ้งเตือน';
+
+      if (text.includes('สำเร็จ') || text.includes('เรียบร้อย') || text.includes('✓')) {
+        type = 'success';
+        title = 'ทำรายการสำเร็จ';
+      } else if (text.includes('ไม่สำเร็จ') || text.includes('ผิดพลาด') || text.includes('ล้มเหลว') || text.includes('ไม่ใช่') || text.includes('เกิน')) {
+        type = 'error';
+        title = 'เกิดข้อผิดพลาด';
+      } else if (text.includes('กรุณา') || text.includes('คำเตือน') || text.includes('เตือน') || text.includes('ระวัง') || text.includes('ไม่เพียงพอ')) {
+        type = 'warning';
+        title = 'แจ้งเตือน';
+      }
+
+      setGlobalAlert({ open: true, title, message: text, type });
+      return;
+    }
+
+    const { title = 'แจ้งเตือน', message = '', type = 'success' } = options || {};
+    setGlobalAlert({ open: true, title, message, type });
+  };
+
+  useEffect(() => {
+    window.alert = (msg) => {
+      showGlobalAlert(msg);
+    };
+  }, []);
 
   // Load all data from Backend APIs
   const fetchData = async () => {
@@ -150,16 +190,67 @@ export default function App() {
           }));
         }
       } else {
-        alert(data.message || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
+        showGlobalAlert({
+          title: 'สร้างคำสั่งซื้อไม่สำเร็จ',
+          message: data.message || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ',
+          type: 'error'
+        });
       }
     } catch (err) {
-      alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      showGlobalAlert({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+        type: 'error'
+      });
     }
   };
 
   // Render Dedicated Admin Portal if currentView === 'admin'
   if (currentView === 'admin') {
-    return <AdminPortal onBackToStore={() => navigateTo('home')} />;
+    return (
+      <>
+        <AdminPortal onBackToStore={() => navigateTo('home')} />
+        {/* Global SweetAlert Modal for Admin */}
+        {globalAlert.open && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
+              {globalAlert.type === 'error' ? (
+                <div className="w-24 h-24 rounded-full border-[3px] border-[#fecaca] bg-[#fef2f2] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <X className="w-12 h-12 text-[#ef4444] stroke-[3]" />
+                </div>
+              ) : globalAlert.type === 'warning' ? (
+                <div className="w-24 h-24 rounded-full border-[3px] border-[#ffedd5] bg-[#fff7ed] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <span className="text-5xl font-light text-[#f97316] font-serif select-none leading-none -mt-1">!</span>
+                </div>
+              ) : globalAlert.type === 'info' ? (
+                <div className="w-24 h-24 rounded-full border-[3px] border-[#bfdbfe] bg-[#eff6ff] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <span className="text-5xl font-bold text-[#3b82f6] font-serif select-none leading-none">i</span>
+                </div>
+              ) : (
+                <div className="w-24 h-24 rounded-full border-[3px] border-[#bbf7d0] bg-[#f0fdf4] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <Check className="w-12 h-12 text-[#22c55e] stroke-[3]" />
+                </div>
+              )}
+              <h3 className="text-2xl font-bold text-[#374151] font-['Kanit',sans-serif] tracking-tight">
+                {globalAlert.title}
+              </h3>
+              <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed px-2">
+                {globalAlert.message}
+              </p>
+              <div className="mt-7 w-full">
+                <button
+                  type="button"
+                  onClick={() => setGlobalAlert({ open: false, title: '', message: '', type: 'success' })}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
+                >
+                  ตกลง
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
   }
 
   // Render Richman Shop Style Storefront
@@ -273,6 +364,46 @@ export default function App() {
           onClose={() => setWalletModalOpen(false)}
           onDepositSuccess={handleDepositSuccess}
         />
+      )}
+
+      {/* Global SweetAlert Modal (Replaces Native Browser Alerts) */}
+      {globalAlert.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-7 pt-9 pb-8 shadow-2xl text-center font-['Prompt',sans-serif] border border-zinc-100">
+            {globalAlert.type === 'error' ? (
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#fecaca] bg-[#fef2f2] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <X className="w-12 h-12 text-[#ef4444] stroke-[3]" />
+              </div>
+            ) : globalAlert.type === 'warning' ? (
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#ffedd5] bg-[#fff7ed] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <span className="text-5xl font-light text-[#f97316] font-serif select-none leading-none -mt-1">!</span>
+              </div>
+            ) : globalAlert.type === 'info' ? (
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#bfdbfe] bg-[#eff6ff] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <span className="text-5xl font-bold text-[#3b82f6] font-serif select-none leading-none">i</span>
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full border-[3px] border-[#bbf7d0] bg-[#f0fdf4] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Check className="w-12 h-12 text-[#22c55e] stroke-[3]" />
+              </div>
+            )}
+            <h3 className="text-2xl font-bold text-[#374151] font-['Kanit',sans-serif] tracking-tight">
+              {globalAlert.title}
+            </h3>
+            <p className="text-sm text-[#4b5563] mt-2 font-normal leading-relaxed px-2">
+              {globalAlert.message}
+            </p>
+            <div className="mt-7 w-full">
+              <button
+                type="button"
+                onClick={() => setGlobalAlert({ open: false, title: '', message: '', type: 'success' })}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#3b5bfd] hover:bg-[#2b4be8] text-white font-bold text-sm transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
+              >
+                ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

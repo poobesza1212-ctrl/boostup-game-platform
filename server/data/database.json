@@ -1419,7 +1419,31 @@
       ]
     }
   ],
-  "chats": [],
+  "chats": [
+    {
+      "id": "chat_1790024973895_ac8af1",
+      "sessionId": "test_ai_session_99",
+      "userId": null,
+      "customerName": "สมชาย ทดสอบ",
+      "customerContact": "",
+      "unreadAdmin": 1,
+      "unreadCustomer": 0,
+      "mode": "ai",
+      "needsHumanAttention": false,
+      "status": "open",
+      "createdAt": "2026-09-21T21:09:33.895Z",
+      "updatedAt": "2026-09-21T21:09:33.905Z",
+      "messages": [
+        {
+          "id": "msg_welcome_1790024973900",
+          "sender": "ai",
+          "senderName": "BOOSTUP AI Assistant",
+          "text": "สวัสดีครับ ยินดีต้อนรับสู่ BOOSTUP 24 ชม.! 🤖 ผมคือ AI Assistant พร้อมช่วยตอบคำถามเรื่องเติมเกม, ราคา, เช็คสถานะออเดอร์ หรือวิธีชำระเงินได้ทันทีครับ\n\nหากต้องการคุยกับเจ้าหน้าที่คนจริง สามารถกดปุ่ม \"ติดต่อแอดมินคนจริง\" ด้านบนได้ตลอดเวลาครับ 🙏",
+          "createdAt": "2026-09-21T21:09:33.900Z"
+        }
+      ]
+    }
+  ],
   "uploadedImages": {
     "test_img.png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
   },

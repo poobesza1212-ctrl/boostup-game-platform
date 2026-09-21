@@ -1972,15 +1972,17 @@ class Database {
         customerContact: customerContact || '',
         unreadAdmin: 0,
         unreadCustomer: 0,
+        mode: 'ai', // 'ai' | 'human'
+        needsHumanAttention: false,
         status: 'open',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [
           {
             id: `msg_welcome_${Date.now()}`,
-            sender: 'bot',
-            senderName: 'BOOSTUP Support Bot',
-            text: 'สวัสดีครับ ยินดีต้อนรับสู่ระบบแชทสด BOOSTUP! เจ้าหน้าที่พร้อมให้บริการตลอด 24 ชม. สามารถพิมพ์สอบถามข้อมูล แจ้งปัญหาการเติมเกม หรือระบุเลขออเดอร์ไว้ได้เลยครับ',
+            sender: 'ai',
+            senderName: 'BOOSTUP AI Assistant',
+            text: 'สวัสดีครับ ยินดีต้อนรับสู่ BOOSTUP 24 ชม.! 🤖 ผมคือ AI Assistant พร้อมช่วยตอบคำถามเรื่องเติมเกม, ราคา, เช็คสถานะออเดอร์ หรือวิธีชำระเงินได้ทันทีครับ\n\nหากต้องการคุยกับเจ้าหน้าที่คนจริง สามารถกดปุ่ม "ติดต่อแอดมินคนจริง" ด้านบนได้ตลอดเวลาครับ 🙏',
             createdAt: new Date().toISOString()
           }
         ]
@@ -1992,6 +1994,7 @@ class Database {
       if (customerName && (chat.customerName === 'ลูกค้า (Guest)' || !chat.customerName)) {
         chat.customerName = customerName;
       }
+      if (!chat.mode) chat.mode = 'ai';
       this.save();
     }
 
@@ -2006,7 +2009,7 @@ class Database {
     const newMsg = {
       id: `msg_${Date.now()}_${crypto.randomBytes(2).toString('hex')}`,
       sender: sender || 'customer',
-      senderName: senderName || (sender === 'admin' ? 'แอดมิน BOOSTUP' : 'ลูกค้า'),
+      senderName: senderName || (sender === 'admin' ? 'แอดมิน BOOSTUP' : sender === 'ai' ? 'BOOSTUP AI Assistant' : 'ลูกค้า'),
       text: (text || '').trim(),
       createdAt: new Date().toISOString()
     };
@@ -2016,13 +2019,36 @@ class Database {
     chat.updatedAt = new Date().toISOString();
 
     if (sender === 'customer') {
-      chat.unreadAdmin = (chat.unreadAdmin || 0) + 1;
+      if (chat.mode === 'human') {
+        chat.unreadAdmin = (chat.unreadAdmin || 0) + 1;
+        chat.needsHumanAttention = true;
+      }
     } else if (sender === 'admin') {
+      chat.unreadCustomer = (chat.unreadCustomer || 0) + 1;
+      chat.needsHumanAttention = false;
+      chat.mode = 'human';
+    } else if (sender === 'ai') {
+      // AI messages do not count toward unreadAdmin
       chat.unreadCustomer = (chat.unreadCustomer || 0) + 1;
     }
 
     this.save();
     return { chat, message: newMsg };
+  }
+
+  setChatMode(chatId, mode = 'ai') {
+    const chat = this.getChatById(chatId);
+    if (!chat) return null;
+    chat.mode = mode;
+    if (mode === 'human') {
+      chat.needsHumanAttention = true;
+      chat.unreadAdmin = (chat.unreadAdmin || 0) + 1;
+    } else {
+      chat.needsHumanAttention = false;
+    }
+    chat.updatedAt = new Date().toISOString();
+    this.save();
+    return chat;
   }
 
   markChatAsRead(chatId, readerRole = 'admin') {

@@ -63,7 +63,10 @@ import {
   Server,
   QrCode,
   Gift,
-  Building2
+  Building2,
+  Bot,
+  Sparkles,
+  Headphones
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -96,6 +99,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [chatReplyText, setChatReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [liveChatUnread, setLiveChatUnread] = useState(0);
+  const [humanRequiredCount, setHumanRequiredCount] = useState(0);
+  const [chatFilterMode, setChatFilterMode] = useState('all'); // 'all' | 'needs_human' | 'ai'
+  const [isHandingOffAi, setIsHandingOffAi] = useState(false);
 
   // Deposit Slips Management (Slip Approval Workflow)
   const [deposits, setDeposits] = useState([]);
@@ -356,6 +362,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         if (chatsRes?.success) {
           setChats(chatsRes.chats);
           setLiveChatUnread(chatsRes.totalUnread || 0);
+          setHumanRequiredCount(chatsRes.humanRequiredCount || 0);
         }
         if (depRes?.success) {
           setDeposits(depRes.deposits || []);
@@ -425,6 +432,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (chatsRes?.success) {
         setChats(chatsRes.chats);
         setLiveChatUnread(chatsRes.totalUnread || 0);
+        setHumanRequiredCount(chatsRes.humanRequiredCount || 0);
         if (chatsRes.chats.length > 0) {
           setActiveChatId(prev => prev || chatsRes.chats[0].id);
         }
@@ -1410,11 +1418,33 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const data = await res.json();
       if (data.success && data.chat) {
         setChats(prev => prev.map(c => c.id === activeChatId ? data.chat : c));
+        setHumanRequiredCount(prev => Math.max(0, prev - 1));
       }
     } catch (err) {
       console.error("Failed to send admin reply:", err);
     } finally {
       setIsSendingReply(false);
+    }
+  };
+
+  const handleHandoffToAi = async (chatId) => {
+    const targetId = chatId || activeChatId;
+    if (!targetId || isHandingOffAi) return;
+    setIsHandingOffAi(true);
+    try {
+      const res = await fetch(`/api/admin/chats/${targetId}/handoff-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success && data.chat) {
+        setChats(prev => prev.map(c => c.id === targetId ? data.chat : c));
+        setHumanRequiredCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Failed to handoff chat to AI:", err);
+    } finally {
+      setIsHandingOffAi(false);
     }
   };
 
@@ -1640,11 +1670,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                     item.id === 'slips' && pendingDepositsCount > 0
                       ? 'bg-amber-500 text-black animate-pulse ring-2 ring-amber-400 font-extrabold'
+                      : item.id === 'live_chat' && humanRequiredCount > 0
+                      ? 'bg-amber-500 text-black animate-pulse ring-2 ring-amber-400 font-extrabold'
                       : item.id === 'live_chat' && liveChatUnread > 0
                       ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400'
                       : isActive ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'
                   }`}>
-                    {item.count}
+                    {item.id === 'live_chat' && humanRequiredCount > 0 ? `รอคน ${humanRequiredCount}` : item.count}
                   </span>
                 )}
               </button>
@@ -2317,26 +2349,84 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 
                 {/* Left Pane: Chat Rooms List (Col 4) */}
                 <div className="col-span-12 md:col-span-4 bg-cyber-card border border-zinc-800 rounded-2xl flex flex-col overflow-hidden">
-                  <div className="p-3.5 border-b border-zinc-800 bg-zinc-950/60 flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-300">ห้องแชททั้งหมด ({chats.length})</span>
-                    {liveChatUnread > 0 && (
-                      <span className="text-[10px] text-red-400 font-medium">รอตอบ {liveChatUnread} รายการ</span>
-                    )}
+                  <div className="p-3 border-b border-zinc-800 bg-zinc-950/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-300">ห้องแชททั้งหมด ({chats.length})</span>
+                      {liveChatUnread > 0 && (
+                        <span className="text-[10px] text-red-400 font-medium">รอตอบ {liveChatUnread} รายการ</span>
+                      )}
+                    </div>
+                    
+                    {/* Chat Filter Tabs */}
+                    <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-900/80 rounded-xl border border-zinc-800/80 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setChatFilterMode('all')}
+                        className={`py-1 rounded-lg font-medium transition-all text-center cursor-pointer ${
+                          chatFilterMode === 'all'
+                            ? 'bg-zinc-800 text-white shadow-sm font-bold'
+                            : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        ทั้งหมด ({chats.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilterMode('needs_human')}
+                        className={`py-1 rounded-lg font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                          chatFilterMode === 'needs_human'
+                            ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40 shadow-sm'
+                            : 'text-amber-400/80 hover:text-amber-300'
+                        }`}
+                      >
+                        <span>รอคนจริง</span>
+                        {chats.filter(c => c.needsHumanAttention || c.mode === 'human').length > 0 && (
+                          <span className="px-1 py-0.2 rounded-full bg-amber-500 text-black text-[9px] font-extrabold">
+                            {chats.filter(c => c.needsHumanAttention || c.mode === 'human').length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilterMode('ai')}
+                        className={`py-1 rounded-lg font-medium transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
+                          chatFilterMode === 'ai'
+                            ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40 shadow-sm font-bold'
+                            : 'text-purple-400/80 hover:text-purple-300'
+                        }`}
+                      >
+                        <span>AI ดูแล</span>
+                        <span className="text-[9px] text-purple-300/70">
+                          ({chats.filter(c => c.mode !== 'human' && !c.needsHumanAttention).length})
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/60">
-                    {chats.length === 0 ? (
-                      <div className="p-8 text-center text-zinc-500 text-xs">
-                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30 text-zinc-400" />
-                        ยังไม่มีลูกค้าเปิดแชทในขณะนี้
-                      </div>
-                    ) : (
-                      chats.map((chat) => {
+                    {(() => {
+                      const displayedChats = chats.filter(c => {
+                        if (chatFilterMode === 'needs_human') return c.needsHumanAttention || c.mode === 'human';
+                        if (chatFilterMode === 'ai') return c.mode !== 'human' && !c.needsHumanAttention;
+                        return true;
+                      });
+
+                      if (displayedChats.length === 0) {
+                        return (
+                          <div className="p-8 text-center text-zinc-500 text-xs">
+                            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30 text-zinc-400" />
+                            ไม่พบห้องแชทในหมวดหมู่นี้
+                          </div>
+                        );
+                      }
+
+                      return displayedChats.map((chat) => {
                         const isSelected = activeChatId === chat.id;
                         const lastMsg = chat.messages && chat.messages.length > 0
                           ? chat.messages[chat.messages.length - 1]
                           : null;
                         const hasUnread = chat.unreadAdmin > 0;
+                        const isHumanMode = chat.needsHumanAttention || chat.mode === 'human';
 
                         return (
                           <div
@@ -2344,7 +2434,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                             onClick={() => handleSelectChat(chat.id)}
                             className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 ${
                               isSelected
-                                ? 'bg-zinc-800/90 border-l-4 border-emerald-500'
+                                ? isHumanMode
+                                  ? 'bg-zinc-800/90 border-l-4 border-amber-500'
+                                  : 'bg-zinc-800/90 border-l-4 border-purple-500'
                                 : 'hover:bg-zinc-900/80'
                             }`}
                           >
@@ -2352,14 +2444,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold ${
                                 hasUnread
                                   ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                                  : isSelected
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-zinc-800 text-zinc-300'
+                                  : isHumanMode
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
                               }`}>
-                                {chat.customerName ? chat.customerName[0].toUpperCase() : 'U'}
+                                {isHumanMode ? <Headphones className="w-4 h-4 text-amber-400" /> : <Bot className="w-4 h-4 text-purple-400" />}
                               </div>
                               {hasUnread && (
-                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-zinc-900"></span>
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-zinc-900 animate-pulse"></span>
                               )}
                             </div>
 
@@ -2381,21 +2473,34 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                                 {lastMsg ? lastMsg.text : 'เริ่มการสนทนา'}
                               </p>
 
-                              <div className="mt-1.5 flex items-center justify-between">
+                              <div className="mt-1.5 flex items-center justify-between gap-1">
                                 <span className="text-[9px] text-zinc-500 font-mono">
                                   {chat.userId ? `ID: ${chat.userId.slice(-6)}` : 'Guest'}
                                 </span>
-                                {hasUnread && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-950 text-red-300 border border-red-800 font-bold">
-                                    ใหม่ {chat.unreadAdmin}
-                                  </span>
-                                )}
+
+                                <div className="flex items-center gap-1">
+                                  {isHumanMode ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1 animate-pulse">
+                                      <span>👨‍💼 รอคนจริง</span>
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 font-medium flex items-center gap-1">
+                                      <span>🤖 AI ดูแล</span>
+                                    </span>
+                                  )}
+
+                                  {hasUnread && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-950 text-red-300 border border-red-800 font-bold">
+                                      ใหม่ {chat.unreadAdmin}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
                         );
-                      })
-                    )}
+                      });
+                    })()}
                   </div>
                 </div>
 
@@ -2414,20 +2519,37 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       );
                     }
 
+                    const isCurrentHumanMode = currentChat.mode === 'human' || currentChat.needsHumanAttention;
+
                     return (
                       <>
                         {/* Chat Header */}
                         <div className="p-4 bg-zinc-950/80 border-b border-zinc-800 flex items-center justify-between shrink-0">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-950/80 border border-emerald-700/60 flex items-center justify-center text-emerald-400 font-bold">
-                              {currentChat.customerName ? currentChat.customerName[0].toUpperCase() : 'U'}
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
+                              isCurrentHumanMode
+                                ? 'bg-amber-500/20 border border-amber-500/40 text-amber-400'
+                                : 'bg-purple-500/20 border border-purple-500/40 text-purple-400'
+                            }`}>
+                              {isCurrentHumanMode ? <Headphones className="w-5 h-5 text-amber-400" /> : <Bot className="w-5 h-5 text-purple-400" />}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-white font-['Kanit']">{currentChat.customerName}</h3>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-800 text-zinc-300 border border-zinc-700">
                                   {currentChat.userId ? 'สมาชิกเว็บไซต์' : 'ลูกค้าทั่วไป'}
                                 </span>
+                                {isCurrentHumanMode ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/50 font-bold flex items-center gap-1 animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                    <span>รอแอดมินคนจริง ⚠️</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/50 font-medium flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-purple-400" />
+                                    <span>AI อัจฉริยะกำลังดูแล 24 ชม.</span>
+                                  </span>
+                                )}
                               </div>
                               <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
                                 รหัสห้อง: {currentChat.id} • อัปเดตล่าสุด: {new Date(currentChat.updatedAt).toLocaleTimeString('th-TH')}
@@ -2436,10 +2558,23 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                           </div>
 
                           <div className="flex items-center gap-2 text-xs">
-                            <span className="flex items-center gap-1 text-emerald-400">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                              <span>กำลังสนทนา</span>
-                            </span>
+                            {isCurrentHumanMode ? (
+                              <button
+                                type="button"
+                                onClick={() => handleHandoffToAi(currentChat.id)}
+                                disabled={isHandingOffAi}
+                                className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 hover:text-purple-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                                title="ส่งห้องนี้กลับไปให้ AI ตอบอัตโนมัติต่อ"
+                              >
+                                <Bot className="w-3.5 h-3.5 text-purple-400" />
+                                <span>ส่งต่อให้ AI ดูแลต่อ</span>
+                              </button>
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-purple-400 text-xs font-medium bg-purple-950/60 px-2.5 py-1 rounded-xl border border-purple-800/60">
+                                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                                <span>AI กำลังตอบลูกค้า 24 ชม.</span>
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -2447,17 +2582,35 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#080b10] scrollbar-thin scrollbar-thumb-zinc-800">
                           {(currentChat.messages || []).map((m, idx) => {
                             const isAdmin = m.sender === 'admin';
-                            const isBot = m.sender === 'bot';
+                            const isAi = m.sender === 'ai';
+                            const isSystem = m.sender === 'system' || m.sender === 'bot';
 
-                            if (isBot) {
+                            if (isSystem) {
                               return (
-                                <div key={m.id || idx} className="p-3 mx-auto max-w-lg rounded-2xl bg-zinc-900/90 border border-zinc-800 text-center text-xs space-y-1">
-                                  <div className="text-emerald-400 font-bold text-[11px] flex items-center justify-center gap-1">
-                                    <ShieldCheck className="w-3.5 h-3.5" />
-                                    <span>{m.senderName}</span>
+                                <div key={m.id || idx} className="p-2.5 mx-auto max-w-lg rounded-2xl bg-zinc-900/90 border border-zinc-700 text-center text-xs space-y-1">
+                                  <div className="text-amber-400 font-bold text-[11px] flex items-center justify-center gap-1">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    <span>{m.senderName || 'การแจ้งเตือนระบบ'}</span>
                                   </div>
-                                  <p className="text-zinc-300 leading-relaxed">{m.text}</p>
+                                  <p className="text-zinc-300 leading-relaxed whitespace-pre-line">{m.text}</p>
                                   <div className="text-[9px] text-zinc-500">
+                                    {new Date(m.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            if (isAi) {
+                              return (
+                                <div key={m.id || idx} className="flex flex-col items-start space-y-1">
+                                  <div className="flex items-center gap-1 text-[10px] text-purple-300 px-1 font-semibold">
+                                    <Sparkles className="w-3 h-3 text-purple-400" />
+                                    <span>BOOSTUP AI Assistant (ตอบอัตโนมัติ)</span>
+                                  </div>
+                                  <div className="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed shadow-lg bg-gradient-to-br from-[#1d1633] via-[#141226] to-[#121626] border border-purple-500/40 text-purple-100 rounded-bl-sm whitespace-pre-line">
+                                    {m.text}
+                                  </div>
+                                  <div className="text-[9px] text-zinc-500 px-1">
                                     {new Date(m.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                                   </div>
                                 </div>
@@ -2470,10 +2623,10 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                                 className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'} space-y-1`}
                               >
                                 <div className="text-[10px] text-zinc-400 px-1">
-                                  {isAdmin ? 'คุณ (แอดมิน)' : m.senderName || 'ลูกค้า'}
+                                  {isAdmin ? 'คุณ (แอดมินตัวจริง)' : m.senderName || 'ลูกค้า'}
                                 </div>
                                 <div
-                                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed shadow-lg ${
+                                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed shadow-lg whitespace-pre-line ${
                                     isAdmin
                                       ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-sm'
                                       : 'bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-bl-sm'

@@ -8,6 +8,7 @@ const topupEngine = require('../services/topupEngine');
 const paymentService = require('../services/paymentService');
 const emailService = require('../services/emailService');
 const otpService = require('../services/otpService');
+const aiChatService = require('../services/aiChatService');
 
 // ==========================================
 // 1. PUBLIC & STOREFRONT APIS
@@ -1281,35 +1282,96 @@ router.get('/chat/session', (req, res) => {
 });
 
 // Customer sends message
-router.post('/chat/message', (req, res) => {
-  const { chatId, sessionId, userId, customerName, text } = req.body;
-  if (!text || !text.trim()) {
-    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อความ' });
+router.post('/chat/message', async (req, res) => {
+  try {
+    const { chatId, sessionId, userId, customerName, text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอกข้อความ' });
+    }
+
+    let chat = chatId ? db.getChatById(chatId) : null;
+    if (!chat) {
+      chat = db.createOrGetChatSession({ sessionId, userId, customerName });
+    }
+
+    const result = db.addChatMessage(chat.id, {
+      sender: 'customer',
+      senderName: customerName || (chat.customerName || 'ลูกค้า'),
+      text
+    });
+
+    if (!result) {
+      return res.status(500).json({ success: false, message: 'ไม่สามารถส่งข้อความได้' });
+    }
+
+    // If chat is currently in AI mode, trigger intelligent 24/7 AI response
+    const currentMode = chat.mode || 'ai';
+    if (currentMode === 'ai') {
+      const userObj = userId ? db.getUserById(userId) : null;
+      const aiReply = await aiChatService.generateReply(text, { chat, db, user: userObj });
+
+      if (aiReply.shouldHandoffToHuman) {
+        db.setChatMode(chat.id, 'human');
+      }
+
+      db.addChatMessage(chat.id, {
+        sender: 'ai',
+        senderName: 'BOOSTUP AI Assistant',
+        text: aiReply.text
+      });
+    }
+
+    const updatedChat = db.getChatById(chat.id);
+    res.json({ success: true, chat: updatedChat, message: result.message });
+  } catch (err) {
+    console.error("Chat message error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
+});
 
-  let chat = chatId ? db.getChatById(chatId) : null;
-  if (!chat) {
-    chat = db.createOrGetChatSession({ sessionId, userId, customerName });
+// Customer: Switch between AI and Human Admin
+router.post('/chat/switch-mode', (req, res) => {
+  try {
+    const { chatId, sessionId, targetMode, mode: bodyMode, userId, customerName } = req.body;
+    let chat = chatId ? db.getChatById(chatId) : null;
+    if (!chat && sessionId) {
+      chat = db.createOrGetChatSession({ sessionId, userId, customerName });
+    }
+    if (!chat) {
+      return res.status(404).json({ success: false, message: 'ไม่พบห้องแชท' });
+    }
+
+    const requestedMode = targetMode || bodyMode;
+    const mode = requestedMode === 'human' ? 'human' : 'ai';
+    db.setChatMode(chat.id, mode);
+
+    if (mode === 'human') {
+      db.addChatMessage(chat.id, {
+        sender: 'ai',
+        senderName: 'BOOSTUP AI Assistant',
+        text: 'ระบบได้ส่งเรื่องแจ้งเตือนไปยังแอดมินเจ้าหน้าที่คนจริงให้เรียบร้อยแล้วครับ 👨‍💼 เจ้าหน้าที่จะเข้ามาตอบกลับโดยเร็วที่สุด กรุณาพิมพ์รายละเอียดหรือคำถามทิ้งไว้ได้เลยครับ 🙏'
+      });
+    } else {
+      db.addChatMessage(chat.id, {
+        sender: 'ai',
+        senderName: 'BOOSTUP AI Assistant',
+        text: 'สลับกลับมาโหมด AI Assistant อัจฉริยะเรียบร้อยแล้วครับ 🤖 สามารถพิมพ์สอบถามข้อมูล วิธีเติมเกม หรือเช็คสถานะออเดอร์ได้ตลอด 24 ชม. ครับ!'
+      });
+    }
+
+    const updatedChat = db.getChatById(chat.id);
+    res.json({ success: true, chat: updatedChat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-
-  const result = db.addChatMessage(chat.id, {
-    sender: 'customer',
-    senderName: customerName || (chat.customerName || 'ลูกค้า'),
-    text
-  });
-
-  if (!result) {
-    return res.status(500).json({ success: false, message: 'ไม่สามารถส่งข้อความได้' });
-  }
-
-  res.json({ success: true, chat: result.chat, message: result.message });
 });
 
 // Admin: Get all live chat rooms
 router.get('/admin/chats', (req, res) => {
   const chats = db.getChats();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unreadAdmin || 0), 0);
-  res.json({ success: true, chats, totalUnread });
+  const humanRequiredCount = chats.filter(c => c.needsHumanAttention || c.mode === 'human').length;
+  res.json({ success: true, chats, totalUnread, humanRequiredCount });
 });
 
 // Admin: Reply to customer chat
@@ -1329,9 +1391,31 @@ router.post('/admin/chats/:id/reply', (req, res) => {
     return res.status(404).json({ success: false, message: 'ไม่พบห้องแชทนี้' });
   }
 
+  // Admin replied: mark as read, set human mode, clear needsHumanAttention
   db.markChatAsRead(req.params.id, 'admin');
+  const chat = db.getChatById(req.params.id);
+  if (chat) {
+    chat.needsHumanAttention = false;
+    chat.mode = 'human';
+    db.save();
+  }
+
   db.logAction('admin', adminName || 'Admin', 'CHAT_REPLY', `ตอบแชทลูกค้า (ห้อง #${req.params.id}): ${text.length > 60 ? text.substring(0, 57) + '...' : text}`);
-  res.json({ success: true, chat: result.chat, message: result.message });
+  res.json({ success: true, chat: db.getChatById(req.params.id), message: result.message });
+});
+
+// Admin: Hand chat back to AI Assistant
+router.post('/admin/chats/:id/handoff-ai', (req, res) => {
+  const chat = db.getChatById(req.params.id);
+  if (!chat) return res.status(404).json({ success: false, message: 'ไม่พบห้องแชท' });
+  db.setChatMode(chat.id, 'ai');
+  db.addChatMessage(chat.id, {
+    sender: 'ai',
+    senderName: 'BOOSTUP AI Assistant',
+    text: 'แอดมินได้ส่งต่อการดูแลกลับมาให้ระบบ AI อัจฉริยะ 24 ชม. เรียบร้อยแล้วครับ 🤖 คุณลูกค้าสามารถสอบถามข้อมูลอื่นๆ ได้ตลอดเวลา หรือกดปุ่ม "ติดต่อแอดมินคนจริง" หากต้องการคุยกับเจ้าหน้าที่อีกครั้งครับ 🙏'
+  });
+  const updatedChat = db.getChatById(chat.id);
+  res.json({ success: true, chat: updatedChat });
 });
 
 // Admin: Mark chat as read

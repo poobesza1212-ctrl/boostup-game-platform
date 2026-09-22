@@ -16,7 +16,6 @@ import {
   VolumeX,
   ShieldCheck,
   History,
-  Percent,
   CheckCircle2,
   ChevronRight,
   Crown
@@ -84,7 +83,6 @@ export default function LuckyWheelModal({ isOpen, onClose, user, onUpdateUser, o
   const [flapperRecoil, setFlapperRecoil] = useState(false);
   
   // Secondary Modals / Overlays
-  const [ratesModalOpen, setRatesModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [userHistory, setUserHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -640,15 +638,6 @@ export default function LuckyWheelModal({ isOpen, onClose, user, onUpdateUser, o
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={() => setRatesModalOpen(true)}
-                className="px-2 py-0.5 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-amber-300 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer"
-                title="ดูอัตราความน่าจะเป็นของทุกรางวัล"
-              >
-                <Percent className="w-3 h-3 text-amber-400" />
-                <span>เรต %</span>
-              </button>
-              <button
-                type="button"
                 onClick={handleOpenHistory}
                 className="px-2 py-0.5 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-cyan-300 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer"
                 title="ดูประวัติการหมุนของคุณ"
@@ -882,66 +871,7 @@ export default function LuckyWheelModal({ isOpen, onClose, user, onUpdateUser, o
         </div>
       )}
 
-      {/* 📊 Provably Fair Drop Rates Transparency Modal */}
-      {ratesModalOpen && (
-        <div className="fixed inset-0 z-[65] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="w-full max-w-md bg-zinc-950 border border-amber-500/40 rounded-3xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Percent className="w-5 h-5 text-amber-400" />
-                <h3 className="text-sm font-bold text-white">อัตราการออกรางวัล (Provably Fair)</h3>
-              </div>
-              <button
-                onClick={() => setRatesModalOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="text-xs text-zinc-300 leading-relaxed bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span>
-                ระบบใช้ชุดคำนวณสุ่มตัวเลขแบบ Cryptographic RNG โปร่งใส 100% อัตราการออกรางวัลถูกตั้งค่าตามตารางด้านล่างโดยไม่มีการแทรกแซงหรือล็อคผล:
-              </span>
-            </div>
-
-            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 text-xs">
-              {prizes.map((p) => {
-                const percent = ((p.probability || 0.1) * 100).toFixed(1);
-                const isJackpot = p.type === 'credit' && p.value >= 50;
-                return (
-                  <div 
-                    key={p.id}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between ${
-                      isJackpot 
-                        ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 font-bold' 
-                        : 'bg-zinc-900/70 border-zinc-800 text-zinc-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{p.iconEmoji || '🎁'}</span>
-                      <div>
-                        <span className="font-semibold">{p.name}</span>
-                        {isJackpot && <span className="ml-1.5 text-[9px] bg-amber-500 text-black px-1.5 py-0.2 rounded font-black">JACKPOT</span>}
-                      </div>
-                    </div>
-                    <span className="font-mono font-bold text-amber-400">{percent}%</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setRatesModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold transition-all cursor-pointer"
-            >
-              ปิดหน้าต่าง
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 📜 Personal Spin History Modal */}
       {historyModalOpen && (

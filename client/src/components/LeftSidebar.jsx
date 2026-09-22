@@ -33,7 +33,10 @@ export default function LeftSidebar({
 }) {
   const handleNavClick = (view, scrollId = null) => {
     setCurrentView(view);
-    onClose();
+    // Only close drawer on mobile screen widths (< 1024px); keep pinned on desktop
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      onClose();
+    }
     if (scrollId) {
       setTimeout(() => {
         const el = document.getElementById(scrollId);
@@ -44,27 +47,34 @@ export default function LeftSidebar({
     }
   };
 
+  const handleActionClick = (actionFn) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      onClose();
+    }
+    if (actionFn) actionFn();
+  };
+
   return (
     <>
-      {/* Backdrop for Mobile / Overlay */}
+      {/* Backdrop for Mobile Only (Hidden on Desktop) */}
       {isOpen && (
         <div 
           onClick={onClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
         />
       )}
 
-      {/* Slide-out Left Sidebar Drawer */}
+      {/* Left Sidebar: Permanently Pinned on Desktop (ขึ้นค้างเลย), Slide-over on Mobile */}
       <aside 
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 sm:w-80 bg-[#10131c] text-white border-r border-[#202738] shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 xl:w-72 bg-[#10131c] text-white border-r border-[#202738] shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* 1. Header with Brand Logo & Hamburger Button */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#202738] bg-[#0c0f17]">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#202738] bg-[#0c0f17]">
           <div 
             onClick={() => handleNavClick('home')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group"
           >
             <img
               src={siteSettings?.logoUrl || '/boostup_logo.jpg'}
@@ -73,14 +83,14 @@ export default function LeftSidebar({
                 e.target.onerror = null;
                 e.target.src = '/boostup_logo.jpg';
               }}
-              className="w-9 h-9 rounded-xl object-contain border border-red-500/50 group-hover:scale-105 transition-transform shadow-md"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain border border-red-500/50 group-hover:scale-105 transition-transform shadow-md"
             />
             <div className="leading-tight">
               <div className="flex items-baseline gap-1">
-                <span className="text-lg font-black tracking-wider text-white font-['Kanit']">
+                <span className="text-base sm:text-lg font-black tracking-wider text-white font-['Kanit']">
                   BOOST
                 </span>
-                <span className="text-lg font-black tracking-wider text-red-500 font-['Kanit']">
+                <span className="text-base sm:text-lg font-black tracking-wider text-red-500 font-['Kanit']">
                   UP
                 </span>
               </div>
@@ -90,29 +100,34 @@ export default function LeftSidebar({
             </div>
           </div>
 
-          {/* Close / Hamburger Button */}
+          {/* Mobile Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-[#181d2a] hover:bg-red-950/60 text-zinc-300 hover:text-white border border-[#262f44] hover:border-red-600 transition-all cursor-pointer shadow-inner"
+            className="p-1.5 sm:p-2 rounded-xl bg-[#181d2a] hover:bg-red-950/60 text-zinc-300 hover:text-white border border-[#262f44] hover:border-red-600 transition-all cursor-pointer shadow-inner lg:hidden"
             title="ปิดเมนู"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
+
+          {/* Desktop Hamburger Icon Box matching Image 2 [ ≡ ] */}
+          <div className="hidden lg:flex items-center justify-center p-2 rounded-xl bg-[#181d2a] text-zinc-300 border border-[#262f44] shadow-inner" title="เมนูหลัก">
+            <Menu className="w-4 h-4" />
+          </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-3.5 py-3.5 space-y-3.5 custom-scrollbar">
           
           {/* 2. Coins & Points Card (Richman Shop Style) */}
           <div 
-            onClick={() => { onClose(); onOpenWheel(); }}
+            onClick={() => handleActionClick(onOpenWheel)}
             className="p-3 rounded-2xl bg-[#181d2a] hover:bg-[#1f2536] border border-[#2a344d] hover:border-amber-500/60 transition-all cursor-pointer shadow-md group flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 p-0.5 shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 p-0.5 shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
                 <div className="w-full h-full rounded-full bg-amber-950/80 flex items-center justify-center border border-amber-300/40">
-                  <Coins className="w-5 h-5 text-amber-300 animate-pulse" />
+                  <Coins className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 animate-pulse" />
                 </div>
               </div>
               <div className="text-left">
@@ -123,7 +138,7 @@ export default function LeftSidebar({
               </div>
             </div>
             <div className="flex items-center gap-1 text-xs text-zinc-400 group-hover:text-amber-300 transition-colors">
-              <span className="text-[11px] font-semibold hidden sm:inline">แลกรางวัล</span>
+              <span className="text-[10px] font-semibold hidden sm:inline">แลกรางวัล</span>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
@@ -131,7 +146,7 @@ export default function LeftSidebar({
           {/* 3. Green VIP Banner (Richman Premium Style) */}
           <button
             type="button"
-            onClick={() => { onClose(); onOpenAffiliate(); }}
+            onClick={() => handleActionClick(onOpenAffiliate)}
             className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer font-['Kanit']"
           >
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
@@ -146,10 +161,10 @@ export default function LeftSidebar({
           {/* 4. Redeem Rewards / Wheel Button */}
           <button
             type="button"
-            onClick={() => { onClose(); onOpenWheel(); }}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-200 hover:text-amber-300 hover:bg-[#181d2a] transition-colors cursor-pointer group text-left"
+            onClick={() => handleActionClick(onOpenWheel)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-200 hover:text-amber-300 hover:bg-[#181d2a] transition-colors cursor-pointer group text-left"
           >
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors">
               <Gift className="w-4 h-4" />
             </div>
             <span className="text-xs font-bold font-['Kanit']">แลกของรางวัล & วงล้อเสี่ยงโชค</span>
@@ -179,7 +194,7 @@ export default function LeftSidebar({
             <button
               type="button"
               onClick={() => {
-                if (onOpenCoupons) onOpenCoupons();
+                if (onOpenCoupons) handleActionClick(onOpenCoupons);
                 else handleNavClick('home', 'popular-games');
               }}
               className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
@@ -237,7 +252,7 @@ export default function LeftSidebar({
             <button
               type="button"
               onClick={() => {
-                onClose();
+                if (typeof window !== 'undefined' && window.innerWidth < 1024) onClose();
                 alert('ระบบเติมเงินมือถืออัตโนมัติ (AIS, TRUE, DTAC) กำลังเตรียมเปิดให้บริการในเร็วๆ นี้ครับ!');
               }}
               className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
@@ -284,7 +299,7 @@ export default function LeftSidebar({
               </div>
               <button
                 type="button"
-                onClick={onOpenWallet}
+                onClick={() => handleActionClick(onOpenWallet)}
                 className="px-2 py-1 rounded-lg bg-[#181d2a] hover:bg-emerald-950/60 text-emerald-400 text-xs font-bold border border-[#262f44] shrink-0"
               >
                 ฿{(Number(user.walletBalance) || 0).toFixed(2)}

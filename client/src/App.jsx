@@ -313,27 +313,7 @@ export default function App() {
   return (
     <div id="root" className="min-h-screen bg-[#080a0f] text-slate-100 flex flex-col selection:bg-red-600 selection:text-white">
       
-      {/* Top Navbar */}
-      <Navbar
-        currentView={currentView}
-        setCurrentView={navigateTo}
-        user={user}
-        onOpenAuth={handleOpenAuth}
-        onLogout={handleLogout}
-        onOpenWallet={() => setWalletModalOpen(true)}
-        cartCount={cartItems.length}
-        onOpenCart={() => setCartModalOpen(true)}
-        onOpenWheel={() => setWheelModalOpen(true)}
-        onOpenAffiliate={() => setAffiliateModalOpen(true)}
-        onToggleSidebar={() => setLeftSidebarOpen(prev => !prev)}
-        siteSettings={siteSettings}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        games={games}
-        onSelectGame={(game) => setSelectedProductForCheckout(game)}
-      />
-
-      {/* Richman Shop Style Left Sidebar Navigation Drawer */}
+      {/* Richman Shop Style Left Sidebar: Permanently Pinned on Desktop (ขึ้นค้างเลย), Drawer on Mobile */}
       <LeftSidebar
         isOpen={leftSidebarOpen}
         onClose={() => setLeftSidebarOpen(false)}
@@ -353,63 +333,89 @@ export default function App() {
         siteSettings={siteSettings}
       />
 
-      {/* Main Content Router: Order History View vs Home Storefront */}
-      {currentView === 'orders' ? (
-        <OrderHistoryView
+      {/* Main Content Column: Shifted to the right on Desktop (lg:pl-64 xl:pl-72) */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 xl:pl-72 transition-all duration-300 min-h-screen">
+        
+        {/* Top Navbar */}
+        <Navbar
+          currentView={currentView}
+          setCurrentView={navigateTo}
           user={user}
-          games={games}
-          onBackToHome={() => navigateTo('home')}
-          onViewReceipt={(order) => setActiveOrderForStatus(order)}
           onOpenAuth={handleOpenAuth}
+          onLogout={handleLogout}
+          onOpenWallet={() => setWalletModalOpen(true)}
+          cartCount={cartItems.length}
+          onOpenCart={() => setCartModalOpen(true)}
+          onOpenWheel={() => setWheelModalOpen(true)}
+          onOpenAffiliate={() => setAffiliateModalOpen(true)}
+          onToggleSidebar={() => setLeftSidebarOpen(prev => !prev)}
+          siteSettings={siteSettings}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          games={games}
+          onSelectGame={(game) => setSelectedProductForCheckout(game)}
         />
-      ) : (
-        <>
-          {/* 1. Promotional Carousel Hero Slider (Richman Shop Style) */}
-          <HeroCarousel slides={slides} />
 
-          {/* 2. Quick Category Service Bar (6 Quick Service Buttons) */}
-          <QuickCategoryBar categories={quickCategories} />
+        {/* Main Content Router: Order History View vs Home Storefront */}
+        <main className="flex-1">
+          {currentView === 'orders' ? (
+            <OrderHistoryView
+              user={user}
+              games={games}
+              onBackToHome={() => navigateTo('home')}
+              onViewReceipt={(order) => setActiveOrderForStatus(order)}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : (
+            <>
+              {/* 1. Promotional Carousel Hero Slider (Richman Shop Style) */}
+              <HeroCarousel slides={slides} />
 
-          {/* 3. Flash Sale Section with Live Countdown Timer & Stock Progress Bar */}
-          <FlashSaleSection
-            flashSales={flashSales}
-            onSelectFlashSale={(item) => setSelectedProductForCheckout(item)}
-          />
+              {/* 2. Quick Category Service Bar (6 Quick Service Buttons) */}
+              <QuickCategoryBar categories={quickCategories} />
 
-          {/* 4. Popular Games Catalog Grid */}
-          <GameGrid
-            games={games}
-            onSelectGame={(game) => setSelectedProductForCheckout(game)}
-            searchQuery={searchQuery}
-          />
+              {/* 3. Flash Sale Section with Live Countdown Timer & Stock Progress Bar */}
+              <FlashSaleSection
+                flashSales={flashSales}
+                onSelectFlashSale={(item) => setSelectedProductForCheckout(item)}
+              />
 
-          {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
-          <GiftCardGrid
-            giftCards={giftCards}
-            onSelectCard={(card) => setSelectedProductForCheckout(card)}
-          />
+              {/* 4. Popular Games Catalog Grid */}
+              <GameGrid
+                games={games}
+                onSelectGame={(game) => setSelectedProductForCheckout(game)}
+                searchQuery={searchQuery}
+              />
 
-          {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
-          <AppSubscriptionGrid
-            appSubscriptions={appSubscriptions}
-            onSelectApp={(app) => setSelectedProductForCheckout(app)}
-          />
+              {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
+              <GiftCardGrid
+                giftCards={giftCards}
+                onSelectCard={(card) => setSelectedProductForCheckout(card)}
+              />
 
-          {/* 7. 4-Step How-to-Topup Guide */}
-          <StepGuide />
+              {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
+              <AppSubscriptionGrid
+                appSubscriptions={appSubscriptions}
+                onSelectApp={(app) => setSelectedProductForCheckout(app)}
+              />
 
-          {/* 8. 8 Feature Highlights */}
-          <FeaturesGrid />
+              {/* 7. 4-Step How-to-Topup Guide */}
+              <StepGuide />
 
-          {/* 9. Trust & Company Credentials */}
-          <TrustSection siteSettings={siteSettings} />
-        </>
-      )}
+              {/* 8. 8 Feature Highlights */}
+              <FeaturesGrid />
 
-      {/* 10. Footer */}
-      <Footer
-        siteSettings={siteSettings}
-      />
+              {/* 9. Trust & Company Credentials */}
+              <TrustSection siteSettings={siteSettings} />
+            </>
+          )}
+        </main>
+
+        {/* 10. Footer */}
+        <Footer
+          siteSettings={siteSettings}
+        />
+      </div>
 
       {/* Floating LINE Support Widget */}
       <FloatingSupport 

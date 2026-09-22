@@ -80,7 +80,7 @@ export default function Navbar({
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="p-2 sm:p-2.5 rounded-xl bg-[#121622] hover:bg-red-950/80 text-zinc-300 hover:text-white border border-[#232a3d] hover:border-red-600 transition-all cursor-pointer shadow-md group"
+              className="p-2 sm:p-2.5 rounded-xl bg-[#121622] hover:bg-red-950/80 text-zinc-300 hover:text-white border border-[#232a3d] hover:border-red-600 transition-all cursor-pointer shadow-md group lg:hidden"
               title="เปิดเมนูด้านซ้าย (Richman Shop Style)"
             >
               <Menu className="w-5 h-5 group-hover:scale-110 transition-transform text-zinc-200 group-hover:text-red-400" />

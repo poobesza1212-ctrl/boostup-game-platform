@@ -765,7 +765,8 @@ class Database {
   }
 
   async initPg(customUrl = null) {
-    const dbUrl = customUrl || process.env.DATABASE_URL;
+    const DEFAULT_PG_URL = 'postgresql://boostup_db_user:0YsCAYoTICQdyZ8upeo5hk5xAPTQZcVc@dpg-daollr80cd8s73e955bg-a/boostup_db';
+    const dbUrl = customUrl || process.env.DATABASE_URL || DEFAULT_PG_URL;
     if (!dbUrl || !dbUrl.trim()) {
       this.isPgConnected = false;
       return false;
@@ -789,15 +790,21 @@ class Database {
         pool = new pg.Pool({
           connectionString: cleanUrl,
           ssl: cleanUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-          connectionTimeoutMillis: 8000
+          connectionTimeoutMillis: 5000
         });
         await pool.query('SELECT NOW()');
       } catch (sslErr) {
+        if (sslErr.code === 'ENOTFOUND' || (sslErr.message && sslErr.message.includes('ENOTFOUND'))) {
+          console.warn("ℹ️ [PostgreSQL] Cloud Render host is not reachable from this local environment. Continuing with local persistent storage.");
+          this.isPgConnected = false;
+          return false;
+        }
+
         console.warn("Retrying PostgreSQL connection with ssl=false (for private/internal network)...", sslErr.message);
         pool = new pg.Pool({
           connectionString: cleanUrl,
           ssl: false,
-          connectionTimeoutMillis: 8000
+          connectionTimeoutMillis: 5000
         });
         await pool.query('SELECT NOW()');
       }
@@ -837,7 +844,11 @@ class Database {
 
       return true;
     } catch (err) {
-      console.error("PostgreSQL cloud sync notice:", err.message);
+      if (err.code === 'ENOTFOUND' || (err.message && err.message.includes('ENOTFOUND'))) {
+        console.warn("ℹ️ [PostgreSQL] Cloud Render host is not reachable from this local environment. Continuing with local persistent storage.");
+      } else {
+        console.error("PostgreSQL cloud sync notice:", err.message);
+      }
       this.isPgConnected = false;
       return false;
     }
@@ -961,6 +972,14 @@ class Database {
     if (!this.data.digitalVault) this.data.digitalVault = defaultData.digitalVault || [];
     if (!this.data.luckyWheelPrizes || this.data.luckyWheelPrizes.length === 0) {
       this.data.luckyWheelPrizes = defaultData.luckyWheelPrizes;
+    }
+    if (!this.data.luckyWheelSettings) {
+      this.data.luckyWheelSettings = {
+        enabled: true,
+        pointsPerSpin: 20,
+        dailyStreakPoints: [10, 15, 20, 25, 30, 40, 100],
+        dailyStreakTicketsDay7: 1
+      };
     }
     if (!this.data.gameRoutes) {
       this.data.gameRoutes = defaultData.gameRoutes;
@@ -2239,6 +2258,198 @@ class Database {
       remainingTickets: user.spinTickets,
       newPoints: user.points,
       newBalance: user.walletBalance
+    };
+  }
+
+  // ==========================================
+  // Lucky Wheel Admin Management Methods
+  // ==========================================
+  getLuckyWheelSettings() {
+    return this.data.luckyWheelSettings || {
+      enabled: true,
+      pointsPerSpin: 20,
+      dailyStreakPoints: [10, 15, 20, 25, 30, 40, 50],
+      dailyStreakTicketsDay7: 1
+    };
+  }
+
+  updateLuckyWheelSettings(settings) {
+    if (!this.data.luckyWheelSettings) this.data.luckyWheelSettings = {};
+    this.data.luckyWheelSettings = { ...this.data.luckyWheelSettings, ...settings };
+    this.save();
+    return this.data.luckyWheelSettings;
+  }
+
+  updateLuckyWheelPrizes(prizes) {
+    if (!Array.isArray(prizes)) return false;
+    this.data.luckyWheelPrizes = prizes;
+    this.save();
+    return this.data.luckyWheelPrizes;
+  }
+
+  addLuckyWheelPrize(prize) {
+    if (!this.data.luckyWheelPrizes) this.data.luckyWheelPrizes = [];
+    const newPrize = {
+      id: prize.id || `prize_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: prize.name || 'รางวัลใหม่',
+      type: prize.type || 'points',
+      value: prize.value !== undefined ? prize.value : 10,
+      probability: Number(prize.probability) || 0.1,
+      color: prize.color || '#3b82f6',
+      icon: prize.icon || 'Gift',
+      enabled: prize.enabled !== false
+    };
+    this.data.luckyWheelPrizes.push(newPrize);
+    this.save();
+    return newPrize;
+  }
+
+  updateLuckyWheelPrize(id, updates) {
+    if (!this.data.luckyWheelPrizes) return null;
+    const idx = this.data.luckyWheelPrizes.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+    this.data.luckyWheelPrizes[idx] = { ...this.data.luckyWheelPrizes[idx], ...updates };
+    this.save();
+    return this.data.luckyWheelPrizes[idx];
+  }
+
+  deleteLuckyWheelPrize(id) {
+    if (!this.data.luckyWheelPrizes) return false;
+    const initLen = this.data.luckyWheelPrizes.length;
+    this.data.luckyWheelPrizes = this.data.luckyWheelPrizes.filter(p => p.id !== id);
+    if (this.data.luckyWheelPrizes.length !== initLen) {
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // Detailed Affiliate Inspection Methods
+  // ==========================================
+  getUserAffiliateDetail(userId, isAdmin = false) {
+    const user = this.findUserById(userId);
+    if (!user) return null;
+
+    const allUsers = this.data.users || [];
+    const allOrders = this.data.orders || [];
+
+    const referredUsers = allUsers
+      .filter(u => u.referredBy === user.id || (user.referralCode && u.referredBy === user.referralCode))
+      .map(u => {
+        const userOrders = allOrders.filter(o => 
+          o.userId === u.id && 
+          (o.paymentStatus === 'paid' || o.topupStatus === 'completed')
+        );
+        const totalSpent = userOrders.reduce((sum, o) => sum + Number(o.finalAmount || o.price || 0), 0);
+        const commissionGenerated = Math.round(totalSpent * 0.02 * 100) / 100;
+
+        let displayName = u.name || u.username || 'สมาชิก';
+        let emailDisplay = u.email || '-';
+
+        if (!isAdmin && emailDisplay && emailDisplay.includes('@')) {
+          const [namePart, domainPart] = emailDisplay.split('@');
+          emailDisplay = `${namePart.slice(0, 2)}***@${domainPart}`;
+        }
+        if (!isAdmin && displayName.length > 3) {
+          displayName = displayName.slice(0, 3) + '***';
+        }
+
+        return {
+          id: u.id,
+          name: displayName,
+          username: isAdmin ? u.username : (u.username ? u.username.slice(0, 3) + '***' : 'user***'),
+          email: emailDisplay,
+          createdAt: u.createdAt,
+          ordersCount: userOrders.length,
+          totalSpent: Math.round(totalSpent * 100) / 100,
+          commissionGenerated
+        };
+      });
+
+    const totalReferralSpending = referredUsers.reduce((sum, u) => sum + u.totalSpent, 0);
+    const activeReferred = referredUsers.filter(u => u.ordersCount > 0).length;
+
+    const txns = (this.data.transactions || [])
+      .filter(t => t.userId === user.id && t.type === 'affiliate_commission')
+      .slice(0, 20);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name || user.username || 'สมาชิก',
+        username: user.username,
+        email: user.email,
+        referralCode: user.referralCode || `REF${user.id.slice(-6)}`,
+        affiliateEarnings: Number(user.affiliateEarnings || 0),
+        walletBalance: Number(user.walletBalance || 0),
+        spinTickets: user.spinTickets || 0,
+        createdAt: user.createdAt
+      },
+      commissionRate: "2.0%",
+      totalReferred: referredUsers.length,
+      activeReferred,
+      totalReferralSpending: Math.round(totalReferralSpending * 100) / 100,
+      totalCommissionEarned: Number(user.affiliateEarnings || 0),
+      referredUsers,
+      recentCommissions: txns
+    };
+  }
+
+  getAllAffiliatesSummary() {
+    const allUsers = this.data.users || [];
+    const allOrders = this.data.orders || [];
+
+    const summaries = allUsers
+      .map(user => {
+        const referred = allUsers.filter(u => 
+          u.referredBy === user.id || (user.referralCode && u.referredBy === user.referralCode)
+        );
+        if (referred.length === 0 && Number(user.affiliateEarnings || 0) <= 0) {
+          return null;
+        }
+
+        let totalVolume = 0;
+        let totalOrders = 0;
+        referred.forEach(u => {
+          const userOrders = allOrders.filter(o => 
+            o.userId === u.id && 
+            (o.paymentStatus === 'paid' || o.topupStatus === 'completed')
+          );
+          totalOrders += userOrders.length;
+          totalVolume += userOrders.reduce((sum, o) => sum + Number(o.finalAmount || o.price || 0), 0);
+        });
+
+        return {
+          id: user.id,
+          username: user.username,
+          name: user.name || user.username,
+          email: user.email,
+          referralCode: user.referralCode || `REF${user.id.slice(-6)}`,
+          referredCount: referred.length,
+          activeReferredCount: referred.filter(u => allOrders.some(o => o.userId === u.id && (o.paymentStatus === 'paid' || o.topupStatus === 'completed'))).length,
+          totalReferralOrders: totalOrders,
+          totalReferralVolume: Math.round(totalVolume * 100) / 100,
+          affiliateEarnings: Number(user.affiliateEarnings || 0),
+          walletBalance: Number(user.walletBalance || 0),
+          createdAt: user.createdAt
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.referredCount - a.referredCount || b.affiliateEarnings - a.affiliateEarnings);
+
+    const storeTotalReferred = summaries.reduce((sum, s) => sum + s.referredCount, 0);
+    const storeTotalCommission = summaries.reduce((sum, s) => sum + s.affiliateEarnings, 0);
+    const storeTotalVolume = summaries.reduce((sum, s) => sum + s.totalReferralVolume, 0);
+
+    return {
+      summaries,
+      stats: {
+        totalAffiliates: summaries.length,
+        storeTotalReferred,
+        storeTotalCommission: Math.round(storeTotalCommission * 100) / 100,
+        storeTotalVolume: Math.round(storeTotalVolume * 100) / 100
+      }
     };
   }
 

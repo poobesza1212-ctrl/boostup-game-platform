@@ -188,11 +188,70 @@ export default function AffiliateModal({ isOpen, onClose, user, onOpenLogin }) {
                 </div>
               </div>
 
+              {/* Referred Friends Detailed List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-300 uppercase flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-purple-400" />
+                    <span>เพื่อนที่สมัครผ่านลิงก์ของคุณ ({affiliateData?.referredUsers?.length || 0} คน)</span>
+                  </h4>
+                  <span className="text-[11px] text-zinc-400">
+                    เติมเงินแล้ว: <strong className="text-emerald-400">{affiliateData?.activeReferred || 0}</strong> คน
+                  </span>
+                </div>
+
+                {(!affiliateData?.referredUsers || affiliateData.referredUsers.length === 0) ? (
+                  <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800 text-center text-xs text-zinc-500">
+                    ยังไม่มีเพื่อนสมัครผ่านลิงก์นี้ คัดลอกลิงก์ด้านบนแล้วส่งให้เพื่อนเพื่อเริ่มรับรายได้ได้เลย! ✨
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 max-h-48 overflow-y-auto">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] border-b border-zinc-800">
+                        <tr>
+                          <th className="py-2.5 px-3">ผู้ใช้งาน</th>
+                          <th className="py-2.5 px-3">วันที่สมัคร</th>
+                          <th className="py-2.5 px-3 text-center">ออเดอร์</th>
+                          <th className="py-2.5 px-3 text-right">คอมมิชชั่นที่ได้รับ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-850 text-zinc-300">
+                        {affiliateData.referredUsers.map((friend) => (
+                          <tr key={friend.id} className="hover:bg-zinc-900/40">
+                            <td className="py-2.5 px-3 font-medium text-white flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px] font-bold">
+                                {friend.username?.charAt(0)?.toUpperCase() || 'U'}
+                              </div>
+                              <span>{friend.username || friend.name}</span>
+                            </td>
+                            <td className="py-2.5 px-3 text-zinc-500">
+                              {friend.createdAt ? new Date(friend.createdAt).toLocaleDateString('th-TH') : '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {friend.ordersCount > 0 ? (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">
+                                  {friend.ordersCount} บิล
+                                </span>
+                              ) : (
+                                <span className="text-zinc-600">ยังไม่เติม</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                              {friend.commissionGenerated > 0 ? `+฿${friend.commissionGenerated.toFixed(2)}` : '฿0.00'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
               {/* Recent Commissions List */}
               {affiliateData?.recentCommissions && affiliateData.recentCommissions.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-zinc-300 uppercase">ประวัติคอมมิชชั่นล่าสุด</h4>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
                     {affiliateData.recentCommissions.map(txn => (
                       <div key={txn.id} className="p-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between text-xs">
                         <div>

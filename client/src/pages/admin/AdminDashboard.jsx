@@ -70,7 +70,10 @@ import {
   Volume2,
   VolumeX,
   Bell,
-  Copy
+  Copy,
+  Share2,
+  Percent,
+  Sliders
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -139,6 +142,20 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [autoSlipTestAmount, setAutoSlipTestAmount] = useState('100');
   const [isTestingSlip, setIsTestingSlip] = useState(false);
   const [slipTestResult, setSlipTestResult] = useState(null);
+
+  // Lucky Wheel Admin State
+  const [wheelPrizes, setWheelPrizes] = useState([]);
+  const [wheelSettings, setWheelSettings] = useState({ pointsPerSpin: 20, enabled: true });
+  const [wheelPrizeModalOpen, setWheelPrizeModalOpen] = useState(false);
+  const [editingPrize, setEditingPrize] = useState(null);
+  const [isSavingWheel, setIsSavingWheel] = useState(false);
+
+  // Affiliate Inspector State
+  const [affiliatesList, setAffiliatesList] = useState([]);
+  const [affiliatesStats, setAffiliatesStats] = useState(null);
+  const [affiliateSearch, setAffiliateSearch] = useState('');
+  const [selectedAffiliateDetail, setSelectedAffiliateDetail] = useState(null);
+  const [isInspectingAffiliate, setIsInspectingAffiliate] = useState(false);
 
   // Filters
   const [orderFilterStatus, setOrderFilterStatus] = useState('all');
@@ -479,7 +496,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     try {
       if (isBackgroundPoll) {
         // Fast background poll: refresh live stats, orders, customers, chats, slip deposits, audit logs, db status and vault
-        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes, dbRes, vaultRes] = await Promise.all([
+        const [statsRes, ordersRes, custRes, chatsRes, depRes, logRes, dbRes, vaultRes, wheelRes, affRes] = await Promise.all([
           fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
           fetch('/api/admin/customers').then(r => r.json()).catch(() => ({})),
@@ -487,13 +504,23 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
           fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
           fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
           fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({})),
-          fetch('/api/admin/vault').then(r => r.json()).catch(() => ({}))
+          fetch('/api/admin/vault').then(r => r.json()).catch(() => ({})),
+          fetch('/api/admin/wheel').then(r => r.json()).catch(() => ({})),
+          fetch('/api/admin/affiliates').then(r => r.json()).catch(() => ({}))
         ]);
         if (statsRes?.success) setStats(statsRes);
         if (ordersRes?.success) setOrders(ordersRes.orders);
         if (vaultRes?.success) {
           setVaultStats(vaultRes.stats);
           setVaultCodes(vaultRes.codes || []);
+        }
+        if (wheelRes?.success) {
+          setWheelPrizes(wheelRes.prizes || []);
+          if (wheelRes.settings) setWheelSettings(wheelRes.settings);
+        }
+        if (affRes?.success) {
+          setAffiliatesList(affRes.summaries || []);
+          setAffiliatesStats(affRes.stats || null);
         }
         if (custRes?.success && !customerEditModal.open) {
           setCustomers(custRes.customers || []);
@@ -552,7 +579,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       }
 
       // Initial or explicit full load
-      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes, dbRes, vaultRes] = await Promise.all([
+      const [statsRes, ordersRes, provRes, gamesRes, cpnRes, custRes, setRes, admRes, sldRes, flashRes, cardRes, appRes, catRes, chatsRes, depRes, logRes, dbRes, vaultRes, wheelRes, affRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/orders').then(r => r.json()).catch(() => ({})),
         fetch('/api/admin/providers').then(r => r.json()).catch(() => ({})),
@@ -570,7 +597,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
         fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({ deposits: [], pendingCount: 0 })),
         fetch('/api/admin/audit-logs').then(r => r.json()).catch(() => ({ logs: [] })),
         fetch('/api/admin/database/status').then(r => r.json()).catch(() => ({})),
-        fetch('/api/admin/vault').then(r => r.json()).catch(() => ({}))
+        fetch('/api/admin/vault').then(r => r.json()).catch(() => ({})),
+        fetch('/api/admin/wheel').then(r => r.json()).catch(() => ({})),
+        fetch('/api/admin/affiliates').then(r => r.json()).catch(() => ({}))
       ]);
 
       if (statsRes?.success) setStats(statsRes);
@@ -578,6 +607,14 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       if (vaultRes?.success) {
         setVaultStats(vaultRes.stats);
         setVaultCodes(vaultRes.codes || []);
+      }
+      if (wheelRes?.success) {
+        setWheelPrizes(wheelRes.prizes || []);
+        if (wheelRes.settings) setWheelSettings(wheelRes.settings);
+      }
+      if (affRes?.success) {
+        setAffiliatesList(affRes.summaries || []);
+        setAffiliatesStats(affRes.stats || null);
       }
       if (provRes?.success) {
         setProviders(provRes.providers);
@@ -761,6 +798,137 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถตรวจสอบสลิปได้', type: 'error' });
     } finally {
       setIsTestingSlip(false);
+    }
+  };
+
+  // Handle Save Wheel Settings
+  const handleSaveWheelSettings = async (newSettings) => {
+    setIsSavingWheel(true);
+    try {
+      const res = await fetch('/api/admin/wheel/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWheelSettings(data.settings);
+        showAlert({ title: 'บันทึกสำเร็จ', message: 'บันทึกการตั้งค่าวงล้อเรียบร้อยแล้ว', type: 'success' });
+      } else {
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', type: 'error' });
+    } finally {
+      setIsSavingWheel(false);
+    }
+  };
+
+  // Handle Save All Wheel Prizes
+  const handleSaveWheelPrizes = async (prizesToSave) => {
+    setIsSavingWheel(true);
+    try {
+      const res = await fetch('/api/admin/wheel/prizes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prizes: prizesToSave || wheelPrizes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWheelPrizes(data.prizes);
+        showAlert({ title: 'บันทึกสำเร็จ', message: 'อัปเดตรายการรางวัลและเปอร์เซ็นต์เรียบร้อย', type: 'success' });
+      } else {
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', type: 'error' });
+    } finally {
+      setIsSavingWheel(false);
+    }
+  };
+
+  // Auto Normalize Wheel Probabilities to 100%
+  const handleNormalizeWheelProbabilities = () => {
+    if (!wheelPrizes || wheelPrizes.length === 0) return;
+    const totalProb = wheelPrizes.reduce((sum, p) => sum + (Number(p.probability) || 0), 0);
+    if (totalProb <= 0) return;
+    const normalized = wheelPrizes.map(p => ({
+      ...p,
+      probability: Math.round(((Number(p.probability) || 0) / totalProb) * 1000) / 1000
+    }));
+    setWheelPrizes(normalized);
+    showAlert({ title: 'ปรับสมดุลสำเร็จ', message: 'ปรับเปอร์เซ็นต์รางวัลทั้งหมดให้รวมได้ 100% เรียบร้อย กรุณากดปุ่ม "บันทึกรางวัลวงล้อ"', type: 'info' });
+  };
+
+  // Handle Delete Wheel Prize
+  const handleDeleteWheelPrize = async (prizeId) => {
+    if (!window.confirm('คุณต้องการลบรางวัลนี้ออกจากวงล้อใช่หรือไม่?')) return;
+    try {
+      const res = await fetch(`/api/admin/wheel/prize/${prizeId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setWheelPrizes(prev => prev.filter(p => p.id !== prizeId));
+        showAlert({ title: 'ลบสำเร็จ', message: 'ลบรางวัลเรียบร้อย', type: 'success' });
+      } else {
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถเชื่อมต่อได้', type: 'error' });
+    }
+  };
+
+  // Handle Save Single Wheel Prize (Add or Update)
+  const handleSaveSingleWheelPrize = async (prizeData) => {
+    if (!prizeData.name?.trim()) {
+      showAlert({ title: 'กรุณากรอกชื่อรางวัล', message: 'ต้องระบุชื่อของรางวัล', type: 'warning' });
+      return;
+    }
+
+    try {
+      let res, data;
+      if (prizeData.id && wheelPrizes.some(p => p.id === prizeData.id)) {
+        res = await fetch(`/api/admin/wheel/prize/${prizeData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prizeData)
+        });
+      } else {
+        res = await fetch('/api/admin/wheel/prize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prizeData)
+        });
+      }
+      data = await res.json();
+      if (data.success) {
+        setWheelPrizeModalOpen(false);
+        setEditingPrize(null);
+        loadData(false);
+        showAlert({ title: 'สำเร็จ', message: 'บันทึกข้อมูลรางวัลเรียบร้อย', type: 'success' });
+      } else {
+        showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message, type: 'error' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถบันทึกได้', type: 'error' });
+    }
+  };
+
+  // Handle Inspect Affiliate Detail
+  const handleInspectAffiliate = async (userId) => {
+    setIsInspectingAffiliate(true);
+    setSelectedAffiliateDetail(null);
+    try {
+      const res = await fetch(`/api/admin/affiliates/${userId}`);
+      const data = await res.json();
+      if (data.success && data.detail) {
+        setSelectedAffiliateDetail(data.detail);
+      } else {
+        showAlert({ title: 'ไม่พบข้อมูล', message: data.message || 'ไม่สามารถโหลดข้อมูลสายแนะนำได้', type: 'warning' });
+      }
+    } catch (e) {
+      showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถดึงข้อมูลได้', type: 'error' });
+    } finally {
+      setIsInspectingAffiliate(false);
     }
   };
 
@@ -1894,6 +2062,8 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     { id: 'cms', label: 'แบนเนอร์ & หน้าร้าน (CMS)', icon: <LayoutGrid className="w-4 h-4 text-emerald-400" /> },
     { id: 'providers', label: 'ผู้ให้บริการ API', icon: <GitFork className="w-4 h-4" /> },
     { id: 'coupons', label: 'โปรโมชั่น & คูปอง', icon: <Tag className="w-4 h-4" /> },
+    { id: 'lucky_wheel', label: 'จัดการวงล้อ (Lucky Wheel)', icon: <Gift className="w-4 h-4 text-amber-400" />, count: wheelPrizes.length },
+    { id: 'affiliates', label: 'สายแนะนำเพื่อน (Affiliate)', icon: <Share2 className="w-4 h-4 text-purple-400" />, count: affiliatesList.length },
     { id: 'customers', label: 'ลูกค้า & กระเป๋าเงิน', icon: <Users className="w-4 h-4" />, count: customers.length },
     { id: 'admins', label: 'ผู้ดูแล & สิทธิ์ (RBAC)', icon: <Shield className="w-4 h-4" />, count: admins.length },
     { id: 'audit_logs', label: 'ประวัติกิจกรรมแอดมิน', icon: <History className="w-4 h-4 text-amber-400" />, count: auditLogs.length },
@@ -4315,7 +4485,458 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
             </div>
           )}
 
-          {/* TAB 8: CUSTOMERS */}
+          {/* TAB: LUCKY WHEEL MANAGEMENT */}
+          {activeTab === 'lucky_wheel' && (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <Gift className="w-6 h-6 text-amber-400" />
+                    <span>จัดการวงล้อเสี่ยงโชค (Lucky Wheel Management)</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                      Gamification
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    กำหนดของรางวัล, ปรับอัตราเปอร์เซ็นต์โอกาสออก (Probability %), กำหนดแต้มที่ใช้หมุนต่อครั้ง และเปิด/ปิดการใช้งาน
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleNormalizeWheelProbabilities}
+                    className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-amber-300 hover:text-amber-200 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+                    title="ปรับอัตราส่วนทั้งหมดให้รวมได้ 100% พอดี"
+                  >
+                    <Percent className="w-3.5 h-3.5" />
+                    <span>ปรับสมดุล 100% อัตโนมัติ</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingPrize({
+                        id: '',
+                        name: '',
+                        type: 'points',
+                        value: 20,
+                        probability: 0.1,
+                        color: '#f59e0b',
+                        icon: 'Coins',
+                        enabled: true
+                      });
+                      setWheelPrizeModalOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black text-xs flex items-center gap-2 shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer font-['Kanit']"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ เพิ่มรางวัลใหม่</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status & Probability Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Total Probability Card */}
+                {(() => {
+                  const totalProb = Math.round(wheelPrizes.reduce((sum, p) => sum + (Number(p.probability) || 0), 0) * 1000) / 10;
+                  const isBalanced = Math.abs(totalProb - 100) < 0.5;
+                  return (
+                    <div className={`p-4 rounded-2xl border ${isBalanced ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-amber-500/5 border-amber-500/30'} space-y-2`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">ผลรวมโอกาสออกทั้งหมด</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isBalanced ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400 animate-pulse'}`}>
+                          {isBalanced ? '✓ สมดุล 100%' : '⚠️ ยังไม่ครบ 100%'}
+                        </span>
+                      </div>
+                      <div className="text-2xl font-black text-white font-mono flex items-baseline gap-1">
+                        <span className={isBalanced ? 'text-emerald-400' : 'text-amber-400'}>{totalProb}</span>
+                        <span className="text-sm font-normal text-zinc-400">%</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500">
+                        {isBalanced 
+                          ? 'อัตราสุ่มสมบูรณ์ ระบบจะกระจายรางวัลตามสัดส่วนนี้' 
+                          : 'แนะนำให้กด "ปรับสมดุล 100% อัตโนมัติ" เพื่อเกลี่ยให้รวมได้ 100%'}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* Points Per Spin Config */}
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-400">
+                    <span>พอยท์ที่ใช้หมุนต่อครั้ง (เมื่อไม่มีตั๋วฟรี)</span>
+                    <Coins className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={wheelSettings.pointsPerSpin || 20}
+                      onChange={(e) => setWheelSettings({ ...wheelSettings, pointsPerSpin: Number(e.target.value) || 20 })}
+                      className="w-28 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-xs text-zinc-400 font-medium">พอยท์ / รอบ</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveWheelSettings(wheelSettings)}
+                      disabled={isSavingWheel}
+                      className="ml-auto px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-xs font-bold text-white transition-all cursor-pointer"
+                    >
+                      บันทึก
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-zinc-500">สิทธิ์หมุนฟรีจะถูกใช้ก่อน หากตั๋วหมดจะหักแต้มนี้</p>
+                </div>
+
+                {/* System Status & Streak Bonus */}
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400">สถานะวงล้อเสี่ยงโชค</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      ออนไลน์ (Active)
+                    </span>
+                  </div>
+                  <div className="text-xs text-zinc-300 space-y-1 my-2">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">จำนวนรางวัลในวงล้อ:</span>
+                      <strong className="text-white font-mono">{wheelPrizes.length} ชิ้น</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">โบนัสเช็คชื่อวันที่ 7:</span>
+                      <strong className="text-amber-400">+50P & +1 ตั๋วฟรี</strong>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-zinc-500">สมาชิกเช็คชื่อได้วันละ 1 ครั้ง</div>
+                </div>
+              </div>
+
+              {/* Prizes Table */}
+              <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 shadow-xl space-y-3 p-4">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                  <h3 className="text-sm font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <span>รายการของรางวัลในวงล้อ</span>
+                    <span className="text-xs text-zinc-500 font-normal">({wheelPrizes.length} รายการ)</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveWheelPrizes(wheelPrizes)}
+                    disabled={isSavingWheel}
+                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    {isSavingWheel ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลงทั้งหมด'}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-300">
+                    <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[11px] border-b border-zinc-800">
+                      <tr>
+                        <th className="py-3 px-3 text-center">สีช่อง</th>
+                        <th className="py-3 px-3">ชื่อรางวัล</th>
+                        <th className="py-3 px-3">ประเภท</th>
+                        <th className="py-3 px-3">มูลค่า / โค้ด</th>
+                        <th className="py-3 px-3 w-44">โอกาสออก (%)</th>
+                        <th className="py-3 px-3 text-center">สถานะ</th>
+                        <th className="py-3 px-3 text-center">จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                      {wheelPrizes.map((prize, idx) => (
+                        <tr key={prize.id || idx} className="hover:bg-zinc-900/40 transition-colors">
+                          {/* Color Swatch */}
+                          <td className="py-3 px-3 text-center">
+                            <div 
+                              className="w-6 h-6 rounded-lg mx-auto shadow-sm border border-white/20" 
+                              style={{ backgroundColor: prize.color || '#f59e0b' }}
+                            />
+                          </td>
+                          {/* Name */}
+                          <td className="py-3 px-3 font-semibold text-white">
+                            <span>{prize.name}</span>
+                          </td>
+                          {/* Type */}
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-zinc-800 text-zinc-300 border border-zinc-700">
+                              {prize.type === 'points' ? 'พอยท์ (Points)' : prize.type === 'credit' ? 'เครดิต (Wallet)' : prize.type === 'ticket' ? 'ตั๋วหมุนฟรี' : prize.type === 'coupon' ? 'โค้ดส่วนลด' : 'ลองใหม่'}
+                            </span>
+                          </td>
+                          {/* Value */}
+                          <td className="py-3 px-3 font-mono text-zinc-200">
+                            {prize.type === 'credit' ? `${prize.value} ฿` : prize.type === 'points' ? `${prize.value} P` : String(prize.value)}
+                          </td>
+                          {/* Probability with interactive slider & input */}
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={Math.round((Number(prize.probability) || 0) * 1000) / 10}
+                                onChange={(e) => {
+                                  const newPercent = parseFloat(e.target.value) || 0;
+                                  const updated = [...wheelPrizes];
+                                  updated[idx] = { ...updated[idx], probability: newPercent / 100 };
+                                  setWheelPrizes(updated);
+                                }}
+                                className="w-16 bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none focus:border-amber-500"
+                              />
+                              <span className="text-[11px] text-zinc-400 font-mono">%</span>
+                              <div className="flex-1 bg-zinc-800 rounded-full h-1.5 overflow-hidden hidden sm:block">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
+                                  style={{ width: `${Math.min(100, (Number(prize.probability) || 0) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          {/* Enabled Toggle */}
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...wheelPrizes];
+                                updated[idx] = { ...updated[idx], enabled: prize.enabled === false ? true : false };
+                                setWheelPrizes(updated);
+                              }}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                                prize.enabled !== false 
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                              }`}
+                            >
+                              {prize.enabled !== false ? 'เปิดใช้' : 'ปิด'}
+                            </button>
+                          </td>
+                          {/* Actions */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPrize(prize);
+                                  setWheelPrizeModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                                title="แก้ไขรางวัล"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWheelPrize(prize.id)}
+                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                                title="ลบรางวัล"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: AFFILIATES INSPECTOR */}
+          {activeTab === 'affiliates' && (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <Share2 className="w-6 h-6 text-purple-400" />
+                    <span>ระบบสายแนะนำเพื่อน (Affiliate & Referral Tracking)</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">
+                      Viral Referral
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    ตรวจสอบยอดผู้สมัครผ่านลิงก์ของสมาชิกแต่ละคน ดูรายชื่อเพื่อน ยอดเงินที่สั่งซื้อ และค่าคอมมิชชั่นที่จ่ายไป
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadData(false)}
+                    className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>รีเฟรชข้อมูล</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                  <div className="flex items-center justify-between text-zinc-400 text-xs mb-1">
+                    <span>ผู้แนะนำที่มีผลงาน</span>
+                    <Users className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-white font-mono">{affiliatesStats?.totalAffiliates || affiliatesList.length}</div>
+                  <div className="text-[11px] text-zinc-500 mt-1">สมาชิกที่เคยแนะนำเพื่อน</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-purple-500/20 bg-purple-500/5">
+                  <div className="flex items-center justify-between text-purple-400 text-xs mb-1">
+                    <span>ยอดสมัครผ่านลิงก์รวม</span>
+                    <UserPlus className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-purple-400 font-mono">
+                    {affiliatesStats?.storeTotalReferred || affiliatesList.reduce((s, a) => s + (a.referredCount || 0), 0)}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">บัญชีผู้ใช้ใหม่ที่มาจากเพื่อน</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-emerald-500/20 bg-emerald-500/5">
+                  <div className="flex items-center justify-between text-emerald-400 text-xs mb-1">
+                    <span>คอมมิชชั่นที่จ่ายไปแล้ว</span>
+                    <Coins className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-400 font-mono">
+                    {(affiliatesStats?.storeTotalCommission || affiliatesList.reduce((s, a) => s + (a.affiliateEarnings || 0), 0)).toLocaleString()} <span className="text-xs font-normal text-zinc-400">฿</span>
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">อัตรา 2% ของทุกออเดอร์</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-blue-500/20 bg-blue-500/5">
+                  <div className="flex items-center justify-between text-blue-400 text-xs mb-1">
+                    <span>ยอดขายจากสายแนะนำ</span>
+                    <TrendingUp className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-blue-400 font-mono">
+                    {(affiliatesStats?.storeTotalVolume || affiliatesList.reduce((s, a) => s + (a.totalReferralVolume || 0), 0)).toLocaleString()} <span className="text-xs font-normal text-zinc-400">฿</span>
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-1">รายได้ร้านจากเพื่อนแนะนำ</div>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="flex items-center justify-between gap-3 bg-zinc-900/40 p-3 rounded-2xl border border-zinc-800">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={affiliateSearch}
+                    onChange={(e) => setAffiliateSearch(e.target.value)}
+                    placeholder="ค้นหาชื่อผู้แนะนำ, รหัสแนะนำ, อีเมล..."
+                    className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Referrers Leaderboard Table */}
+              <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-300">
+                    <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[11px] border-b border-zinc-800">
+                      <tr>
+                        <th className="py-3 px-4">สมาชิกผู้แนะนำ</th>
+                        <th className="py-3 px-4">รหัสแนะนำ (Code)</th>
+                        <th className="py-3 px-4 text-center">เพื่อนที่สมัครผ่าน</th>
+                        <th className="py-3 px-4 text-center">ออเดอร์ของเพื่อน</th>
+                        <th className="py-3 px-4">ยอดซื้อรวมของเพื่อน</th>
+                        <th className="py-3 px-4">คอมมิชชั่นสะสม</th>
+                        <th className="py-3 px-4 text-center">เจาะลึกสายแนะนำ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-850">
+                      {affiliatesList
+                        .filter(item => {
+                          if (!affiliateSearch.trim()) return true;
+                          const q = affiliateSearch.toLowerCase();
+                          return (
+                            (item.username && item.username.toLowerCase().includes(q)) ||
+                            (item.name && item.name.toLowerCase().includes(q)) ||
+                            (item.email && item.email.toLowerCase().includes(q)) ||
+                            (item.referralCode && item.referralCode.toLowerCase().includes(q))
+                          );
+                        })
+                        .length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-zinc-500">
+                            <Share2 className="w-8 h-8 text-zinc-600 mx-auto mb-2 opacity-50" />
+                            <p className="font-medium text-zinc-400">ยังไม่พบข้อมูลสายแนะนำเพื่อน</p>
+                            <p className="text-[11px] text-zinc-500 mt-1">
+                              เมื่อมีสมาชิกส่งต่อลิงก์แนะนำเพื่อน รายชื่อและสถิติจะปรากฏที่นี่
+                            </p>
+                          </td>
+                        </tr>
+                      ) : (
+                        affiliatesList
+                          .filter(item => {
+                            if (!affiliateSearch.trim()) return true;
+                            const q = affiliateSearch.toLowerCase();
+                            return (
+                              (item.username && item.username.toLowerCase().includes(q)) ||
+                              (item.name && item.name.toLowerCase().includes(q)) ||
+                              (item.email && item.email.toLowerCase().includes(q)) ||
+                              (item.referralCode && item.referralCode.toLowerCase().includes(q))
+                            );
+                          })
+                          .map((item) => (
+                            <tr key={item.id} className="hover:bg-zinc-900/40 transition-colors">
+                              <td className="py-3 px-4 font-medium text-white">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center text-xs">
+                                    {item.username?.charAt(0)?.toUpperCase() || 'U'}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold">{item.username || item.name}</div>
+                                    <div className="text-[11px] text-zinc-500">{item.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="font-mono bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800 text-purple-300 font-bold select-all">
+                                  {item.referralCode}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <span className="font-bold text-white text-sm font-mono">{item.referredCount}</span>
+                                  <span className="text-[10px] text-zinc-400">คน</span>
+                                  {item.activeReferredCount > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold">
+                                      ซื้อแล้ว {item.activeReferredCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-mono text-zinc-300">
+                                {item.totalReferralOrders || 0} บิล
+                              </td>
+                              <td className="py-3 px-4 font-mono text-zinc-200 font-semibold">
+                                {Number(item.totalReferralVolume || 0).toLocaleString()} ฿
+                              </td>
+                              <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                                +฿{Number(item.affiliateEarnings || 0).toLocaleString()}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleInspectAffiliate(item.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-medium flex items-center gap-1.5 mx-auto transition-all cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>ดูรายชื่อเพื่อน</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'customers' && (
             <div className="p-6 rounded-2xl bg-cyber-card border border-zinc-800 space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -6739,6 +7360,270 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                     <span>รัน AI ตรวจสอบ</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Lucky Wheel Prize Editor */}
+      {wheelPrizeModalOpen && editingPrize && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4 font-['Prompt',sans-serif]">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-['Kanit']">
+                    {editingPrize.id ? 'แก้ไขของรางวัล' : 'เพิ่มรางวัลใหม่เข้าวงล้อ'}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">กำหนดชื่อ ประเภท และโอกาสออก %</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWheelPrizeModalOpen(false)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-zinc-400 block mb-1">ชื่อของรางวัล (แสดงบนวงล้อ)</label>
+                <input
+                  type="text"
+                  value={editingPrize.name}
+                  onChange={(e) => setEditingPrize({ ...editingPrize, name: e.target.value })}
+                  placeholder="เช่น 50 พอยท์, เครดิต 20 บาท, สิทธิ์หมุนฟรี"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ประเภทของรางวัล</label>
+                  <select
+                    value={editingPrize.type}
+                    onChange={(e) => setEditingPrize({ ...editingPrize, type: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="points">พอยท์สะสม (Points)</option>
+                    <option value="credit">เงินเครดิตในกระเป๋า (THB)</option>
+                    <option value="ticket">ตั๋วหมุนวงล้อฟรี (Ticket)</option>
+                    <option value="coupon">โค้ดส่วนลด (Coupon)</option>
+                    <option value="none">ไม่ได้รับรางวัล (ลองใหม่)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">มูลค่า / โค้ด</label>
+                  <input
+                    type="text"
+                    value={editingPrize.value}
+                    onChange={(e) => setEditingPrize({ ...editingPrize, value: editingPrize.type === 'coupon' ? e.target.value : (Number(e.target.value) || 0) })}
+                    placeholder={editingPrize.type === 'coupon' ? 'เช่น LUCKY5' : 'เช่น 50 หรือ 20'}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">โอกาสออก (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={Math.round((Number(editingPrize.probability) || 0) * 1000) / 10}
+                      onChange={(e) => setEditingPrize({ ...editingPrize, probability: (parseFloat(e.target.value) || 0) / 100 })}
+                      placeholder="เช่น 15.5"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-amber-500 font-mono pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-mono">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">สีช่องบนวงล้อ</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editingPrize.color || '#f59e0b'}
+                      onChange={(e) => setEditingPrize({ ...editingPrize, color: e.target.value })}
+                      className="w-9 h-9 rounded-xl bg-transparent border-0 cursor-pointer p-0"
+                    />
+                    <input
+                      type="text"
+                      value={editingPrize.color || '#f59e0b'}
+                      onChange={(e) => setEditingPrize({ ...editingPrize, color: e.target.value })}
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-200 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Color Presets */}
+              <div>
+                <label className="text-zinc-500 block mb-1 text-[11px]">โทนสีแนะนำ:</label>
+                <div className="flex items-center gap-1.5">
+                  {['#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#ec4899', '#ef4444', '#64748b'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setEditingPrize({ ...editingPrize, color: c })}
+                      className={`w-6 h-6 rounded-lg border transition-transform ${editingPrize.color === c ? 'scale-110 border-white' : 'border-transparent hover:scale-105'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setWheelPrizeModalOpen(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveSingleWheelPrize(editingPrize)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black text-xs transition-all shadow-lg shadow-amber-500/25 active:scale-95 cursor-pointer font-['Kanit']"
+              >
+                บันทึกรางวัล ✨
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Affiliate Referral Inspector Detail */}
+      {selectedAffiliateDetail && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4 font-['Prompt',sans-serif] max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                    <span>สายแนะนำของ: <strong>{selectedAffiliateDetail.user?.name || selectedAffiliateDetail.user?.username}</strong></span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      {selectedAffiliateDetail.user?.referralCode}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    อีเมล: {selectedAffiliateDetail.user?.email || '-'} | สมาชิกตั้งแต่: {selectedAffiliateDetail.user?.createdAt ? new Date(selectedAffiliateDetail.user.createdAt).toLocaleDateString('th-TH') : '-'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAffiliateDetail(null)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Stats Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <span className="text-[11px] text-zinc-500 block">เพื่อนที่สมัครผ่าน</span>
+                <strong className="text-xl font-bold text-white font-mono">{selectedAffiliateDetail.totalReferred}</strong>
+                <span className="text-[10px] text-zinc-400 ml-1">คน</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <span className="text-[11px] text-zinc-500 block">เพื่อนที่เติมเงินแล้ว</span>
+                <strong className="text-xl font-bold text-emerald-400 font-mono">{selectedAffiliateDetail.activeReferred}</strong>
+                <span className="text-[10px] text-zinc-400 ml-1">คน</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <span className="text-[11px] text-zinc-500 block">ยอดซื้อรวมของเพื่อน</span>
+                <strong className="text-xl font-bold text-blue-400 font-mono">{selectedAffiliateDetail.totalReferralSpending.toLocaleString()}</strong>
+                <span className="text-[10px] text-zinc-400 ml-1">฿</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-zinc-950 border border-purple-500/30 bg-purple-500/5">
+                <span className="text-[11px] text-purple-400 block">คอมมิชชั่นสะสม</span>
+                <strong className="text-xl font-bold text-purple-300 font-mono">+฿{selectedAffiliateDetail.totalCommissionEarned.toLocaleString()}</strong>
+              </div>
+            </div>
+
+            {/* List of Referred Friends */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-zinc-300 uppercase flex items-center justify-between">
+                <span>รายชื่อเพื่อนที่สมัครผ่านลิงก์นี้ ({selectedAffiliateDetail.referredUsers?.length || 0} คน)</span>
+                <span className="text-[10px] text-zinc-500 font-normal">ได้รับค่าคอมมิชชั่น 2% จากทุกยอดเติม</span>
+              </h4>
+
+              {(!selectedAffiliateDetail.referredUsers || selectedAffiliateDetail.referredUsers.length === 0) ? (
+                <div className="py-10 text-center text-xs text-zinc-500 border border-zinc-800 rounded-2xl bg-zinc-950/60">
+                  ยังไม่มีเพื่อนสมัครผ่านลิงก์ของผู้ใช้งานคนนี้
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 max-h-60 overflow-y-auto">
+                  <table className="w-full text-left text-xs text-zinc-300">
+                    <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[10px] border-b border-zinc-800">
+                      <tr>
+                        <th className="py-2.5 px-3">ผู้ใช้งาน</th>
+                        <th className="py-2.5 px-3">อีเมล</th>
+                        <th className="py-2.5 px-3">วันที่สมัคร</th>
+                        <th className="py-2.5 px-3 text-center">จำนวนออเดอร์</th>
+                        <th className="py-2.5 px-3 text-right">ยอดซื้อรวม</th>
+                        <th className="py-2.5 px-3 text-right">คอมมิชชั่นที่สร้างให้</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-850">
+                      {selectedAffiliateDetail.referredUsers.map((friend) => (
+                        <tr key={friend.id} className="hover:bg-zinc-900/40 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold text-white">
+                            {friend.username || friend.name}
+                          </td>
+                          <td className="py-2.5 px-3 text-zinc-400 text-[11px]">
+                            {friend.email || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-zinc-500 text-[11px]">
+                            {friend.createdAt ? new Date(friend.createdAt).toLocaleDateString('th-TH') : '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {friend.ordersCount > 0 ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">
+                                {friend.ordersCount} บิล
+                              </span>
+                            ) : (
+                              <span className="text-zinc-600 text-[11px]">-</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-zinc-200">
+                            {friend.totalSpent > 0 ? `${friend.totalSpent.toLocaleString()} ฿` : '0 ฿'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                            +฿{friend.commissionGenerated.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-zinc-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedAffiliateDetail(null)}
+                className="py-2 px-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs transition-all cursor-pointer"
+              >
+                ปิดหน้าต่าง
               </button>
             </div>
           </div>

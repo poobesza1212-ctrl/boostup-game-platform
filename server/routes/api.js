@@ -1533,7 +1533,8 @@ router.post('/game/check-ign', async (req, res) => {
 // ==========================================
 router.get('/wheel/prizes', (req, res) => {
   const prizes = db.getLuckyWheelPrizes();
-  res.json({ success: true, prizes });
+  const settings = db.getLuckyWheelSettings();
+  res.json({ success: true, prizes, settings });
 });
 
 router.post('/wheel/spin', (req, res) => {
@@ -1562,41 +1563,112 @@ router.post('/user/daily-checkin', (req, res) => {
   }
 });
 
+// Admin: Lucky Wheel Management
+router.get('/admin/wheel', (req, res) => {
+  try {
+    const prizes = db.getLuckyWheelPrizes();
+    const settings = db.getLuckyWheelSettings();
+    res.json({ success: true, prizes, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/admin/wheel/prizes', (req, res) => {
+  try {
+    const { prizes } = req.body;
+    if (!prizes || !Array.isArray(prizes)) {
+      return res.status(400).json({ success: false, message: 'ข้อมูลรางวัลไม่ถูกต้อง' });
+    }
+    const updated = db.updateLuckyWheelPrizes(prizes);
+    res.json({ success: true, message: 'บันทึกรางวัลวงล้อเรียบร้อย', prizes: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/wheel/prize', (req, res) => {
+  try {
+    const prize = req.body;
+    if (!prize.name) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อรางวัล' });
+    }
+    const added = db.addLuckyWheelPrize(prize);
+    res.json({ success: true, message: 'เพิ่มรางวัลสำเร็จ', prize: added });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/admin/wheel/prize/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = db.updateLuckyWheelPrize(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'ไม่พบรางวัลที่ต้องการแก้ไข' });
+    }
+    res.json({ success: true, message: 'แก้ไขรางวัลสำเร็จ', prize: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/admin/wheel/prize/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = db.deleteLuckyWheelPrize(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'ไม่พบรางวัลที่ต้องการลบ' });
+    }
+    res.json({ success: true, message: 'ลบรางวัลออกจากวงล้อสำเร็จ' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/admin/wheel/settings', (req, res) => {
+  try {
+    const settings = db.updateLuckyWheelSettings(req.body);
+    res.json({ success: true, message: 'บันทึกการตั้งค่าวงล้อสำเร็จ', settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ==========================================
 // 14. AFFILIATE / REFERRAL SYSTEM
 // ==========================================
 router.get('/user/affiliate/:userId', (req, res) => {
   try {
     const { userId } = req.params;
-    const user = db.findUserById(userId);
-    if (!user) {
+    const detail = db.getUserAffiliateDetail(userId, false);
+    if (!detail) {
       return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้' });
     }
+    res.json({ success: true, affiliate: detail });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
-    const allUsers = db.data.users || [];
-    const referredUsers = allUsers
-      .filter(u => u.referredBy === user.id || u.referredBy === user.referralCode)
-      .map(u => ({
-        id: u.id,
-        name: u.name || u.username || 'สมาชิก',
-        createdAt: u.createdAt
-      }));
+// Admin: Affiliate Inspector
+router.get('/admin/affiliates', (req, res) => {
+  try {
+    const data = db.getAllAffiliatesSummary();
+    res.json({ success: true, ...data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
-    const txns = (db.data.transactions || []).filter(t => t.userId === user.id && t.type === 'affiliate_commission');
-
-    res.json({
-      success: true,
-      affiliate: {
-        referralCode: user.referralCode || `REF${user.id.slice(-6)}`,
-        commissionRate: "2.0%",
-        totalEarnings: Number(user.affiliateEarnings || 0),
-        walletBalance: Number(user.walletBalance || 0),
-        referralCount: referredUsers.length || Number(user.referralCount || 0),
-        referredUsers,
-        recentCommissions: txns.slice(0, 10),
-        spinTickets: user.spinTickets || 0
-      }
-    });
+router.get('/admin/affiliates/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const detail = db.getUserAffiliateDetail(userId, true);
+    if (!detail) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้นี้' });
+    }
+    res.json({ success: true, detail });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

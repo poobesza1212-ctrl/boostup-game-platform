@@ -1593,5 +1593,19 @@
       "color": "#64748b",
       "icon": "Smile"
     }
-  ]
+  ],
+  "luckyWheelSettings": {
+    "enabled": true,
+    "pointsPerSpin": 20,
+    "dailyStreakPoints": [
+      10,
+      15,
+      20,
+      25,
+      30,
+      40,
+      100
+    ],
+    "dailyStreakTicketsDay7": 1
+  }
 }

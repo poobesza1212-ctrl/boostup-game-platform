@@ -1269,9 +1269,15 @@ router.post('/admin/test-gemini', async (req, res) => {
     });
   } catch (err) {
     console.error('Gemini test error:', err.message);
+    let userFriendly = err.message;
+    if (err.message.includes('API_KEY_INVALID') || err.message.includes('400')) {
+      userFriendly = 'Google แจ้งว่า API Key ไม่ถูกต้อง (API_KEY_INVALID) กรุณาตรวจสอบหรือสร้าง API Key ใหม่จาก aistudio.google.com';
+    } else if (err.message.includes('PERMISSION_DENIED') || err.message.includes('403')) {
+      userFriendly = 'ไม่มีสิทธิ์เข้าถึง (PERMISSION_DENIED) กรุณาตรวจสอบว่าเปิดใช้งาน Generative Language API ในบัญชี Google แล้ว';
+    }
     res.status(400).json({
       success: false,
-      message: `ทดสอบไม่สำเร็จ: ${err.message}`
+      message: `ทดสอบไม่สำเร็จ: ${userFriendly}`
     });
   }
 });
@@ -1296,22 +1302,30 @@ router.get('/admin/deposits', (req, res) => {
 // Admin: Approve a pending deposit slip
 router.post('/admin/deposits/:id/approve', async (req, res) => {
   try {
+    const { id } = req.params;
     const { adminName } = req.body;
-    const result = await paymentService.approveDeposit(req.params.id, adminName || 'Admin');
-    res.json({ success: true, ...result, message: 'อนุมัติสลิปและเติมเงินเข้ากระเป๋าลูกค้าสำเร็จเรียบร้อย' });
+    const result = db.approveDeposit(id, adminName || 'Admin');
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // Admin: Reject a pending deposit slip
-router.post('/admin/deposits/:id/reject', async (req, res) => {
+router.post('/admin/deposits/:id/reject', (req, res) => {
   try {
+    const { id } = req.params;
     const { reason, adminName } = req.body;
-    const result = await paymentService.rejectDeposit(req.params.id, reason, adminName || 'Admin');
-    res.json({ success: true, ...result, message: 'ปฏิเสธสลิปการเติมเงินเรียบร้อยแล้ว' });
+    const result = db.rejectDeposit(id, reason || 'สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง', adminName || 'Admin');
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -1365,9 +1379,19 @@ router.post('/chat/message', async (req, res) => {
     // If chat is currently in AI mode, trigger intelligent 24/7 AI response
     const currentMode = chat.mode || 'ai';
     if (currentMode === 'ai') {
-      const userObj = userId ? db.getUserById(userId) : null;
-      const siteSettings = db.getSettings();
-      const aiReply = await aiChatService.generateReply(text, { chat, db, user: userObj, siteSettings });
+      let aiReply;
+      try {
+        const userObj = userId ? db.getUserById(userId) : null;
+        const siteSettings = db.getSettings();
+        aiReply = await aiChatService.generateReply(text, { chat, db, user: userObj, siteSettings });
+      } catch (aiErr) {
+        console.error("AI reply error, using emergency local reply:", aiErr.message);
+        aiReply = aiChatService.generateLocalSmartReply(text, text.toLowerCase(), { user: null, db });
+      }
+
+      if (!aiReply || !aiReply.text) {
+        aiReply = aiChatService.generateLocalSmartReply(text, text.toLowerCase(), { user: null, db });
+      }
 
       if (aiReply.shouldHandoffToHuman) {
         db.setChatMode(chat.id, 'human');

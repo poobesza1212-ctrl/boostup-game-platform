@@ -85,12 +85,12 @@ export default function LiveChatModal({ isOpen, onClose, user, contactLine = '@b
     return () => clearInterval(interval);
   }, [isOpen, chatId, user]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages or when AI starts typing
   useEffect(() => {
-    if (isOpen && messages.length > 0) {
+    if (isOpen) {
       scrollToBottom();
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isSending]);
 
   // Handle switching between AI mode and Human mode
   const handleSwitchMode = async (targetMode) => {
@@ -386,7 +386,7 @@ export default function LiveChatModal({ isOpen, onClose, user, contactLine = '@b
               <div className="text-[10px] text-zinc-400 px-1">
                 คุณ
               </div>
-              <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-br-sm text-xs leading-relaxed shadow-md bg-gradient-to-r from-red-600 to-rose-600 text-white whitespace-pre-line">
+              <div className="max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-tr-sm text-xs leading-relaxed shadow-md bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white whitespace-pre-line border border-indigo-400/20">
                 {msg.text}
               </div>
               <div className="text-[9px] text-zinc-500 px-1">
@@ -395,6 +395,21 @@ export default function LiveChatModal({ isOpen, onClose, user, contactLine = '@b
             </div>
           );
         })}
+
+        {/* AI Typing / Thinking Indicator */}
+        {isSending && (
+          <div className="flex flex-col items-start space-y-1 animate-in fade-in duration-200">
+            <div className="flex items-center gap-1.5 px-1 text-[10px] font-medium text-purple-400">
+              <Bot className="w-3.5 h-3.5 text-purple-400 animate-spin" style={{ animationDuration: '3s' }} />
+              <span>BOOSTUP AI กำลังพิมพ์คำตอบ...</span>
+            </div>
+            <div className="px-4 py-2.5 rounded-2xl rounded-tl-sm bg-gradient-to-br from-purple-950/70 to-zinc-900 border border-purple-500/40 text-purple-200 text-xs shadow-md flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>

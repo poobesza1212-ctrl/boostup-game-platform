@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, MessageCircle, Heart, Flame } from 'lucide-react';
 
-export default function Footer({ siteSettings }) {
+export default function Footer({ siteSettings, onOpenPolicy }) {
   return (
     <footer id="contact" className="bg-[#06080c] border-t border-red-950/60 text-zinc-400 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -36,17 +36,43 @@ export default function Footer({ siteSettings }) {
             </p>
             <div className="flex items-center gap-2 text-[11px] text-zinc-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>จดทะเบียนถูกต้องตามกฎหมาย ปลอดภัย 100%</span>
+              <span>จดทะเบียนพาณิชย์อิเล็กทรอนิกส์ ปลอดภัย 100% ตามมาตรฐาน PDPA</span>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links & Legal Policies (Essential for Ad Approvals) */}
           <div>
-            <h4 className="text-sm font-bold text-white mb-3 font-['Kanit']">เมนูด่วน</h4>
+            <h4 className="text-sm font-bold text-white mb-3 font-['Kanit']">เมนูด่วน & ข้อตกลง</h4>
             <ul className="space-y-2 text-xs">
               <li><a href="#popular-games" className="hover:text-red-400 transition-colors">เติมเกมยอดนิยม</a></li>
               <li><a href="#step-guide" className="hover:text-red-400 transition-colors">วิธีการเติมเกม</a></li>
-              <li><a href="#features" className="hover:text-red-400 transition-colors">จุดเด่นของระบบ</a></li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenPolicy && onOpenPolicy('terms')}
+                  className="hover:text-red-400 transition-colors cursor-pointer text-left"
+                >
+                  ข้อกำหนดและเงื่อนไข (Terms)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenPolicy && onOpenPolicy('privacy')}
+                  className="hover:text-emerald-400 transition-colors cursor-pointer text-left"
+                >
+                  นโยบายความเป็นส่วนตัว (PDPA)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onOpenPolicy && onOpenPolicy('refund')}
+                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                >
+                  นโยบายการคืนเงิน & รับประกัน
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -87,14 +113,43 @@ export default function Footer({ siteSettings }) {
           </div>
         </div>
 
-        {/* Bottom Copyright */}
-        <div className="pt-4 border-t border-zinc-900/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-600 gap-2">
+        {/* Bottom Copyright & Policy Links */}
+        <div className="pt-4 border-t border-zinc-900/80 flex flex-col md:flex-row items-center justify-between text-[11px] text-zinc-500 gap-3">
           <div>
             © 2026 BOOSTUP ร้านเติมเงินเกม (PLAY MORE GO FURTHER). สงวนลิขสิทธิ์ทุกประการ
           </div>
-          <div className="flex items-center gap-1">
-            <span>Powered by</span>
-            <span className="text-red-500 font-bold">BoostUp Auto Topup Engine 24/7</span>
+          <div className="flex flex-wrap items-center gap-3 text-zinc-400">
+            <button
+              type="button"
+              onClick={() => onOpenPolicy && onOpenPolicy('terms')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              ข้อกำหนดการใช้บริการ
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy && onOpenPolicy('privacy')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              นโยบายความเป็นส่วนตัว (PDPA)
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy && onOpenPolicy('refund')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              นโยบายการคืนเงิน
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy && onOpenPolicy('about')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              เกี่ยวกับเรา
+            </button>
           </div>
         </div>
 

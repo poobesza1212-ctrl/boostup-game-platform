@@ -11,6 +11,7 @@ const otpService = require('../services/otpService');
 const aiChatService = require('../services/aiChatService');
 const ignVerificationService = require('../services/ignVerificationService');
 const slipVerificationService = require('../services/slipVerificationService');
+const notificationService = require('../services/notificationService');
 const QRCode = require('qrcode');
 
 // ==========================================
@@ -317,6 +318,14 @@ router.post('/orders', async (req, res) => {
 
     // Auto Top-up Execution (Asynchronous or Synchronous)
     const topupResult = await topupEngine.processOrder(order.id);
+
+    // Send Real-time Merchant Notification (LINE Notify / Webhook)
+    try {
+      const activeOrder = topupResult.order || order;
+      notificationService.sendNewOrderNotification(activeOrder, settings).catch(() => {});
+    } catch (notifErr) {
+      console.warn("Notification dispatch warning:", notifErr.message);
+    }
 
     res.json({
       success: true,
@@ -2125,6 +2134,11 @@ router.post('/cart/checkout', async (req, res) => {
       }
 
       createdOrders.push(order);
+      // Send notification for cart order
+      try {
+        const curSettings = db.getSettings();
+        notificationService.sendNewOrderNotification(order, curSettings).catch(() => {});
+      } catch (e) {}
     }
 
     let promptpayQr = null;
@@ -2143,6 +2157,24 @@ router.post('/cart/checkout', async (req, res) => {
       paymentMethod,
       promptpayQr
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Test LINE Notify Endpoint
+router.post('/admin/marketing/test-notify', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token || !token.trim()) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอก LINE Notify Token' });
+    }
+    const result = await notificationService.testLineNotify(token);
+    if (result.success) {
+      res.json({ success: true, message: 'ส่งข้อความทดสอบเข้า LINE เรียบร้อยแล้ว!' });
+    } else {
+      res.status(400).json({ success: false, message: 'ส่งไม่สำเร็จ: กรุณาตรวจสอบ Token อีกครั้ง' });
+    }
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

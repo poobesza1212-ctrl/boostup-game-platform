@@ -34,6 +34,57 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Schema.org JSON-LD Structured Data for Google Rich Snippets & Ad Integrity -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://boostup.in.th/#organization",
+          "name": "BOOSTUP ร้านเติมเงินเกม",
+          "url": "https://boostup.in.th",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://boostup.in.th/boostup_logo.jpg"
+          },
+          "slogan": "PLAY MORE GO FURTHER",
+          "description": "ผู้ให้บริการแพลตฟอร์มเติมเกมออนไลน์ครบวงจรอันดับ 1 ในไทย ระบบอัตโนมัติ 24 ชั่วโมง",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Customer Support",
+            "availableLanguage": ["Thai", "English"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://boostup.in.th/#website",
+          "url": "https://boostup.in.th",
+          "name": "BOOSTUP ร้านเติมเงินเกม",
+          "publisher": {
+            "@id": "https://boostup.in.th/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://boostup.in.th/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Store",
+          "@id": "https://boostup.in.th/#store",
+          "name": "BOOSTUP แพลตฟอร์มเติมเงินเกมอัตโนมัติ",
+          "description": "ศูนย์รวมบริการเติมเกมมือถือ เกมพีซี บัตรเติมเงิน และแอปพลิเคชันออนไลน์ 24 ชม.",
+          "url": "https://boostup.in.th",
+          "currenciesAccepted": "THB",
+          "paymentAccepted": "PromptPay, TrueMoney Wallet, Credit Card, Bank Transfer",
+          "priceRange": "฿10 - ฿10,000",
+          "openingHours": "Mo-Su 00:00-24:00"
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-[#080a0f] text-slate-100 font-['Prompt',sans-serif] antialiased selection:bg-red-600 selection:text-white min-h-screen">
     <div id="root"></div>

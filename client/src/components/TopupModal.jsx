@@ -16,8 +16,9 @@ import {
   Key,
   ShoppingCart
 } from 'lucide-react';
+import tracker from '../utils/analytics';
 
-export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, user, onOpenWallet, initialPackageId, siteSettings }) {
+export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, user, onOpenWallet, initialPackageId, siteSettings, onOpenPolicy }) {
   // Normalize packages from different product types
   const packagesList = game?.packages || 
     game?.denominations?.map(d => ({ id: d.id, name: d.name, price: d.price, originalPrice: d.price })) ||
@@ -95,6 +96,13 @@ export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, 
       setPaymentMethod(paymentChannels[0].id);
     }
   }, [paymentChannels, paymentMethod]);
+
+  // Track InitiateCheckout on modal mount
+  useEffect(() => {
+    if (selectedPackage || game) {
+      tracker.trackInitiateCheckout(selectedPackage || game);
+    }
+  }, []);
   
   // Player Verification State
   const [isVerifying, setIsVerifying] = useState(false);
@@ -220,7 +228,7 @@ export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, 
     }
     if (!selectedPackage) return;
     if (onAddToCart) {
-      onAddToCart({
+      const cartItem = {
         id: `cart_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         gameId: game.id || game.slug || 'game_general',
         gameName: game.name || game.gameName,
@@ -233,7 +241,9 @@ export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, 
         playerId: playerId.trim(),
         server,
         playerIgn: verifiedPlayer?.nickname || verifiedPlayer?.characterName || ''
-      });
+      };
+      tracker.trackAddToCart(cartItem);
+      onAddToCart(cartItem);
       onClose();
     }
   };
@@ -550,6 +560,26 @@ export default function TopupModal({ game, onClose, onSubmitOrder, onAddToCart, 
               <Zap className="w-4 h-4" /> ชำระเงินทันที
             </button>
           </div>
+        </div>
+
+        {/* Legal Consent Notice */}
+        <div className="px-6 py-2.5 bg-black/60 border-t border-zinc-900 text-center text-[10px] text-zinc-500">
+          เมื่อกดยืนยัน ถือว่าท่านยอมรับ{' '}
+          <button
+            type="button"
+            onClick={() => onOpenPolicy && onOpenPolicy('terms')}
+            className="text-zinc-400 hover:text-white underline cursor-pointer"
+          >
+            ข้อกำหนดการให้บริการ
+          </button>
+          {' '}และ{' '}
+          <button
+            type="button"
+            onClick={() => onOpenPolicy && onOpenPolicy('privacy')}
+            className="text-zinc-400 hover:text-white underline cursor-pointer"
+          >
+            นโยบายความเป็นส่วนตัว (PDPA)
+          </button>
         </div>
 
       </div>

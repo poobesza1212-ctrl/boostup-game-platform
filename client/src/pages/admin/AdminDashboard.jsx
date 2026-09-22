@@ -74,7 +74,11 @@ import {
   Share2,
   Percent,
   Sliders,
-  Save
+  Save,
+  Target,
+  Megaphone,
+  Globe,
+  Code
 } from 'lucide-react';
 import GameEditorModal from './GameEditorModal';
 import AdminRBACModal from './AdminRBACModal';
@@ -163,6 +167,10 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [isSavingGemini, setIsSavingGemini] = useState(false);
   const [isTestingGemini, setIsTestingGemini] = useState(false);
   const [geminiTestFeedback, setGeminiTestFeedback] = useState(null);
+
+  // Marketing & Ad Pixels State
+  const [isTestingNotify, setIsTestingNotify] = useState(false);
+  const [isSavingMarketing, setIsSavingMarketing] = useState(false);
 
   // Filters
   const [orderFilterStatus, setOrderFilterStatus] = useState('all');
@@ -973,6 +981,85 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       });
     } finally {
       setIsSavingGemini(false);
+    }
+  };
+
+  // Handle Test LINE Notify Token
+  const handleTestLineNotify = async () => {
+    const token = siteSettings?.marketing?.lineNotifyToken?.trim();
+    if (!token) {
+      showAlert({
+        title: 'กรุณากรอก Token',
+        message: 'กรุณากรอก LINE Notify Token ในช่องก่อนทำการกดทดสอบส่งข้อความ',
+        type: 'warning'
+      });
+      return;
+    }
+
+    setIsTestingNotify(true);
+    try {
+      const res = await fetch('/api/admin/marketing/test-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert({
+          title: 'ทดสอบสำเร็จ!',
+          message: 'ระบบได้ส่งข้อความทดสอบแจ้งเตือนเข้าแอป LINE เรียบร้อยแล้ว 100%',
+          type: 'success'
+        });
+      } else {
+        showAlert({
+          title: 'ทดสอบไม่สำเร็จ',
+          message: data.message || 'กรุณาตรวจสอบว่า LINE Notify Token ถูกต้องและยังไม่หมดอายุ',
+          type: 'error'
+        });
+      }
+    } catch (err) {
+      showAlert({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อทดสอบแจ้งเตือนได้: ' + err.message,
+        type: 'error'
+      });
+    } finally {
+      setIsTestingNotify(false);
+    }
+  };
+
+  // Handle Save Marketing Settings
+  const handleSaveMarketingSettings = async () => {
+    setIsSavingMarketing(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(siteSettings)
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.settings) setSiteSettings(data.settings);
+        showAlert({
+          title: 'บันทึกสำเร็จ!',
+          message: 'บันทึกการตั้งค่าแอดพิกเซลและระบบแจ้งเตือนการตลาดเรียบร้อยแล้ว มีผลต่อหน้าเว็บทันที 100%',
+          type: 'success'
+        });
+      } else {
+        showAlert({
+          title: 'เกิดข้อผิดพลาด',
+          message: data.message || 'ไม่สามารถบันทึกการตั้งค่าได้',
+          type: 'error'
+        });
+      }
+    } catch (err) {
+      showAlert({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + err.message,
+        type: 'error'
+      });
+    } finally {
+      setIsSavingMarketing(false);
     }
   };
 
@@ -2209,6 +2296,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     { id: 'customers', label: 'ลูกค้า & กระเป๋าเงิน', icon: <Users className="w-4 h-4" />, count: customers.length },
     { id: 'admins', label: 'ผู้ดูแล & สิทธิ์ (RBAC)', icon: <Shield className="w-4 h-4" />, count: admins.length },
     { id: 'audit_logs', label: 'ประวัติกิจกรรมแอดมิน', icon: <History className="w-4 h-4 text-amber-400" />, count: auditLogs.length },
+    { id: 'marketing', label: 'การตลาด & พิกเซล (Ads)', icon: <TrendingUp className="w-4 h-4 text-rose-400" /> },
     { id: 'settings', label: 'ตั้งค่าเว็บไซต์ & ชำระเงิน', icon: <Settings className="w-4 h-4" /> }
   ];
 
@@ -5392,6 +5480,408 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
               </div>
             </div>
           )}
+
+          {/* TAB: MARKETING, AD PIXELS & ORDER ALERTS */}
+          {activeTab === 'marketing' && siteSettings && (() => {
+            const marketing = siteSettings.marketing || {
+              facebookPixelId: '',
+              facebookPixelEnabled: true,
+              tiktokPixelId: '',
+              tiktokPixelEnabled: true,
+              googleAnalyticsId: '',
+              googleAnalyticsEnabled: true,
+              lineNotifyToken: '',
+              discordWebhookUrl: '',
+              customHeadScript: ''
+            };
+
+            const updateMarketing = (key, val) => {
+              setSiteSettings({
+                ...siteSettings,
+                marketing: {
+                  ...marketing,
+                  [key]: val
+                }
+              });
+            };
+
+            return (
+              <div className="max-w-4xl space-y-6">
+                
+                {/* Hero Header */}
+                <div className="p-6 rounded-3xl bg-gradient-to-r from-rose-950/60 via-purple-950/40 to-black border border-rose-900/40 shadow-2xl relative overflow-hidden">
+                  <div className="absolute right-0 top-0 w-80 h-full bg-gradient-to-l from-rose-600/10 to-transparent pointer-events-none" />
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+                    <div className="space-y-1">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                        <TrendingUp className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Marketing Launch Engine 2026</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-white font-['Kanit'] tracking-wide">
+                        ระบบการตลาด, แอดพิกเซล & แจ้งเตือนออเดอร์
+                      </h2>
+                      <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
+                        ติดตั้ง Meta Pixel, TikTok Pixel, Google Analytics (GA4) และแจ้งเตือน LINE Notify / Discord Webhook ทันทีเมื่อมีออเดอร์ใหม่ พร้อมเอกสารนโยบายกฎหมายครบถ้วนสำหรับยิงแอด
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveMarketingSettings}
+                      disabled={isSavingMarketing}
+                      className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:brightness-110 active:scale-95 text-white font-bold text-sm shadow-lg shadow-rose-600/30 transition-all flex items-center gap-2 font-['Kanit'] shrink-0"
+                    >
+                      {isSavingMarketing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>กำลังบันทึก...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>บันทึกการตั้งค่าการตลาด</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Status Pills */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-rose-900/30">
+                    <div className="p-3 rounded-xl bg-black/40 border border-zinc-800 flex items-center gap-2.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${marketing.facebookPixelId && marketing.facebookPixelEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                      <div>
+                        <div className="text-[10px] text-zinc-400 font-medium">Meta (Facebook)</div>
+                        <div className="text-xs font-bold text-white font-['Kanit']">
+                          {marketing.facebookPixelId && marketing.facebookPixelEnabled ? 'พร้อมทำงาน' : 'ยังไม่เปิด'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-black/40 border border-zinc-800 flex items-center gap-2.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${marketing.tiktokPixelId && marketing.tiktokPixelEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                      <div>
+                        <div className="text-[10px] text-zinc-400 font-medium">TikTok Ads</div>
+                        <div className="text-xs font-bold text-white font-['Kanit']">
+                          {marketing.tiktokPixelId && marketing.tiktokPixelEnabled ? 'พร้อมทำงาน' : 'ยังไม่เปิด'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-black/40 border border-zinc-800 flex items-center gap-2.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${marketing.googleAnalyticsId && marketing.googleAnalyticsEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                      <div>
+                        <div className="text-[10px] text-zinc-400 font-medium">Google Analytics 4</div>
+                        <div className="text-xs font-bold text-white font-['Kanit']">
+                          {marketing.googleAnalyticsId && marketing.googleAnalyticsEnabled ? 'พร้อมทำงาน' : 'ยังไม่เปิด'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-black/40 border border-zinc-800 flex items-center gap-2.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${marketing.lineNotifyToken ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                      <div>
+                        <div className="text-[10px] text-zinc-400 font-medium">LINE Notify</div>
+                        <div className="text-xs font-bold text-white font-['Kanit']">
+                          {marketing.lineNotifyToken ? 'เชื่อมต่อแล้ว' : 'ยังไม่ระบุ Token'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1. Meta / Facebook Pixel */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-blue-950/60 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-black text-lg">
+                        f
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                          Meta Pixel (Facebook & Instagram Ads)
+                        </h3>
+                        <p className="text-xs text-zinc-400">แทร็ก PageView, ViewContent, AddToCart, InitiateCheckout, และ Purchase ส่งมูลค่า THB เข้าตัวจัดการโฆษณา Facebook ทันที</p>
+                      </div>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marketing.facebookPixelEnabled !== false}
+                        onChange={(e) => updateMarketing('facebookPixelEnabled', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-zinc-300 font-medium block mb-1.5">Meta Pixel ID (ชุดตัวเลข 15-16 หลัก)</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น 123456789012345"
+                      value={marketing.facebookPixelId || ''}
+                      onChange={(e) => updateMarketing('facebookPixelId', e.target.value.trim())}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white placeholder-zinc-500 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">คัดลอกจาก Meta Events Manager &gt; Data Sources &gt; Pixel ID ได้เลย ไม่ต้องแปะโค้ด &lt;script&gt;</p>
+                  </div>
+                </div>
+
+                {/* 2. TikTok Pixel */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-cyan-950/60 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-black text-sm">
+                        TT
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                          TikTok Pixel (TikTok Ads Manager)
+                        </h3>
+                        <p className="text-xs text-zinc-400">แทร็กกิจกรรมลูกค้าจาก TikTok Ads รองรับ CompletePayment ส่ง Conversion สด</p>
+                      </div>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marketing.tiktokPixelEnabled !== false}
+                        onChange={(e) => updateMarketing('tiktokPixelEnabled', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-zinc-300 font-medium block mb-1.5">TikTok Pixel ID (ตัวอักษรและตัวเลข)</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น C123456789ABCDEF"
+                      value={marketing.tiktokPixelId || ''}
+                      onChange={(e) => updateMarketing('tiktokPixelId', e.target.value.trim())}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white placeholder-zinc-500 text-sm focus:border-cyan-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">คัดลอกจาก TikTok Ads Manager &gt; Assets &gt; Events &gt; Web Events</p>
+                  </div>
+                </div>
+
+                {/* 3. Google Analytics 4 (GA4) */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-amber-950/60 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black text-sm">
+                        G4
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                          Google Analytics 4 (GA4) & Google Ads
+                        </h3>
+                        <p className="text-xs text-zinc-400">วิเคราะห์ทราฟฟิกคนเข้าชม อัตราการซื้อซ้ำ และการสั่งซื้อผ่าน Google Ads</p>
+                      </div>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marketing.googleAnalyticsEnabled !== false}
+                        onChange={(e) => updateMarketing('googleAnalyticsEnabled', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-zinc-300 font-medium block mb-1.5">Measurement ID (ขึ้นต้นด้วย G-)</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น G-XXXXXXXXXX"
+                      value={marketing.googleAnalyticsId || ''}
+                      onChange={(e) => updateMarketing('googleAnalyticsId', e.target.value.trim())}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white placeholder-zinc-500 text-sm focus:border-amber-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">คัดลอกจาก Google Analytics &gt; Admin &gt; Data Streams &gt; Measurement ID</p>
+                  </div>
+                </div>
+
+                {/* 4. Instant Order Notifications (LINE Notify & Discord Webhook) */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-emerald-950/60 space-y-5 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                        แจ้งเตือนออเดอร์เข้าทันที (Merchant Realtime Alerts)
+                      </h3>
+                      <p className="text-xs text-zinc-400">รับแจ้งเตือนทันทีเมื่อมีลูกค้าทำรายการสั่งซื้อ เพื่อไม่ให้พลาดทุกยอดขายจากการยิงแอด</p>
+                    </div>
+                  </div>
+
+                  {/* LINE Notify Token */}
+                  <div className="p-4 rounded-xl bg-black/40 border border-zinc-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-emerald-400 font-bold flex items-center gap-2 font-['Kanit']">
+                        <span>💬 LINE Notify Token</span>
+                      </label>
+                      <a
+                        href="https://notify-bot.line.me/my/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                      >
+                        <span>ออก Token จาก LINE Notify</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="วาง LINE Notify Token ที่นี่..."
+                        value={marketing.lineNotifyToken || ''}
+                        onChange={(e) => updateMarketing('lineNotifyToken', e.target.value.trim())}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white placeholder-zinc-500 text-sm focus:border-emerald-500 focus:outline-none transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTestLineNotify}
+                        disabled={isTestingNotify || !marketing.lineNotifyToken}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0"
+                      >
+                        {isTestingNotify ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        <span>ทดสอบส่ง LINE</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed">
+                      เมื่อมีออเดอร์ใหม่ ระบบจะส่งข้อความแจ้ง: เลขที่คำสั่งซื้อ, สินค้า, แพ็กเกจ, ราคา, วิธีชำระเงิน, ข้อมูลผู้รับ เข้าแชทกลุ่มหรือแชทส่วนตัวของคุณทันที
+                    </p>
+                  </div>
+
+                  {/* Discord Webhook */}
+                  <div className="p-4 rounded-xl bg-black/40 border border-zinc-800 space-y-3">
+                    <label className="text-xs text-indigo-400 font-bold block font-['Kanit']">
+                      🎮 Discord Webhook URL (ทางเลือกสำหรับทีมงาน)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://discord.com/api/webhooks/..."
+                      value={marketing.discordWebhookUrl || ''}
+                      onChange={(e) => updateMarketing('discordWebhookUrl', e.target.value.trim())}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white placeholder-zinc-500 text-sm focus:border-indigo-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-zinc-500 leading-relaxed">
+                      หากใส่ Discord Webhook ระบบจะส่งข้อความ Embed สวยงามพร้อมสีสถานะเข้าห้อง Discord ทีมงานอัตโนมัติ
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5. Custom Head Scripts (LINE Tag, Microsoft Clarity, Custom Pixels) */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-purple-950/60 space-y-4 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                      <Code className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                        สคริปต์เสริมส่วนหัว (Custom Head Code / Tag Manager)
+                      </h3>
+                      <p className="text-xs text-zinc-400">รองรับ LINE Tag, Google Tag Manager (GTM), Microsoft Clarity, X/Twitter Pixel หรือแท็กโฆษณาอื่น</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <textarea
+                      rows={4}
+                      placeholder={`<!-- วางโค้ด <script> หรือ <meta> ที่ต้องการรันในส่วน <head> ของเว็บไซต์ -->\n<script>\n  // Custom tracking code here...\n</script>`}
+                      value={marketing.customHeadScript || ''}
+                      onChange={(e) => updateMarketing('customHeadScript', e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white placeholder-zinc-600 text-xs font-mono focus:border-purple-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">โค้ดจะถูกฝังลงใน &lt;head&gt; ของเว็บอย่างปลอดภัยเมื่อผู้ใช้เปิดเข้าชมหน้าเว็บ</p>
+                  </div>
+                </div>
+
+                {/* 6. Ad Compliance & Legal Readiness Checklist */}
+                <div className="p-6 rounded-2xl bg-[#0a0d14] border border-zinc-800 space-y-4 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-['Kanit'] flex items-center gap-2">
+                        ความพร้อมด้านนโยบายกฎหมาย & ความปลอดภัยสำหรับยิงแอด (Ad Compliance)
+                      </h3>
+                      <p className="text-xs text-zinc-400">เกณฑ์มาตรฐานที่ Meta, Google และ TikTok ใช้ตรวจสอบก่อนอนุมัติแคมเปญโฆษณา</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                    <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-900/40 flex items-start gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-emerald-300 font-['Kanit']">ข้อกำหนดและเงื่อนไขการใช้งาน (Terms)</div>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">ระบุสิทธิ์ความรับผิดชอบและการทำธุรกรรมครบถ้วน อยู่ที่ Footer และหน้าสั่งซื้อ</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-900/40 flex items-start gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-emerald-300 font-['Kanit']">นโยบายความเป็นส่วนตัว (PDPA Compliant)</div>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">ถูกต้องตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 ของประเทศไทย 100%</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-900/40 flex items-start gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-emerald-300 font-['Kanit']">นโยบายการคืนเงิน & รับประกัน (Refund Policy)</div>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">สร้างความเชื่อถือแก่ผู้ซื้อ และป้องกันข้อพิพาทตัดบัตรเครดิต/พร้อมเพย์</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-900/40 flex items-start gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-emerald-300 font-['Kanit']">โครงสร้างข้อมูล SEO & จดทะเบียนพาณิชย์</div>
+                        <p className="text-zinc-400 text-[11px] mt-0.5">ติดตั้ง JSON-LD Schema (Store, WebSite) ช่วยให้ Google Index หน้าร้านติดอันดับเร็วขึ้น</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Button Bottom */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveMarketingSettings}
+                    disabled={isSavingMarketing}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 hover:brightness-110 active:scale-[0.99] text-white font-bold text-sm shadow-xl shadow-rose-600/30 transition-all font-['Kanit'] flex items-center justify-center gap-2"
+                  >
+                    {isSavingMarketing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>กำลังบันทึกข้อมูล...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>บันทึกการตั้งค่าการตลาดและพิกเซลทั้งหมด</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            );
+          })()}
 
           {/* TAB 10: SETTINGS (CMS STOREFRONT TEXT & PAYMENT) */}
           {activeTab === 'settings' && siteSettings && (

@@ -29,6 +29,7 @@ export default function LeftSidebar({
   onOpenWheel,
   onOpenAffiliate,
   onOpenCoupons,
+  onOpenPolicy,
   siteSettings
 }) {
   const handleNavClick = (view, scrollId = null) => {
@@ -278,6 +279,18 @@ export default function LeftSidebar({
             >
               <Clock className={`w-4 h-4 ${currentView === 'orders' ? 'text-yellow-400' : 'text-zinc-400'}`} />
               <span>ประวัติการสั่งซื้อ</span>
+            </button>
+
+            {/* นโยบายและข้อกำหนด (Legal & Policies) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenPolicy) handleActionClick(() => onOpenPolicy('terms'));
+              }}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-400 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
+            >
+              <ShieldCheck className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+              <span>นโยบาย & ข้อกำหนด (PDPA)</span>
             </button>
 
           </nav>

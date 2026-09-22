@@ -85,7 +85,18 @@
     "footerAbout": "ศูนย์รวมบริการเติมเกมและสินค้าดิจิทัลครบวงจรที่ดีที่สุดในประเทศไทย",
     "footerLegal": "สงวนลิขสิทธิ์ พ.ศ. 2569 บริษัท บูสต์อัพ จำกัด (BOOSTUP THAILAND)",
     "footerCopyright": "© 2026 BOOSTUP ร้านเติมเงินเกม (PLAY MORE GO FURTHER) All Rights Reserved.",
-    "lineContact": "@boostup"
+    "lineContact": "@boostup",
+    "marketing": {
+      "facebookPixelId": "",
+      "facebookPixelEnabled": true,
+      "tiktokPixelId": "",
+      "tiktokPixelEnabled": true,
+      "googleAnalyticsId": "",
+      "googleAnalyticsEnabled": true,
+      "lineNotifyToken": "",
+      "discordWebhookUrl": "",
+      "customHeadScript": ""
+    }
   },
   "users": [
     {
@@ -106,6 +117,20 @@
       "username": "testplayer",
       "email": "test@example.com",
       "passwordHash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+    },
+    {
+      "id": "usr_default_gamer",
+      "username": "gamer_pro",
+      "name": "ผู้เล่นระดับโปร",
+      "email": "user@gamer.th",
+      "passwordHash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+      "walletBalance": 500,
+      "points": 240,
+      "tier": "Silver",
+      "status": "active",
+      "referralCode": "REF888888",
+      "spinTickets": 2,
+      "createdAt": "2026-09-20T12:00:00.000Z"
     }
   ],
   "games": [
@@ -1607,5 +1632,70 @@
       100
     ],
     "dailyStreakTicketsDay7": 1
-  }
+  },
+  "luckyWheelWinners": [
+    {
+      "id": "win_1",
+      "username": "p***1",
+      "prizeName": "เครดิต 20 บาท",
+      "prizeType": "credit",
+      "value": 20,
+      "timeAgo": "1 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:43:26.768Z"
+    },
+    {
+      "id": "win_2",
+      "username": "k***8",
+      "prizeName": "50 พอยท์",
+      "prizeType": "points",
+      "value": 50,
+      "timeAgo": "3 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:41:26.768Z"
+    },
+    {
+      "id": "win_3",
+      "username": "m***5",
+      "prizeName": "หมุนฟรี 1 ครั้ง",
+      "prizeType": "ticket",
+      "value": 1,
+      "timeAgo": "5 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:39:26.768Z"
+    },
+    {
+      "id": "win_4",
+      "username": "a***9",
+      "prizeName": "รางวัลใหญ่ 100 บาท!",
+      "prizeType": "credit",
+      "value": 100,
+      "timeAgo": "11 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:33:26.768Z"
+    },
+    {
+      "id": "win_5",
+      "username": "s***4",
+      "prizeName": "เครดิต 5 บาท",
+      "prizeType": "credit",
+      "value": 5,
+      "timeAgo": "15 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:29:26.768Z"
+    },
+    {
+      "id": "win_6",
+      "username": "t***2",
+      "prizeName": "โค้ดลด 5%",
+      "prizeType": "coupon",
+      "value": "LUCKY5",
+      "timeAgo": "22 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:22:26.768Z"
+    },
+    {
+      "id": "win_7",
+      "username": "b***6",
+      "prizeName": "50 พอยท์",
+      "prizeType": "points",
+      "value": 50,
+      "timeAgo": "28 นาทีที่แล้ว",
+      "createdAt": "2026-09-22T15:16:26.768Z"
+    }
+  ]
 }

@@ -15,6 +15,7 @@ import {
   Copy
 } from 'lucide-react';
 import Swal from '../utils/swal';
+import tracker from '../utils/analytics';
 
 export default function CartModal({ 
   isOpen, 
@@ -97,6 +98,7 @@ export default function CartModal({
     }
 
     setIsCheckingOut(true);
+    tracker.trackInitiateCheckout(finalPayAmount, cartItems.length);
 
     try {
       const res = await fetch('/api/cart/checkout', {
@@ -114,6 +116,12 @@ export default function CartModal({
 
       if (data.success) {
         setCheckoutResult(data);
+        tracker.trackPurchase({
+          orderNumber: data.orders?.[0]?.orderNumber || `CART_${Date.now()}`,
+          gameName: 'คำสั่งซื้อจากตะกร้าสินค้า (Cart Checkout)',
+          packageName: `${cartItems.length} รายการ`,
+          finalAmount: finalPayAmount
+        });
         onClearCart();
 
         if (paymentMethod === 'wallet') {

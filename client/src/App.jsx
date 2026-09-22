@@ -21,7 +21,9 @@ import AffiliateModal from './components/AffiliateModal';
 import CartModal from './components/CartModal';
 import LeftSidebar from './components/LeftSidebar';
 import OrderHistoryView from './components/OrderHistoryView';
+import PolicyModal from './components/PolicyModal';
 import AdminPortal from './pages/admin/AdminPortal';
+import tracker from './utils/analytics';
 
 export default function App() {
   // Detect current URL route (/admin vs /orders vs /)
@@ -96,6 +98,36 @@ export default function App() {
   const [wheelModalOpen, setWheelModalOpen] = useState(false);
   const [affiliateModalOpen, setAffiliateModalOpen] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [policyModal, setPolicyModal] = useState({ open: false, tab: 'terms' });
+
+  // Initialize marketing tracking pixels (Meta Pixel, TikTok, GA4, Custom Scripts)
+  useEffect(() => {
+    if (siteSettings?.marketing) {
+      tracker.init(siteSettings.marketing);
+    }
+  }, [siteSettings]);
+
+  // Track page views on route navigation
+  useEffect(() => {
+    const pageTitle = currentView === 'home' 
+      ? 'หน้าหลัก | ร้านเติมเกม BOOSTUP' 
+      : currentView === 'orders' 
+        ? 'ประวัติการสั่งซื้อ | BOOSTUP' 
+        : 'ระบบจัดการหลังบ้าน | BOOSTUP';
+    tracker.trackPageView(pageTitle, window.location.href);
+  }, [currentView]);
+
+  // Track product view content when modal opens
+  useEffect(() => {
+    if (selectedProductForCheckout) {
+      tracker.trackViewContent({
+        id: selectedProductForCheckout.id,
+        name: selectedProductForCheckout.name,
+        category: selectedProductForCheckout.category || 'Game Topup',
+        price: selectedProductForCheckout.packages?.[0]?.price || selectedProductForCheckout.price || 0
+      });
+    }
+  }, [selectedProductForCheckout]);
 
   // Global SweetAlert Modal State (Replaces Browser Alerts Everywhere)
   const [globalAlert, setGlobalAlert] = useState({
@@ -237,6 +269,11 @@ export default function App() {
         setSelectedProductForCheckout(null);
         setActiveOrderForStatus(data.order);
         
+        // Track completed purchase for Meta/TikTok/Google Analytics
+        if (data.order) {
+          tracker.trackPurchase(data.order);
+        }
+
         // If paid with wallet, update local wallet state
         if (orderPayload.paymentMethod === 'wallet' && user) {
           const deduction = data.order.finalAmount || 0;
@@ -330,6 +367,7 @@ export default function App() {
             type: 'info'
           });
         }}
+        onOpenPolicy={(tab = 'terms') => setPolicyModal({ open: true, tab })}
         siteSettings={siteSettings}
       />
 
@@ -414,6 +452,7 @@ export default function App() {
         {/* 10. Footer */}
         <Footer
           siteSettings={siteSettings}
+          onOpenPolicy={(tab = 'terms') => setPolicyModal({ open: true, tab })}
         />
       </div>
 
@@ -436,6 +475,7 @@ export default function App() {
             setSelectedProductForCheckout(null);
             setWalletModalOpen(true);
           }}
+          onOpenPolicy={(tab = 'terms') => setPolicyModal({ open: true, tab })}
         />
       )}
 
@@ -513,6 +553,14 @@ export default function App() {
           onDepositSuccess={handleDepositSuccess}
         />
       )}
+
+      {/* Legal & Compliance Policy Modal (Terms, PDPA, Refund, About) */}
+      <PolicyModal
+        isOpen={policyModal.open}
+        onClose={() => setPolicyModal(prev => ({ ...prev, open: false }))}
+        initialTab={policyModal.tab}
+        siteSettings={siteSettings}
+      />
 
       {/* Global SweetAlert Modal (Replaces Native Browser Alerts) */}
       {globalAlert.open && (

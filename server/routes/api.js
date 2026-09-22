@@ -11,6 +11,7 @@ const otpService = require('../services/otpService');
 const aiChatService = require('../services/aiChatService');
 const ignVerificationService = require('../services/ignVerificationService');
 const slipVerificationService = require('../services/slipVerificationService');
+const QRCode = require('qrcode');
 
 // ==========================================
 // 1. PUBLIC & STOREFRONT APIS
@@ -150,7 +151,21 @@ router.post('/coupons/validate', (req, res) => {
 
   const coupon = db.getCouponByCode(code);
   if (!coupon) {
-    return res.status(404).json({ success: false, message: 'ไม่พบโค้ดส่วนลดนี้ หรือโค้ดหมดอายุแล้ว' });
+    return res.status(404).json({ success: false, message: 'ไม่พบโค้ดส่วนลดนี้ หรือพิมพ์รหัสไม่ถูกต้อง' });
+  }
+
+  if (coupon.isInactive) {
+    return res.status(400).json({ success: false, message: `โค้ดส่วนลด "${coupon.code}" ถูกปิดใช้งานชั่วคราว` });
+  }
+
+  if (coupon.isExpired) {
+    const expDate = new Date(coupon.expiresAt).toLocaleDateString('th-TH');
+    return res.status(400).json({ success: false, message: `โค้ดส่วนลด "${coupon.code}" หมดอายุการใช้งานแล้ว (สิ้นสุด ${expDate})` });
+  }
+
+  if (coupon.isLimitReached) {
+    const limit = coupon.usageLimit || coupon.maxUses;
+    return res.status(400).json({ success: false, message: `โค้ดส่วนลด "${coupon.code}" ถูกใช้งานครบจำนวนสิทธิ์เต็มแล้ว (${limit}/${limit} สิทธิ์)` });
   }
 
   const orderAmount = Number(amount) || 0;
@@ -323,6 +338,27 @@ router.get('/orders/:id', (req, res) => {
     return res.status(404).json({ success: false, message: 'ไม่พบคำสั่งซื้อนี้' });
   }
   res.json({ success: true, order });
+});
+
+// Generate Order Verification QR & E-Receipt Meta
+router.get('/orders/:id/receipt-qr', async (req, res) => {
+  try {
+    const order = db.getOrderById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'ไม่พบคำสั่งซื้อนี้' });
+    }
+    const host = req.get('host') || 'www.boostup-game.online';
+    const proto = req.protocol || 'https';
+    const verifyUrl = `${proto}://${host}/orders?id=${order.orderNumber}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+      margin: 1,
+      width: 220,
+      color: { dark: '#04281a', light: '#ffffff' }
+    });
+    res.json({ success: true, qrDataUrl, verifyUrl, orderNumber: order.orderNumber });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Get User Orders
@@ -1107,6 +1143,24 @@ router.post('/admin/coupons', (req, res) => {
   res.json({ success: true, coupon });
 });
 
+router.put('/admin/coupons/:id', (req, res) => {
+  const updated = db.updateCoupon(req.params.id, req.body);
+  if (!updated) {
+    return res.status(404).json({ success: false, message: 'ไม่พบคูปองนี้' });
+  }
+  db.logAction('admin', req.body.adminName || 'Admin', 'UPDATE_COUPON', `แก้ไขคูปอง: ${updated.code}`);
+  res.json({ success: true, coupon: updated });
+});
+
+router.post('/admin/coupons/:id/toggle', (req, res) => {
+  const updated = db.toggleCouponStatus(req.params.id);
+  if (!updated) {
+    return res.status(404).json({ success: false, message: 'ไม่พบคูปองนี้' });
+  }
+  db.logAction('admin', req.body.adminName || 'Admin', 'TOGGLE_COUPON', `${updated.isActive ? 'เปิด' : 'ปิด'}การใช้งานคูปอง: ${updated.code}`);
+  res.json({ success: true, coupon: updated });
+});
+
 router.delete('/admin/coupons/:id', (req, res) => {
   const coupon = (db.data.coupons || []).find(c => c.id === req.params.id);
   const code = coupon ? coupon.code : req.params.id;
@@ -1778,12 +1832,16 @@ router.post('/cart/checkout', async (req, res) => {
     let discountAmount = 0;
 
     if (couponCode) {
-      const coupon = (db.data.coupons || []).find(c => c.code === couponCode.toUpperCase() && c.isActive);
-      if (coupon) {
-        if (coupon.discountType === 'percent') {
-          discountAmount = Math.round((totalAmount * (coupon.discountValue / 100)) * 100) / 100;
-        } else {
-          discountAmount = Math.min(totalAmount, coupon.discountValue);
+      const coupon = db.getCouponByCode(couponCode);
+      if (coupon && !coupon.isInactive && !coupon.isExpired && !coupon.isLimitReached) {
+        if (!coupon.minSpend || totalAmount >= coupon.minSpend) {
+          if (coupon.discountType === 'percent') {
+            discountAmount = Math.round((totalAmount * (coupon.discountValue / 100)) * 100) / 100;
+            if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) discountAmount = coupon.maxDiscount;
+          } else {
+            discountAmount = Math.min(totalAmount, coupon.discountValue);
+          }
+          db.updateCoupon(coupon.id, { usedCount: (coupon.usedCount || 0) + 1 });
         }
       }
     }

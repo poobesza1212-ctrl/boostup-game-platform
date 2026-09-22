@@ -305,7 +305,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     discountType: 'percent',
     discountValue: 10,
     minSpend: 0,
-    maxDiscount: 100
+    maxDiscount: 100,
+    usageLimit: 100,
+    expiresAt: ''
   });
 
   // Slide Form Modal
@@ -1055,13 +1057,60 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const data = await res.json();
       if (data.success) {
         setNewCouponModal(false);
-        setCouponForm({ code: '', description: '', discountType: 'percent', discountValue: 10, minSpend: 0, maxDiscount: 100 });
+        setCouponForm({ code: '', description: '', discountType: 'percent', discountValue: 10, minSpend: 0, maxDiscount: 100, usageLimit: 100, expiresAt: '' });
         loadData();
         showAlert({ title: 'สร้างคูปองสำเร็จ!', message: `สร้างคูปอง ${couponForm.code} เรียบร้อยแล้ว`, type: 'success' });
       }
     } catch (e) {
       showAlert({ title: 'เกิดข้อผิดพลาด', message: 'สร้างคูปองไม่สำเร็จ', type: 'error' });
     }
+  };
+
+  // Handle Toggle Coupon Active
+  const handleToggleCoupon = async (couponId) => {
+    try {
+      const res = await fetch(`/api/admin/coupons/${couponId}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminName: adminUser?.name || 'Admin' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCoupons(prev => prev.map(c => c.id === couponId ? data.coupon : c));
+        showAlert({ 
+          title: 'สำเร็จ', 
+          message: `${data.coupon.isActive ? 'เปิด' : 'ปิด'}การใช้งานคูปอง ${data.coupon.code} เรียบร้อยแล้ว`, 
+          type: 'success' 
+        });
+      }
+    } catch (e) {
+      showAlert({ title: 'ผิดพลาด', message: 'ไม่สามารถเปลี่ยนสถานะได้', type: 'error' });
+    }
+  };
+
+  // Handle Delete Coupon
+  const handleDeleteCoupon = (couponId, couponCode) => {
+    showConfirm({
+      title: 'ยืนยันการลบคูปอง',
+      message: `คุณแน่ใจหรือไม่ว่าต้องการลบคูปองส่วนลด "${couponCode}" ออกจากระบบ?`,
+      confirmText: 'ลบคูปอง',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/coupons/${couponId}?adminName=${encodeURIComponent(adminUser?.name || 'Admin')}`, {
+            method: 'DELETE'
+          });
+          const data = await res.json();
+          if (data.success) {
+            setCoupons(prev => prev.filter(c => c.id !== couponId));
+            showAlert({ title: 'ลบคูปองสำเร็จ', message: `ลบคูปอง "${couponCode}" เรียบร้อยแล้ว`, type: 'success' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถลบคูปองได้', type: 'error' });
+        }
+      }
+    });
   };
 
   // Handle Delete Game
@@ -4576,22 +4625,130 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {coupons.map((c) => (
-                  <div key={c.id} className="p-5 rounded-2xl bg-cyber-card border border-red-950/60 relative space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-black text-red-400 font-mono tracking-wider">{c.code}</span>
-                      <span className="text-[10px] bg-red-950 text-red-300 px-2 py-0.5 rounded font-bold">
-                        {c.discountType === 'percent' ? `ลด ${c.discountValue}%` : `ลด ฿${c.discountValue}`}
-                      </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {coupons.map((c) => {
+                  const limit = c.usageLimit || c.maxUses || 0;
+                  const used = c.usedCount || 0;
+                  const isLimitReached = limit > 0 && used >= limit;
+                  const isExpired = c.expiresAt && new Date(c.expiresAt).getTime() < Date.now();
+                  const percentUsed = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
+                  return (
+                    <div 
+                      key={c.id} 
+                      className={`p-5 rounded-2xl bg-[#0f121d] border transition-all relative space-y-3.5 ${
+                        !c.isActive 
+                          ? 'border-zinc-800 opacity-60' 
+                          : isExpired 
+                            ? 'border-amber-900/60' 
+                            : isLimitReached 
+                              ? 'border-orange-900/60' 
+                              : 'border-red-900/50 hover:border-red-500/50 shadow-lg'
+                      }`}
+                    >
+                      {/* Top Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black text-white font-mono tracking-wider">{c.code}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.code);
+                                showAlert({ title: 'คัดลอกสำเร็จ', message: `คัดลอกโค้ด ${c.code} แล้ว`, type: 'success' });
+                              }}
+                              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+                              title="คัดลอกรหัสโค้ด"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <span className="text-[10px] text-zinc-400 block mt-0.5">
+                            {c.description || 'ไม่มีคำอธิบาย'}
+                          </span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="text-right shrink-0">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                            !c.isActive
+                              ? 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                              : isExpired
+                                ? 'bg-amber-950/80 text-amber-400 border-amber-800'
+                                : isLimitReached
+                                  ? 'bg-orange-950/80 text-orange-400 border-orange-800'
+                                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
+                          }`}>
+                            {!c.isActive ? '🔴 ปิดใช้งาน' : isExpired ? '⏳ หมดอายุ' : isLimitReached ? '⚠️ สิทธิ์เต็ม' : '🟢 ใช้งานได้'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Discount Value Badge */}
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs">
+                        <span className="text-zinc-400">มูลค่าส่วนลด:</span>
+                        <strong className="text-red-400 font-bold text-sm">
+                          {c.discountType === 'percent' ? `ลด ${c.discountValue}%` : `ลด ฿${c.discountValue}`}
+                          {c.maxDiscount ? ` (สูงสุด ฿${c.maxDiscount})` : ''}
+                        </strong>
+                      </div>
+
+                      {/* Campaign Limits & Quota Progress */}
+                      <div className="space-y-1.5 text-xs text-zinc-400">
+                        <div className="flex justify-between text-[11px]">
+                          <span>การใช้สิทธิ์:</span>
+                          <span className="font-mono text-zinc-300">
+                            <strong>{used}</strong> / {limit > 0 ? `${limit} สิทธิ์` : 'ไม่จำกัด'} {limit > 0 && `(${percentUsed}%)`}
+                          </span>
+                        </div>
+                        {limit > 0 && (
+                          <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${
+                                percentUsed >= 100 ? 'bg-orange-500' : 'bg-red-500'
+                              }`} 
+                              style={{ width: `${percentUsed}%` }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex justify-between text-[11px] pt-1 border-t border-zinc-800/80">
+                          <span>ยอดสั่งซื้อขั้นต่ำ:</span>
+                          <span className="text-zinc-300 font-mono">฿{c.minSpend || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span>วันหมดอายุ:</span>
+                          <span className={`font-mono ${isExpired ? 'text-amber-400 font-bold' : 'text-zinc-300'}`}>
+                            {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('th-TH') : 'ไม่มีวันหมดอายุ'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Action Buttons */}
+                      <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCoupon(c.id)}
+                          className={`flex-1 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            c.isActive
+                              ? 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-amber-300'
+                              : 'bg-emerald-950/60 border-emerald-600/60 text-emerald-300 hover:bg-emerald-900'
+                          }`}
+                        >
+                          {c.isActive ? '⏸️ พักการใช้งาน' : '▶️ เปิดใช้งาน'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCoupon(c.id, c.code)}
+                          className="p-2 rounded-xl bg-zinc-900 hover:bg-red-950 border border-zinc-800 hover:border-red-700 text-zinc-400 hover:text-red-300 transition-colors cursor-pointer"
+                          title="ลบคูปองนี้"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
                     </div>
-                    <p className="text-xs text-zinc-300">{c.description}</p>
-                    <div className="pt-2 border-t border-zinc-800 text-[10px] text-zinc-400 flex justify-between">
-                      <span>ขั้นต่ำ: ฿{c.minSpend || 0}</span>
-                      <span>ใช้แล้ว: {c.usedCount || 0} ครั้ง</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -6995,14 +7152,47 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-zinc-400 block mb-1">ยอดสั่งซื้อขั้นต่ำ (บาท)</label>
-                <input
-                  type="number"
-                  value={couponForm.minSpend}
-                  onChange={(e) => setCouponForm({ ...couponForm, minSpend: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ยอดสั่งซื้อขั้นต่ำ (บาท)</label>
+                  <input
+                    type="number"
+                    value={couponForm.minSpend}
+                    onChange={(e) => setCouponForm({ ...couponForm, minSpend: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">จำกัดจำนวนสิทธิ์ (0 = ไม่จำกัด)</label>
+                  <input
+                    type="number"
+                    value={couponForm.usageLimit}
+                    onChange={(e) => setCouponForm({ ...couponForm, usageLimit: Number(e.target.value), maxUses: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                    placeholder="เช่น 100"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-400 block mb-1">ลดสูงสุดไม่เกิน (บาท)</label>
+                  <input
+                    type="number"
+                    value={couponForm.maxDiscount}
+                    onChange={(e) => setCouponForm({ ...couponForm, maxDiscount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                    placeholder="เช่น 100"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 block mb-1">วันหมดอายุแคมเปญ</label>
+                  <input
+                    type="date"
+                    value={couponForm.expiresAt ? couponForm.expiresAt.slice(0, 10) : ''}
+                    onChange={(e) => setCouponForm({ ...couponForm, expiresAt: e.target.value ? `${e.target.value}T23:59:59Z` : '' })}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white"
+                  />
+                </div>
               </div>
               <button
                 type="submit"

@@ -1835,11 +1835,35 @@ class Database {
   // Coupons
   getCouponByCode(code) {
     if (!code) return null;
-    return this.data.coupons.find(c => c.code.toUpperCase() === code.trim().toUpperCase() && c.isActive);
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = (this.data.coupons || []).find(c => c.code.toUpperCase() === cleanCode);
+    if (!coupon) return null;
+
+    // Check active status
+    if (coupon.isActive === false) {
+      return { ...coupon, isInactive: true };
+    }
+
+    // Check expiry date
+    if (coupon.expiresAt) {
+      const expTime = new Date(coupon.expiresAt).getTime();
+      if (!isNaN(expTime) && Date.now() > expTime) {
+        return { ...coupon, isExpired: true };
+      }
+    }
+
+    // Check usage limit / quota
+    const limit = coupon.usageLimit || coupon.maxUses || 0;
+    const count = coupon.usedCount || 0;
+    if (limit > 0 && count >= limit) {
+      return { ...coupon, isLimitReached: true };
+    }
+
+    return coupon;
   }
 
   getAllCoupons() {
-    return this.data.coupons;
+    return this.data.coupons || [];
   }
 
   createCoupon(coupon) {
@@ -1847,15 +1871,21 @@ class Database {
       id: `cpn_${Date.now()}`,
       usedCount: 0,
       isActive: true,
+      usageLimit: coupon.usageLimit || coupon.maxUses || 0,
+      maxUses: coupon.maxUses || coupon.usageLimit || 0,
+      expiresAt: coupon.expiresAt || null,
+      maxDiscount: coupon.maxDiscount || 0,
       ...coupon,
-      code: coupon.code.toUpperCase()
+      code: coupon.code.toUpperCase().trim()
     };
+    if (!this.data.coupons) this.data.coupons = [];
     this.data.coupons.push(newCoupon);
     this.save();
     return newCoupon;
   }
 
   updateCoupon(id, updates) {
+    if (!this.data.coupons) return null;
     const idx = this.data.coupons.findIndex(c => c.id === id);
     if (idx !== -1) {
       this.data.coupons[idx] = { ...this.data.coupons[idx], ...updates };
@@ -1865,7 +1895,19 @@ class Database {
     return null;
   }
 
+  toggleCouponStatus(id) {
+    if (!this.data.coupons) return null;
+    const coupon = this.data.coupons.find(c => c.id === id);
+    if (coupon) {
+      coupon.isActive = !coupon.isActive;
+      this.save();
+      return coupon;
+    }
+    return null;
+  }
+
   deleteCoupon(id) {
+    if (!this.data.coupons) return;
     this.data.coupons = this.data.coupons.filter(c => c.id !== id);
     this.save();
   }

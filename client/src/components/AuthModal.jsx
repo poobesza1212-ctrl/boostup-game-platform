@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   RotateCw, 
   Clock,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function AuthModal({ initialMode = 'login', onClose, onLoginSuccess }) {
@@ -20,6 +22,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
   // Login / Register Form State
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -486,13 +489,21 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
                 <div className="relative">
                   <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-3" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs focus:border-red-500 focus:outline-none"
+                    className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs focus:border-red-500 focus:outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                    title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 

@@ -208,7 +208,36 @@ const defaultData = {
     { id: "win_6", username: "t***2", prizeName: "โค้ดลด 5%", prizeType: "coupon", value: "LUCKY5", timeAgo: "22 นาทีที่แล้ว", createdAt: new Date(Date.now() - 1320000).toISOString() },
     { id: "win_7", username: "b***6", prizeName: "50 พอยท์", prizeType: "points", value: 50, timeAgo: "28 นาทีที่แล้ว", createdAt: new Date(Date.now() - 1680000).toISOString() }
   ],
-  users: [],
+  users: [
+    {
+      id: "usr_default_gamer",
+      username: "gamer_pro",
+      name: "ผู้เล่นระดับโปร",
+      email: "user@gamer.th",
+      passwordHash: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8", // 'password'
+      walletBalance: 500.00,
+      points: 240,
+      tier: "Silver",
+      status: "active",
+      referralCode: "REF888888",
+      spinTickets: 2,
+      createdAt: "2026-09-20T12:00:00.000Z"
+    },
+    {
+      id: "usr_testplayer",
+      username: "testplayer",
+      name: "ผู้ทดสอบระบบ",
+      email: "test@example.com",
+      passwordHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3", // '123'
+      walletBalance: 100.00,
+      points: 110,
+      tier: "Bronze",
+      status: "active",
+      referralCode: "REF398977",
+      spinTickets: 1,
+      createdAt: "2026-09-21T21:42:30.357Z"
+    }
+  ],
   admins: [
     {
       id: "adm_super",
@@ -921,7 +950,16 @@ class Database {
         };
       }
     }
-    if (!this.data.users) this.data.users = [];
+
+    if (!this.data.users || this.data.users.length === 0) {
+      this.data.users = [...defaultData.users];
+    } else {
+      defaultData.users.forEach(du => {
+        if (!this.data.users.some(u => (u.email && u.email.toLowerCase() === du.email.toLowerCase()) || (u.username && u.username.toLowerCase() === du.username.toLowerCase()))) {
+          this.data.users.push(du);
+        }
+      });
+    }
     if (!this.data.admins) this.data.admins = defaultData.admins || [];
 
     // Games: ensure defaults exist, and merge any missing default games (e.g. roblox)
@@ -1257,11 +1295,25 @@ class Database {
   }
 
   findUserByEmailOrUsername(identifier) {
-    return this.data.users.find(u => u.email === identifier || u.username === identifier);
+    if (!identifier) return null;
+    const clean = identifier.toString().trim().toLowerCase();
+    const rawClean = identifier.toString().trim();
+    return (this.data.users || []).find(u => {
+      if (!u) return false;
+      const uEmail = u.email ? u.email.toString().trim().toLowerCase() : '';
+      const uUsername = u.username ? u.username.toString().trim().toLowerCase() : '';
+      const uPhone = u.phone ? u.phone.toString().trim() : '';
+      return uEmail === clean || uUsername === clean || (uPhone && uPhone === rawClean);
+    });
   }
 
   createUser(userData) {
     const referralCode = `REF${Math.floor(100000 + Math.random() * 900000)}`;
+    const cleanUsername = (userData.username || '').toString().trim();
+    const cleanEmail = (userData.email || '').toString().trim().toLowerCase();
+    const cleanName = (userData.name || '').toString().trim() || cleanUsername;
+    const cleanPhone = (userData.phone || '').toString().trim();
+
     const newUser = {
       id: `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
       role: 'user',
@@ -1277,11 +1329,15 @@ class Database {
       lastDailyCheckin: null,
       checkinStreak: 0,
       createdAt: new Date().toISOString(),
-      ...userData
+      ...userData,
+      username: cleanUsername,
+      email: cleanEmail,
+      name: cleanName,
+      phone: cleanPhone
     };
 
     if (userData.password) {
-      newUser.passwordHash = crypto.createHash('sha256').update(userData.password).digest('hex');
+      newUser.passwordHash = crypto.createHash('sha256').update(userData.password.toString()).digest('hex');
       delete newUser.password;
     }
 

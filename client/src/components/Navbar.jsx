@@ -16,7 +16,8 @@ import {
   Film,
   ShoppingCart,
   RotateCw,
-  Share2
+  Share2,
+  Crown
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -214,37 +215,77 @@ export default function Navbar({
           </div>
 
           {/* User Section (Coins, Wallet & Profile) */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {user ? (
               <div className="flex items-center gap-2">
                 
+                {/* Customer Account Badge (บนขวา แสดงชื่อบัญชีลูกค้า + Tier) */}
+                <div 
+                  onClick={onOpenWallet}
+                  className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#121622] to-[#181d2c] border border-red-900/60 hover:border-red-600/70 shadow-md cursor-pointer transition-all group"
+                  title="ข้อมูลบัญชีของคุณ - คลิกเพื่อจัดการกระเป๋าเงิน"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white font-black text-xs shadow-sm ring-1 ring-white/20 shrink-0 group-hover:scale-105 transition-transform">
+                    {(user.name || user.username || 'U')[0].toUpperCase()}
+                  </div>
+                  <div className="text-left leading-none">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-white font-['Kanit'] tracking-wide truncate max-w-[90px] sm:max-w-[120px] md:max-w-[140px] group-hover:text-red-300 transition-colors">
+                        {user.name || user.username}
+                      </span>
+                      {/* Tier Badge */}
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-0.5 ${
+                        user.tier === 'VIP' || user.tier === 'Diamond'
+                          ? 'bg-gradient-to-r from-amber-500 to-yellow-300 text-black font-black'
+                          : user.tier === 'Gold'
+                          ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                          : user.tier === 'Silver'
+                          ? 'bg-slate-400/20 text-slate-300 border border-slate-400/40'
+                          : 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                      }`}>
+                        <Crown className="w-2.5 h-2.5" />
+                        <span>{user.tier || 'Bronze'}</span>
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-zinc-400 font-medium truncate max-w-[85px] sm:max-w-[110px] mt-0.5">
+                      @{user.username || 'gamer'}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Boost Coins Indicator */}
-                <div className="hidden sm:flex items-center gap-1.5 bg-amber-950/40 border border-amber-800/60 rounded-lg px-2.5 py-1 text-amber-300 text-xs font-bold font-['Kanit']">
-                  <Coins className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{user.points || 240} Coins</span>
+                <div className="hidden xl:flex items-center gap-1.5 bg-amber-950/40 border border-amber-800/60 rounded-xl px-2.5 py-1.5 text-amber-300 text-xs font-bold font-['Kanit']">
+                  <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>{user.points || 0} Coins</span>
                 </div>
 
                 {/* User Wallet Balance */}
                 <button
+                  type="button"
                   onClick={onOpenWallet}
-                  className="flex items-center gap-2 bg-gradient-to-r from-zinc-900 to-black hover:from-red-950 hover:to-black border border-red-900/60 rounded-lg px-3 py-1.5 transition-all text-left"
+                  className="flex items-center gap-2 bg-gradient-to-r from-zinc-900 to-black hover:from-red-950 hover:to-zinc-900 border border-red-900/60 hover:border-emerald-500/50 rounded-xl px-2.5 sm:px-3 py-1.5 transition-all text-left group cursor-pointer shadow-sm"
+                  title="คลิกเพื่อเติมเงินเข้ากระเป๋า"
                 >
-                  <Wallet className="w-4 h-4 text-emerald-400" />
+                  <div className="p-1 rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 group-hover:scale-110 transition-transform">
+                    <Wallet className="w-3.5 h-3.5" />
+                  </div>
                   <div>
-                    <div className="text-[9px] text-zinc-400 leading-tight">กระเป๋าเงิน</div>
-                    <div className="text-xs font-bold text-white font-['Kanit'] leading-tight">
-                      ฿{(user.walletBalance || 0).toFixed(2)}
+                    <div className="text-[9px] text-zinc-400 font-medium leading-none mb-0.5">กระเป๋าเงิน</div>
+                    <div className="text-xs font-black text-emerald-400 font-['Kanit'] leading-none">
+                      ฿{(Number(user.walletBalance) || 0).toFixed(2)}
                     </div>
                   </div>
                 </button>
 
                 {/* Logout Button */}
                 <button 
+                  type="button"
                   onClick={onLogout}
                   title="ออกจากระบบ"
-                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-red-400 border border-zinc-800"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-red-950/80 text-zinc-400 hover:text-red-300 border border-zinc-800 hover:border-red-800 transition-all cursor-pointer group"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                  <span className="hidden sm:inline text-[11px] font-bold">ออก</span>
                 </button>
 
               </div>
@@ -296,6 +337,64 @@ export default function Navbar({
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#0c0f17] border-b border-red-900/40 px-4 pt-3 pb-5 space-y-3">
+          
+          {/* Mobile Customer Account Card */}
+          {user ? (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-zinc-900 to-black border border-red-900/60 flex items-center justify-between shadow-lg">
+              <div 
+                onClick={() => { setMobileMenuOpen(false); onOpenWallet(); }}
+                className="flex items-center gap-3 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white font-black text-sm shadow-md ring-1 ring-white/20 shrink-0">
+                  {(user.name || user.username || 'U')[0].toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-white font-['Kanit']">
+                      {user.name || user.username}
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-0.5">
+                      <Crown className="w-2.5 h-2.5" />
+                      <span>{user.tier || 'Bronze'}</span>
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-zinc-400 font-medium">@{user.username}</div>
+                  <div className="flex items-center gap-2 mt-1 text-[11px]">
+                    <span className="text-emerald-400 font-bold">฿{(Number(user.walletBalance) || 0).toFixed(2)}</span>
+                    <span className="text-zinc-500">•</span>
+                    <span className="text-amber-300 font-bold">{user.points || 0} Coins</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onLogout(); }}
+                className="px-2.5 py-1.5 rounded-xl bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                title="ออกจากระบบ"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>ออก</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pb-2 border-b border-zinc-800/80">
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onOpenAuth('login'); }}
+                className="flex-1 py-2 text-center rounded-xl bg-zinc-900 text-zinc-200 text-xs font-bold border border-zinc-700 hover:text-white"
+              >
+                เข้าสู่ระบบ
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMobileMenuOpen(false); onOpenAuth('register'); }}
+                className="flex-1 py-2 text-center rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold shadow-md shadow-red-600/30 hover:from-red-500 hover:to-red-600"
+              >
+                สมัครสมาชิก
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col space-y-2 text-xs">
             <button 
               onClick={() => handleNavClick('root')}

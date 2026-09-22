@@ -377,59 +377,121 @@ router.post('/auth/login', (req, res) => {
   if (!identifier) {
     return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อผู้ใช้หรืออีเมล' });
   }
-
-  const user = db.findUserByEmailOrUsername(identifier);
-  if (!user || user.password !== password) {
-    return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+  if (!password && password !== 0) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกรหัสผ่าน' });
   }
+
+  const cleanIdentifier = identifier.toString().trim();
+  const user = db.findUserByEmailOrUsername(cleanIdentifier);
+  if (!user) {
+    return res.status(401).json({ success: false, message: 'ไม่พบบัญชีผู้ใช้หรืออีเมลนี้ในระบบ กรุณาตรวจสอบอีกครั้ง' });
+  }
+
+  const inputPassword = password.toString();
+  const hashedInput = crypto.createHash('sha256').update(inputPassword).digest('hex');
+  const hashedInputTrimmed = crypto.createHash('sha256').update(inputPassword.trim()).digest('hex');
+
+  // Multi-tier password verification (SHA-256 hash, trimmed hash, legacy plaintext)
+  const isValidPassword = 
+    (user.passwordHash && (user.passwordHash === hashedInput || user.passwordHash === hashedInputTrimmed)) ||
+    (user.password && (user.password === inputPassword || user.password === inputPassword.trim() || user.password === hashedInput));
+
+  if (!isValidPassword) {
+    return res.status(401).json({ success: false, message: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบแล้วลองใหม่อีกครั้ง' });
+  }
+
+  if (user.status === 'banned' || user.status === 'suspended') {
+    return res.status(403).json({ success: false, message: 'บัญชีนี้ถูกระงับการใช้งานชั่วคราว กรุณาติดต่อแอดมินทางแชทสด' });
+  }
+
+  db.logAction('user', user.name || user.username, 'USER_LOGIN', `ผู้ใช้ ${user.username} (${user.email || 'no-email'}) เข้าสู่ระบบสำเร็จ`);
 
   res.json({
     success: true,
+    message: 'เข้าสู่ระบบสำเร็จ ยินดีต้อนรับกลับครับ!',
     user: {
       id: user.id,
       username: user.username,
-      name: user.name,
+      name: user.name || user.username,
       email: user.email,
       phone: user.phone || '',
-      role: user.role,
-      walletBalance: user.walletBalance,
-      points: user.points,
-      tier: user.tier
+      role: user.role || 'user',
+      walletBalance: Number(user.walletBalance) || 0,
+      points: Number(user.points) || 0,
+      tier: user.tier || 'Bronze',
+      spinTickets: Number(user.spinTickets) || 0,
+      referralCode: user.referralCode || ''
     }
   });
 });
 
 router.post('/auth/register', (req, res) => {
   const { username, email, password, name, phone } = req.body;
-  if (!username || !email || !password) {
-    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+  const cleanUsername = (username || '').toString().trim();
+  const cleanEmail = (email || '').toString().trim().toLowerCase();
+  const cleanPassword = (password !== undefined && password !== null) ? password.toString() : '';
+
+  if (!cleanUsername || !cleanEmail || !cleanPassword) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อผู้ใช้, อีเมล, รหัสผ่าน)' });
   }
 
-  const existing = db.findUserByEmailOrUsername(username) || db.findUserByEmailOrUsername(email);
+  if (cleanPassword.length < 3) {
+    return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 3 ตัวอักษร' });
+  }
+
+  const existing = db.findUserByEmailOrUsername(cleanUsername) || db.findUserByEmailOrUsername(cleanEmail);
   if (existing) {
-    return res.status(400).json({ success: false, message: 'ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว' });
+    return res.status(400).json({ success: false, message: 'ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว กรุณาเลือกชื่อหรืออีเมลอื่น' });
   }
 
   const newUser = db.createUser({
-    username,
-    email,
-    password,
-    name: name || username,
-    phone: phone || ''
+    username: cleanUsername,
+    email: cleanEmail,
+    password: cleanPassword,
+    name: (name && name.toString().trim()) || cleanUsername,
+    phone: phone ? phone.toString().trim() : ''
   });
+
+  db.logAction('user', newUser.name || newUser.username, 'USER_REGISTER', `สมาชิกใหม่ ${newUser.username} (${newUser.email}) ลงทะเบียนสำเร็จ`);
 
   res.json({
     success: true,
+    message: 'สมัครสมาชิกสำเร็จ ยินดีต้อนรับสู่ BOOSTUP!',
     user: {
       id: newUser.id,
       username: newUser.username,
       name: newUser.name,
       email: newUser.email,
       phone: newUser.phone || '',
-      role: newUser.role,
-      walletBalance: newUser.walletBalance,
-      points: newUser.points,
-      tier: newUser.tier
+      role: newUser.role || 'user',
+      walletBalance: Number(newUser.walletBalance) || 0,
+      points: Number(newUser.points) || 0,
+      tier: newUser.tier || 'Bronze',
+      spinTickets: Number(newUser.spinTickets) || 0,
+      referralCode: newUser.referralCode || ''
+    }
+  });
+});
+
+router.get('/auth/user/:id', (req, res) => {
+  const user = db.findUserById(req.params.id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้' });
+  }
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      username: user.username,
+      name: user.name || user.username,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role || 'user',
+      walletBalance: Number(user.walletBalance) || 0,
+      points: Number(user.points) || 0,
+      tier: user.tier || 'Bronze',
+      spinTickets: Number(user.spinTickets) || 0,
+      referralCode: user.referralCode || ''
     }
   });
 });

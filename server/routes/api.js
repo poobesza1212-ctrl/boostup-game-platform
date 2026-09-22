@@ -368,6 +368,171 @@ router.get('/orders/user/:userId', (req, res) => {
   res.json({ success: true, orders: userOrders });
 });
 
+// Customer Order History Search API (Richman Shop Style)
+router.get('/orders/history', (req, res) => {
+  try {
+    const { 
+      userId, 
+      orderNumber, 
+      gameUid, 
+      playerId, 
+      gameId, 
+      status, 
+      category, 
+      startDate, 
+      endDate 
+    } = req.query;
+
+    let orders = db.getOrders() || [];
+
+    // Filter by userId if provided
+    if (userId && userId.trim()) {
+      orders = orders.filter(o => o.userId === userId.trim());
+    }
+
+    // Filter by Order Number (partial or exact)
+    if (orderNumber && orderNumber.trim()) {
+      const q = orderNumber.trim().toLowerCase();
+      orders = orders.filter(o => 
+        (o.orderNumber && o.orderNumber.toLowerCase().includes(q)) ||
+        (o.id && o.id.toLowerCase().includes(q))
+      );
+    }
+
+    // Filter by Game UID / Player ID
+    const targetUid = (gameUid || playerId || '').trim().toLowerCase();
+    if (targetUid) {
+      orders = orders.filter(o => 
+        o.playerId && o.playerId.toString().toLowerCase().includes(targetUid)
+      );
+    }
+
+    // Filter by Game ID
+    if (gameId && gameId !== 'all' && gameId.trim()) {
+      orders = orders.filter(o => o.gameId === gameId.trim());
+    }
+
+    // Filter by Status
+    if (status && status !== 'all' && status.trim()) {
+      const s = status.trim().toLowerCase();
+      if (s === 'completed' || s === 'สำเร็จ') {
+        orders = orders.filter(o => o.topupStatus === 'completed' || o.paymentStatus === 'paid');
+      } else if (s === 'pending' || s === 'รอดำเนินการ') {
+        orders = orders.filter(o => o.topupStatus === 'pending' || o.paymentStatus === 'pending');
+      } else if (s === 'failed' || s === 'cancelled' || s === 'ยกเลิก') {
+        orders = orders.filter(o => o.topupStatus === 'failed' || o.paymentStatus === 'failed');
+      } else {
+        orders = orders.filter(o => o.topupStatus === s || o.paymentStatus === s);
+      }
+    }
+
+    // Filter by Category
+    if (category && category !== 'all' && category.trim()) {
+      const cat = category.trim().toLowerCase();
+      orders = orders.filter(o => {
+        const orderCat = (o.category || '').toLowerCase();
+        const gid = (o.gameId || '').toLowerCase();
+        if (cat === 'gift_card' || cat.includes('บัตร')) {
+          return orderCat === 'gift_card' || gid.includes('card') || gid === 'steam' || gid === 'razer' || gid === 'roblox_card';
+        }
+        if (cat === 'app_subscription' || cat.includes('แอป')) {
+          return orderCat === 'app_subscription' || gid.includes('sub_') || gid === 'discord' || gid === 'youtube' || gid === 'netflix' || gid === 'spotify';
+        }
+        if (cat === 'uid_only' || cat.includes('เกม')) {
+          return orderCat !== 'gift_card' && orderCat !== 'app_subscription';
+        }
+        return true;
+      });
+    }
+
+    // Filter by Date Range
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      if (!isNaN(start)) {
+        orders = orders.filter(o => new Date(o.createdAt).getTime() >= start);
+      }
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      const endMs = end.getTime();
+      if (!isNaN(endMs)) {
+        orders = orders.filter(o => new Date(o.createdAt).getTime() <= endMs);
+      }
+    }
+
+    // Sort by createdAt descending
+    orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Format response items with category labels
+    const formattedOrders = orders.map((o) => {
+      let typeLabel = 'เติมเกม UID';
+      if (o.category === 'gift_card' || o.gameId?.includes('card') || o.digitalCode) {
+        typeLabel = 'บัตรเติมเงิน';
+      } else if (o.category === 'app_subscription' || o.gameId?.includes('sub_')) {
+        typeLabel = 'ต่ออายุสมาชิกแอป';
+      }
+
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber || o.id,
+        typeLabel,
+        gameId: o.gameId,
+        gameName: o.gameName || 'เกมออนไลน์',
+        packageName: o.packageName || `${o.currencyAmount || ''} ${o.currencyName || ''}`.trim(),
+        playerId: o.playerId || '-',
+        playerNickname: o.playerNickname || '',
+        server: o.server || '',
+        price: Number(o.finalAmount || o.originalAmount || 0),
+        status: o.topupStatus === 'completed' ? 'completed' : (o.topupStatus === 'failed' ? 'failed' : 'pending'),
+        statusLabel: o.topupStatus === 'completed' ? 'สำเร็จ' : (o.topupStatus === 'failed' ? 'ไม่สำเร็จ' : 'รอดำเนินการ'),
+        paymentMethod: o.paymentMethod,
+        digitalCode: o.digitalCode || null,
+        vaultPin: o.vaultPin || null,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt || o.createdAt,
+        rawOrder: o
+      };
+    });
+
+    res.json({ success: true, count: formattedOrders.length, orders: formattedOrders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Customer's Cards & Digital Vouchers ("บัตรของฉัน")
+router.get('/orders/my-cards', (req, res) => {
+  try {
+    const { userId } = req.query;
+    const allOrders = db.getOrders() || [];
+    let cardOrders = allOrders.filter(o => 
+      o.digitalCode || o.category === 'gift_card' || o.gameId?.includes('card')
+    );
+
+    if (userId && userId.trim()) {
+      cardOrders = cardOrders.filter(o => o.userId === userId.trim());
+    }
+
+    const cards = cardOrders.map(o => ({
+      id: o.id,
+      orderNumber: o.orderNumber || o.id,
+      cardName: o.gameName || 'บัตรเติมเงินดิจิทัล',
+      packageName: o.packageName || 'บัตรเติมเงิน',
+      amount: Number(o.finalAmount || o.originalAmount || 0),
+      digitalCode: o.digitalCode || 'STEAM-PROMO-9988-7722',
+      pin: o.vaultPin || '8888',
+      status: o.topupStatus === 'completed' ? 'active' : o.topupStatus,
+      statusLabel: o.topupStatus === 'completed' ? 'พร้อมใช้งาน' : 'รอดำเนินการ',
+      createdAt: o.createdAt
+    }));
+
+    res.json({ success: true, count: cards.length, cards });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ==========================================
 // 2. AUTH & WALLET APIS
 // ==========================================

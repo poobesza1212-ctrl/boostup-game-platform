@@ -17,7 +17,8 @@ import {
   ShoppingCart,
   RotateCw,
   Share2,
-  Crown
+  Crown,
+  Clock
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -31,6 +32,7 @@ export default function Navbar({
   onOpenCart,
   onOpenWheel,
   onOpenAffiliate,
+  onToggleSidebar,
   siteSettings,
   searchQuery,
   setSearchQuery,
@@ -71,13 +73,24 @@ export default function Navbar({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 gap-4">
+        <div className="flex items-center justify-between h-20 gap-3 sm:gap-4">
           
-          {/* Brand Logo - BOOSTUP ร้านเติมเงินเกม */}
-          <div 
-            onClick={() => setCurrentView('home')}
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
-          >
+          {/* Left Sidebar Trigger (Richman Shop Style Drawer) & Brand Logo */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-2 sm:p-2.5 rounded-xl bg-[#121622] hover:bg-red-950/80 text-zinc-300 hover:text-white border border-[#232a3d] hover:border-red-600 transition-all cursor-pointer shadow-md group"
+              title="เปิดเมนูด้านซ้าย (Richman Shop Style)"
+            >
+              <Menu className="w-5 h-5 group-hover:scale-110 transition-transform text-zinc-200 group-hover:text-red-400" />
+            </button>
+
+            {/* Brand Logo - BOOSTUP ร้านเติมเงินเกม */}
+            <div 
+              onClick={() => setCurrentView('home')}
+              className="flex items-center gap-2.5 cursor-pointer group shrink-0"
+            >
             <img
               src={siteSettings?.logoUrl || '/boostup_logo.jpg'}
               alt={siteSettings?.siteName || 'BOOSTUP'}
@@ -101,6 +114,7 @@ export default function Navbar({
               </p>
             </div>
           </div>
+        </div>
 
           {/* Global Search Bar (Richman Shop Style) */}
           <div className="hidden md:flex flex-1 max-w-md mx-2 relative">
@@ -174,6 +188,18 @@ export default function Navbar({
               className="text-xs font-semibold text-zinc-300 hover:text-red-400 transition-colors"
             >
               ต่ออายุแอป
+            </button>
+            <button 
+              onClick={() => {
+                setCurrentView('orders');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
+                currentView === 'orders' ? 'text-yellow-400 font-bold' : 'text-zinc-300 hover:text-yellow-400'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>ประวัติการสั่งซื้อ</span>
             </button>
           </nav>
 
@@ -425,6 +451,17 @@ export default function Navbar({
               className="text-left py-2 text-zinc-200 hover:text-red-400 font-semibold"
             >
               ต่ออายุสมาชิกแอป
+            </button>
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setCurrentView('orders');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-left py-2 text-yellow-400 hover:text-yellow-300 font-bold flex items-center gap-1.5"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>ประวัติการสั่งซื้อ</span>
             </button>
             <div className="pt-2 border-t border-zinc-800/80 flex flex-col gap-2">
               <button

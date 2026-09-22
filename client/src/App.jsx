@@ -19,15 +19,20 @@ import WalletModal from './components/WalletModal';
 import LuckyWheelModal from './components/LuckyWheelModal';
 import AffiliateModal from './components/AffiliateModal';
 import CartModal from './components/CartModal';
+import LeftSidebar from './components/LeftSidebar';
+import OrderHistoryView from './components/OrderHistoryView';
 import AdminPortal from './pages/admin/AdminPortal';
 
 export default function App() {
-  // Detect current URL route (/admin vs /)
+  // Detect current URL route (/admin vs /orders vs /)
   const getInitialView = () => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
       if (path === '/admin' || path.startsWith('/admin/')) {
         return 'admin';
+      }
+      if (path === '/orders' || path.startsWith('/orders/')) {
+        return 'orders';
       }
     }
     return 'home';
@@ -41,6 +46,8 @@ export default function App() {
       const path = window.location.pathname.toLowerCase();
       if (path === '/admin' || path.startsWith('/admin/')) {
         setCurrentView('admin');
+      } else if (path === '/orders' || path.startsWith('/orders/')) {
+        setCurrentView('orders');
       } else {
         setCurrentView('home');
       }
@@ -51,7 +58,10 @@ export default function App() {
 
   const navigateTo = (view) => {
     setCurrentView(view);
-    const targetPath = view === 'admin' ? '/admin' : '/';
+    let targetPath = '/';
+    if (view === 'admin') targetPath = '/admin';
+    else if (view === 'orders') targetPath = '/orders';
+
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
@@ -85,6 +95,7 @@ export default function App() {
   const [cartModalOpen, setCartModalOpen] = useState(false);
   const [wheelModalOpen, setWheelModalOpen] = useState(false);
   const [affiliateModalOpen, setAffiliateModalOpen] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
 
   // Global SweetAlert Modal State (Replaces Browser Alerts Everywhere)
   const [globalAlert, setGlobalAlert] = useState({
@@ -314,6 +325,7 @@ export default function App() {
         onOpenCart={() => setCartModalOpen(true)}
         onOpenWheel={() => setWheelModalOpen(true)}
         onOpenAffiliate={() => setAffiliateModalOpen(true)}
+        onToggleSidebar={() => setLeftSidebarOpen(prev => !prev)}
         siteSettings={siteSettings}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -321,45 +333,78 @@ export default function App() {
         onSelectGame={(game) => setSelectedProductForCheckout(game)}
       />
 
-      {/* 1. Promotional Carousel Hero Slider (Richman Shop Style) */}
-      <HeroCarousel slides={slides} />
-
-      {/* 2. Quick Category Service Bar (6 Quick Service Buttons) */}
-      <QuickCategoryBar categories={quickCategories} />
-
-      {/* 3. Flash Sale Section with Live Countdown Timer & Stock Progress Bar */}
-      <FlashSaleSection
-        flashSales={flashSales}
-        onSelectFlashSale={(item) => setSelectedProductForCheckout(item)}
+      {/* Richman Shop Style Left Sidebar Navigation Drawer */}
+      <LeftSidebar
+        isOpen={leftSidebarOpen}
+        onClose={() => setLeftSidebarOpen(false)}
+        currentView={currentView}
+        setCurrentView={navigateTo}
+        user={user}
+        onOpenWallet={() => setWalletModalOpen(true)}
+        onOpenWheel={() => setWheelModalOpen(true)}
+        onOpenAffiliate={() => setAffiliateModalOpen(true)}
+        onOpenCoupons={() => {
+          showGlobalAlert({
+            title: '🏷️ คูปองของฉัน & โปรโมชั่น',
+            message: 'คุณสามารถนำโค้ดส่วนลด เช่น WELCOME10 (ลด 10%), PROMO50 (ลด 50 บาท) ไปกรอกในขั้นตอนชำระเงินเพื่อรับส่วนลดทันที หรือหมุนวงล้อเพื่อรับสิทธิ์สุ่มโค้ดพิเศษได้ทุกวันครับ!',
+            type: 'info'
+          });
+        }}
+        siteSettings={siteSettings}
       />
 
-      {/* 4. Popular Games Catalog Grid */}
-      <GameGrid
-        games={games}
-        onSelectGame={(game) => setSelectedProductForCheckout(game)}
-        searchQuery={searchQuery}
-      />
+      {/* Main Content Router: Order History View vs Home Storefront */}
+      {currentView === 'orders' ? (
+        <OrderHistoryView
+          user={user}
+          games={games}
+          onBackToHome={() => navigateTo('home')}
+          onViewReceipt={(order) => setActiveOrderForStatus(order)}
+          onOpenAuth={handleOpenAuth}
+        />
+      ) : (
+        <>
+          {/* 1. Promotional Carousel Hero Slider (Richman Shop Style) */}
+          <HeroCarousel slides={slides} />
 
-      {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
-      <GiftCardGrid
-        giftCards={giftCards}
-        onSelectCard={(card) => setSelectedProductForCheckout(card)}
-      />
+          {/* 2. Quick Category Service Bar (6 Quick Service Buttons) */}
+          <QuickCategoryBar categories={quickCategories} />
 
-      {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
-      <AppSubscriptionGrid
-        appSubscriptions={appSubscriptions}
-        onSelectApp={(app) => setSelectedProductForCheckout(app)}
-      />
+          {/* 3. Flash Sale Section with Live Countdown Timer & Stock Progress Bar */}
+          <FlashSaleSection
+            flashSales={flashSales}
+            onSelectFlashSale={(item) => setSelectedProductForCheckout(item)}
+          />
 
-      {/* 7. 4-Step How-to-Topup Guide */}
-      <StepGuide />
+          {/* 4. Popular Games Catalog Grid */}
+          <GameGrid
+            games={games}
+            onSelectGame={(game) => setSelectedProductForCheckout(game)}
+            searchQuery={searchQuery}
+          />
 
-      {/* 8. 8 Feature Highlights */}
-      <FeaturesGrid />
+          {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
+          <GiftCardGrid
+            giftCards={giftCards}
+            onSelectCard={(card) => setSelectedProductForCheckout(card)}
+          />
 
-      {/* 9. Trust & Company Credentials */}
-      <TrustSection siteSettings={siteSettings} />
+          {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
+          <AppSubscriptionGrid
+            appSubscriptions={appSubscriptions}
+            onSelectApp={(app) => setSelectedProductForCheckout(app)}
+          />
+
+          {/* 7. 4-Step How-to-Topup Guide */}
+          <StepGuide />
+
+          {/* 8. 8 Feature Highlights */}
+          <FeaturesGrid />
+
+          {/* 9. Trust & Company Credentials */}
+          <TrustSection siteSettings={siteSettings} />
+        </>
+      )}
 
       {/* 10. Footer */}
       <Footer

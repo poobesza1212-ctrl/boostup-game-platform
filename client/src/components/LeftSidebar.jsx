@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Home, 
   Tag, 
@@ -11,12 +11,15 @@ import {
   Gift, 
   Coins, 
   ChevronRight, 
+  ChevronUp,
+  ChevronDown,
   X,
   Menu,
   Sparkles,
   ExternalLink,
   ShieldCheck,
-  User
+  User,
+  LogOut
 } from 'lucide-react';
 
 export default function LeftSidebar({
@@ -25,6 +28,8 @@ export default function LeftSidebar({
   currentView,
   setCurrentView,
   user,
+  onOpenAuth,
+  onLogout,
   onOpenWallet,
   onOpenWheel,
   onOpenAffiliate,
@@ -32,6 +37,7 @@ export default function LeftSidebar({
   onOpenPolicy,
   siteSettings
 }) {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(true);
   const handleNavClick = (view, scrollId = null) => {
     setCurrentView(view);
     // Only close drawer on mobile screen widths (< 1024px); keep pinned on desktop
@@ -297,32 +303,88 @@ export default function LeftSidebar({
 
         </div>
 
-        {/* 6. Footer inside Sidebar */}
-        <div className="p-4 border-t border-[#202738] bg-[#0c0f17] text-left">
+        {/* 6. Footer inside Sidebar matching Image 1 */}
+        <div className="p-3.5 border-t border-[#202738] bg-[#0c0f17] text-left space-y-3">
           {user ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 truncate">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-amber-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                  {(user.name || user.username || 'U')[0].toUpperCase()}
-                </div>
-                <div className="truncate">
-                  <div className="text-xs font-bold text-white truncate">{user.name || user.username}</div>
-                  <div className="text-[10px] text-zinc-400 truncate">@{user.username}</div>
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              {/* User Header Accordion Trigger matching Image 1 */}
               <button
                 type="button"
-                onClick={() => handleActionClick(onOpenWallet)}
-                className="px-2 py-1 rounded-lg bg-[#181d2a] hover:bg-emerald-950/60 text-emerald-400 text-xs font-bold border border-[#262f44] shrink-0"
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                className="w-full flex items-center justify-between p-1.5 rounded-2xl hover:bg-[#181d2a] transition-all cursor-pointer group text-left"
               >
-                ฿{(Number(user.walletBalance) || 0).toFixed(2)}
+                <div className="flex items-center gap-3 truncate">
+                  {/* Silhouette Avatar in Circle matching Image 1 */}
+                  <div className="w-10 h-10 rounded-full bg-zinc-600/90 border border-zinc-500/40 flex items-center justify-center text-white shrink-0 shadow-sm overflow-hidden">
+                    <User className="w-6 h-6 text-zinc-300 fill-zinc-300" />
+                  </div>
+                  <div className="truncate">
+                    <div className="text-sm font-bold text-white truncate font-['Kanit']">
+                      {user.name || user.username}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Arrow up/down matching Image 1 */}
+                <div className="text-zinc-400 group-hover:text-white transition-colors shrink-0 pl-1">
+                  {isUserMenuOpen ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </div>
               </button>
+
+              {/* Collapsible Sub-menu items matching Image 1: MP ข้อมูลผู้ใช้ & L ออกจากระบบ */}
+              {isUserMenuOpen && (
+                <div className="space-y-1 pl-3 pt-1 pb-1 animate-fadeIn">
+                  
+                  {/* MP ข้อมูลผู้ใช้ */}
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('profile')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                      currentView === 'profile'
+                        ? 'bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30'
+                        : 'text-zinc-300 hover:text-white hover:bg-[#181d2a]'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-zinc-500 font-mono tracking-wider w-6">MP</span>
+                    <span className="font-['Kanit']">ข้อมูลผู้ใช้</span>
+                  </button>
+
+                  {/* L ออกจากระบบ */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) onClose();
+                      if (onLogout) onLogout();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-300 hover:text-red-400 hover:bg-red-950/30 transition-all text-left text-sm cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-zinc-500 font-mono tracking-wider w-6">L</span>
+                    <span className="font-['Kanit']">ออกจากระบบ</span>
+                  </button>
+
+                </div>
+              )}
             </div>
           ) : (
-            <div className="text-center">
-              <p className="text-[10px] text-zinc-400">© 2026 BOOSTUP ร้านเติมเงินเกม 24 ชม.</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleActionClick(() => onOpenAuth && onOpenAuth('login'))}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs shadow-md transition-all font-['Kanit'] cursor-pointer"
+            >
+              <User className="w-4 h-4" />
+              <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+            </button>
           )}
+
+          {/* Country / Region selector box matching Image 1 [ 🇹🇭 ประเทศไทย ] */}
+          <div className="p-3 rounded-2xl bg-[#141824] border border-[#262f44] flex items-center gap-3 shadow-inner">
+            <span className="text-2xl select-none" role="img" aria-label="Thailand">🇹🇭</span>
+            <span className="text-sm font-bold text-white font-['Kanit']">ประเทศไทย</span>
+          </div>
         </div>
 
       </aside>

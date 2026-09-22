@@ -546,6 +546,37 @@ router.get('/orders/my-cards', (req, res) => {
 // 2. AUTH & WALLET APIS
 // ==========================================
 
+// Helper to format consistent Customer Profile payload matching Richman Shop specs
+const formatUserResponse = (user) => {
+  if (!user) return null;
+  const nameParts = (user.name || '').trim().split(/\s+/);
+  const firstName = user.firstName || (nameParts[0] || user.username || '');
+  const lastName = user.lastName || (nameParts.slice(1).join(' ') || '');
+  const uid = user.uid || `U${crypto.createHash('md5').update((user.id || user.username || '') + 'uid_salt').digest('hex')}`;
+
+  return {
+    id: user.id,
+    uid: uid,
+    username: user.username,
+    name: user.name || `${firstName} ${lastName}`.trim() || user.username,
+    firstName: firstName,
+    lastName: lastName,
+    firstNameEn: user.firstNameEn || '',
+    lastNameEn: user.lastNameEn || '',
+    email: user.email,
+    phone: user.phone || '',
+    lineId: user.lineId || '',
+    role: user.role === 'admin' ? 'Administrator' : 'Customer',
+    status: user.status || 'active',
+    walletBalance: Number(user.walletBalance) || 0,
+    points: Number(user.points) || 0,
+    tier: user.tier || 'Bronze',
+    spinTickets: Number(user.spinTickets) || 0,
+    referralCode: user.referralCode || '',
+    createdAt: user.createdAt
+  };
+};
+
 router.post('/auth/login', (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier) {
@@ -583,19 +614,7 @@ router.post('/auth/login', (req, res) => {
   res.json({
     success: true,
     message: 'เข้าสู่ระบบสำเร็จ ยินดีต้อนรับกลับครับ!',
-    user: {
-      id: user.id,
-      username: user.username,
-      name: user.name || user.username,
-      email: user.email,
-      phone: user.phone || '',
-      role: user.role || 'user',
-      walletBalance: Number(user.walletBalance) || 0,
-      points: Number(user.points) || 0,
-      tier: user.tier || 'Bronze',
-      spinTickets: Number(user.spinTickets) || 0,
-      referralCode: user.referralCode || ''
-    }
+    user: formatUserResponse(user)
   });
 });
 
@@ -631,19 +650,7 @@ router.post('/auth/register', (req, res) => {
   res.json({
     success: true,
     message: 'สมัครสมาชิกสำเร็จ ยินดีต้อนรับสู่ BOOSTUP!',
-    user: {
-      id: newUser.id,
-      username: newUser.username,
-      name: newUser.name,
-      email: newUser.email,
-      phone: newUser.phone || '',
-      role: newUser.role || 'user',
-      walletBalance: Number(newUser.walletBalance) || 0,
-      points: Number(newUser.points) || 0,
-      tier: newUser.tier || 'Bronze',
-      spinTickets: Number(newUser.spinTickets) || 0,
-      referralCode: newUser.referralCode || ''
-    }
+    user: formatUserResponse(newUser)
   });
 });
 
@@ -654,34 +661,36 @@ router.get('/auth/user/:id', (req, res) => {
   }
   res.json({
     success: true,
-    user: {
-      id: user.id,
-      username: user.username,
-      name: user.name || user.username,
-      email: user.email,
-      phone: user.phone || '',
-      role: user.role || 'user',
-      walletBalance: Number(user.walletBalance) || 0,
-      points: Number(user.points) || 0,
-      tier: user.tier || 'Bronze',
-      spinTickets: Number(user.spinTickets) || 0,
-      referralCode: user.referralCode || ''
-    }
+    user: formatUserResponse(user)
   });
 });
 
-// Update Customer Self Profile
+// Update Customer Self Profile (Richman Shop Style Profile Data)
 router.put('/user/profile', (req, res) => {
   try {
-    const { userId, name, phone, email } = req.body;
+    const { userId, name, firstName, lastName, firstNameEn, lastNameEn, phone, email, lineId } = req.body;
     if (!userId) return res.status(400).json({ success: false, message: 'ไม่พบรหัสผู้ใช้' });
 
     const user = db.findUserById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้ใช้' });
 
     const updates = {};
-    if (name && name.trim()) updates.name = name.trim();
+    if (firstName !== undefined) updates.firstName = firstName.trim();
+    if (lastName !== undefined) updates.lastName = lastName.trim();
+
+    if (firstName !== undefined || lastName !== undefined) {
+      const f = firstName !== undefined ? firstName.trim() : (user.firstName || '');
+      const l = lastName !== undefined ? lastName.trim() : (user.lastName || '');
+      updates.name = `${f} ${l}`.trim() || user.name || user.username;
+    } else if (name && name.trim()) {
+      updates.name = name.trim();
+    }
+
+    if (firstNameEn !== undefined) updates.firstNameEn = firstNameEn.trim();
+    if (lastNameEn !== undefined) updates.lastNameEn = lastNameEn.trim();
+    if (lineId !== undefined) updates.lineId = lineId.trim();
     if (phone !== undefined) updates.phone = phone.trim();
+
     if (email && email.trim()) {
       const cleanEmail = email.trim().toLowerCase();
       const existing = db.findUserByEmail(cleanEmail);
@@ -694,18 +703,8 @@ router.put('/user/profile', (req, res) => {
     const updated = db.updateUser(user.id, updates);
     res.json({
       success: true,
-      message: 'อัปเดตข้อมูลโปรไฟล์เรียบร้อย',
-      user: {
-        id: updated.id,
-        username: updated.username,
-        name: updated.name,
-        email: updated.email,
-        phone: updated.phone || '',
-        role: updated.role,
-        walletBalance: updated.walletBalance,
-        points: updated.points,
-        tier: updated.tier
-      }
+      message: 'บันทึกข้อมูลโปรไฟล์เรียบร้อยแล้ว',
+      user: formatUserResponse(updated)
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

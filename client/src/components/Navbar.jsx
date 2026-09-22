@@ -245,11 +245,11 @@ export default function Navbar({
             {user ? (
               <div className="flex items-center gap-2">
                 
-                {/* Customer Account Badge (บนขวา แสดงชื่อบัญชีลูกค้า + Tier) */}
+                {/* Customer Account Badge (บนขวา แสดงชื่อบัญชีลูกค้า + Tier) - คลิกเพื่อไปหน้าข้อมูลผู้ใช้ */}
                 <div 
-                  onClick={onOpenWallet}
-                  className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#121622] to-[#181d2c] border border-red-900/60 hover:border-red-600/70 shadow-md cursor-pointer transition-all group"
-                  title="ข้อมูลบัญชีของคุณ - คลิกเพื่อจัดการกระเป๋าเงิน"
+                  onClick={() => setCurrentView('profile')}
+                  className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#121622] to-[#181d2c] border border-red-900/60 hover:border-blue-500/70 shadow-md cursor-pointer transition-all group"
+                  title="ข้อมูลผู้ใช้ของคุณ - คลิกเพื่อดูและแก้ไขโปรไฟล์"
                 >
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white font-black text-xs shadow-sm ring-1 ring-white/20 shrink-0 group-hover:scale-105 transition-transform">
                     {(user.name || user.username || 'U')[0].toUpperCase()}
@@ -368,7 +368,7 @@ export default function Navbar({
           {user ? (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-zinc-900 to-black border border-red-900/60 flex items-center justify-between shadow-lg">
               <div 
-                onClick={() => { setMobileMenuOpen(false); onOpenWallet(); }}
+                onClick={() => { setMobileMenuOpen(false); setCurrentView('profile'); }}
                 className="flex items-center gap-3 cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center text-white font-black text-sm shadow-md ring-1 ring-white/20 shrink-0">

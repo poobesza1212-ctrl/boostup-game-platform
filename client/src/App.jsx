@@ -21,12 +21,13 @@ import AffiliateModal from './components/AffiliateModal';
 import CartModal from './components/CartModal';
 import LeftSidebar from './components/LeftSidebar';
 import OrderHistoryView from './components/OrderHistoryView';
+import UserProfileView from './components/UserProfileView';
 import PolicyModal from './components/PolicyModal';
 import AdminPortal from './pages/admin/AdminPortal';
 import tracker from './utils/analytics';
 
 export default function App() {
-  // Detect current URL route (/admin vs /orders vs /)
+  // Detect current URL route (/admin vs /orders vs /profile vs /)
   const getInitialView = () => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
@@ -35,6 +36,9 @@ export default function App() {
       }
       if (path === '/orders' || path.startsWith('/orders/')) {
         return 'orders';
+      }
+      if (path === '/profile' || path.startsWith('/profile/')) {
+        return 'profile';
       }
     }
     return 'home';
@@ -50,6 +54,8 @@ export default function App() {
         setCurrentView('admin');
       } else if (path === '/orders' || path.startsWith('/orders/')) {
         setCurrentView('orders');
+      } else if (path === '/profile' || path.startsWith('/profile/')) {
+        setCurrentView('profile');
       } else {
         setCurrentView('home');
       }
@@ -63,6 +69,7 @@ export default function App() {
     let targetPath = '/';
     if (view === 'admin') targetPath = '/admin';
     else if (view === 'orders') targetPath = '/orders';
+    else if (view === 'profile') targetPath = '/profile';
 
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
@@ -113,7 +120,9 @@ export default function App() {
       ? 'หน้าหลัก | ร้านเติมเกม BOOSTUP' 
       : currentView === 'orders' 
         ? 'ประวัติการสั่งซื้อ | BOOSTUP' 
-        : 'ระบบจัดการหลังบ้าน | BOOSTUP';
+        : currentView === 'profile'
+          ? 'ข้อมูลผู้ใช้ | BOOSTUP'
+          : 'ระบบจัดการหลังบ้าน | BOOSTUP';
     tracker.trackPageView(pageTitle, window.location.href);
   }, [currentView]);
 
@@ -357,6 +366,8 @@ export default function App() {
         currentView={currentView}
         setCurrentView={navigateTo}
         user={user}
+        onOpenAuth={handleOpenAuth}
+        onLogout={handleLogout}
         onOpenWallet={() => setWalletModalOpen(true)}
         onOpenWheel={() => setWheelModalOpen(true)}
         onOpenAffiliate={() => setAffiliateModalOpen(true)}
@@ -394,9 +405,21 @@ export default function App() {
           onSelectGame={(game) => setSelectedProductForCheckout(game)}
         />
 
-        {/* Main Content Router: Order History View vs Home Storefront */}
+        {/* Main Content Router: Profile View vs Order History View vs Home Storefront */}
         <main className="flex-1">
-          {currentView === 'orders' ? (
+          {currentView === 'profile' ? (
+            <UserProfileView
+              user={user}
+              onUpdateUser={(updatedUser) => {
+                setUser(updatedUser);
+                localStorage.setItem('tw_user', JSON.stringify(updatedUser));
+              }}
+              onBackToHome={() => navigateTo('home')}
+              onOpenAuth={handleOpenAuth}
+              onOpenWallet={() => setWalletModalOpen(true)}
+              siteSettings={siteSettings}
+            />
+          ) : currentView === 'orders' ? (
             <OrderHistoryView
               user={user}
               games={games}

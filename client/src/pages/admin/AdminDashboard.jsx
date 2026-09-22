@@ -992,13 +992,20 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       const res = await fetch('/api/admin/test-gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: keyToTest })
+        body: JSON.stringify({ 
+          apiKey: keyToTest,
+          model: siteSettings?.geminiModel || 'gemini-2.5-flash'
+        })
       });
       const data = await res.json();
       if (data.success) {
+        if (data.activeModel && siteSettings) {
+          setSiteSettings(prev => ({ ...prev, geminiActiveModel: data.activeModel }));
+        }
         setGeminiTestFeedback({
           success: true,
           message: data.message || 'เชื่อมต่อ Gemini สำเร็จ 100%!',
+          activeModel: data.activeModel,
           reply: data.reply
         });
       } else {
@@ -5716,7 +5723,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       {siteSettings.geminiApiKey?.trim() ? (
                         <>
                           <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-                          <span>🟢 เปิดใช้งาน Gemini 1.5 Flash (ฉลาดสูงสุด)</span>
+                          <span>🟢 เปิดใช้งาน Gemini ({siteSettings.geminiActiveModel || siteSettings.geminiModel || '2.5 Flash'})</span>
                         </>
                       ) : (
                         <>
@@ -5777,8 +5784,45 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       </div>
                     </div>
                     <p className="text-[11px] text-zinc-400 mt-1.5">
-                      💡 <strong>คำแนะนำ:</strong> สมัครและคัดลอก API Key ได้ฟรีจาก Google AI Studio ระบบจะเชื่อมต่อกับโมเดล <strong>Gemini 1.5 Flash</strong> ตอบคำถามฉลาดและรวดเร็วใน 1 วินาที
+                      💡 <strong>คำแนะนำ:</strong> สมัครและคัดลอก API Key ได้ฟรีจาก Google AI Studio ระบบเชื่อมต่อกับโมเดล <strong>Gemini 2.5 Flash / 2.0 Flash</strong> ตอบคำถามฉลาดและรวดเร็วใน 1 วินาที พร้อมระบบ Auto-Fallback อัตโนมัติ
                     </p>
+                  </div>
+
+                  {/* Model Selection & Auto-detect */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-zinc-300 font-medium flex items-center justify-between mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <Bot className="w-3.5 h-3.5 text-purple-400" />
+                          <span>เลือกรุ่นโมเดล Gemini (AI Model)</span>
+                        </span>
+                        {siteSettings.geminiActiveModel && (
+                          <span className="text-[10px] text-emerald-400 font-mono">
+                            ใช้งานอยู่: {siteSettings.geminiActiveModel}
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={siteSettings.geminiModel || 'gemini-2.5-flash'}
+                        onChange={(e) => setSiteSettings({ ...siteSettings, geminiModel: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs focus:outline-none focus:border-purple-400 cursor-pointer"
+                      >
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (แนะนำ - เร็วและฉลาดสูงสุด)</option>
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (รุ่นมาตรฐาน)</option>
+                        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (ประหยัดโควต้า)</option>
+                        <option value="auto">Auto Fallback (ตรวจจับและเลือกโมเดลที่ทำงานได้ให้อัตโนมัติ)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-zinc-300 font-medium block mb-1">
+                        ระบบค้นหาและสลับโมเดลอัตโนมัติ (Smart Auto-Fallback)
+                      </label>
+                      <div className="px-3 py-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-zinc-400 text-xs flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>หากโมเดลใดถูกรีไทร์ ระบบจะสลับไปรุ่นใหม่ให้เอง 100% ไม่หลุด 404</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* AI Behavior & Mode Controls */}

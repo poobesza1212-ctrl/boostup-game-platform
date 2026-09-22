@@ -1232,7 +1232,7 @@ router.put('/admin/settings', (req, res) => {
 // Admin: Test Google Gemini API connection
 router.post('/admin/test-gemini', async (req, res) => {
   try {
-    const { apiKey } = req.body;
+    const { apiKey, model } = req.body;
     const settings = db.getSettings();
     const keyToTest = (apiKey && apiKey.trim()) || settings?.geminiApiKey || process.env.GEMINI_API_KEY;
 
@@ -1241,6 +1241,10 @@ router.post('/admin/test-gemini', async (req, res) => {
         success: false, 
         message: 'กรุณากรอก Google Gemini API Key ก่อนทำการทดสอบ' 
       });
+    }
+
+    if (model && db?.updateSettings) {
+      db.updateSettings({ geminiModel: model });
     }
 
     const aiChatService = require('../services/aiChatService');
@@ -1254,9 +1258,13 @@ router.post('/admin/test-gemini', async (req, res) => {
       throw new Error('ไม่ได้รับข้อความตอบกลับจาก Google Gemini API กรุณาตรวจสอบ API Key');
     }
 
+    const currentSettings = db.getSettings();
+    const activeModel = currentSettings?.geminiActiveModel || model || 'gemini-2.5-flash';
+
     res.json({
       success: true,
-      message: 'เชื่อมต่อ Google Gemini AI สำเร็จ 100%!',
+      message: `เชื่อมต่อ Google Gemini AI (${activeModel}) สำเร็จ 100%!`,
+      activeModel,
       reply
     });
   } catch (err) {

@@ -132,37 +132,118 @@ class AIChatService {
       fullSystemInstruction += `\n6. คำสั่งพิเศษเพิ่มเติมจากเจ้าของร้าน BOOSTUP:\n${settings.geminiCustomPrompt.trim()}`;
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Modern candidate models list in order of preference
+    const preferredModel = (settings?.geminiModel && settings.geminiModel !== 'auto') ? settings.geminiModel : null;
+    let candidateModels = [
+      preferredModel,
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-2.5-pro',
+      'gemini-1.5-flash-latest'
+    ].filter(Boolean);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    // Remove duplicates
+    candidateModels = [...new Set(candidateModels)];
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: fullSystemInstruction }]
-        },
-        contents,
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 600
+    let lastError = null;
+
+    for (const modelId of candidateModels) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 9000);
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: fullSystemInstruction }]
+            },
+            contents,
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 600
+            }
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          const data = await res.json();
+          const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (replyText) {
+            // Remember active working model
+            if (db?.updateSettings) {
+              db.updateSettings({ geminiActiveModel: modelId });
+            }
+            return replyText.trim();
+          }
         }
-      }),
-      signal: controller.signal
-    });
 
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Gemini status ${res.status}: ${errText}`);
+        const errText = await res.text();
+        lastError = `Gemini status ${res.status} (${modelId}): ${errText}`;
+        
+        // If 404 (model retired or not found on this API version), continue to next candidate
+        if (res.status === 404) {
+          console.warn(`[Gemini] Model ${modelId} returned 404, falling back to next model...`);
+          continue;
+        } else {
+          // If 400 or 403 (e.g. invalid API key), no model will work, stop early
+          throw new Error(`Gemini status ${res.status}: ${errText}`);
+        }
+      } catch (err) {
+        if (err.message.includes('404') || err.message.includes('not found')) {
+          continue;
+        }
+        throw err;
+      }
     }
 
-    const data = await res.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return replyText ? replyText.trim() : null;
+    // If all candidate models failed with 404, query ListModels directly from Google API
+    try {
+      console.log('[Gemini] Querying available models from Google AI Studio list...');
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const available = (listData.models || [])
+          .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+          .map(m => m.name.replace('models/', ''));
+
+        const bestModel = available.find(m => m.includes('flash')) || available[0];
+        if (bestModel && !candidateModels.includes(bestModel)) {
+          console.log(`[Gemini] Discovered active model: ${bestModel}`);
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${bestModel}:generateContent?key=${apiKey}`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: fullSystemInstruction }] },
+              contents,
+              generationConfig: { temperature: 0.8, maxOutputTokens: 600 }
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (replyText) {
+              if (db?.updateSettings) {
+                db.updateSettings({ geminiActiveModel: bestModel });
+              }
+              return replyText.trim();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Gemini] Dynamic model discovery error:', e.message);
+    }
+
+    throw new Error(lastError || 'ไม่พบโมเดล Google Gemini ที่รองรับสำหรับ API Key นี้');
   }
 
   /**

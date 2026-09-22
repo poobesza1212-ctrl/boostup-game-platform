@@ -126,6 +126,12 @@ class AIChatService {
       parts: [{ text: `(ลูกค้าชื่อ: ${customerName}) คำถาม: ${userMessage}` }]
     });
 
+    const settings = db?.getSettings?.() || {};
+    let fullSystemInstruction = systemInstruction;
+    if (settings?.geminiCustomPrompt && settings.geminiCustomPrompt.trim()) {
+      fullSystemInstruction += `\n6. คำสั่งพิเศษเพิ่มเติมจากเจ้าของร้าน BOOSTUP:\n${settings.geminiCustomPrompt.trim()}`;
+    }
+
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const controller = new AbortController();
@@ -136,7 +142,7 @@ class AIChatService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: systemInstruction }]
+          parts: [{ text: fullSystemInstruction }]
         },
         contents,
         generationConfig: {

@@ -1229,6 +1229,45 @@ router.put('/admin/settings', (req, res) => {
   res.json({ success: true, settings });
 });
 
+// Admin: Test Google Gemini API connection
+router.post('/admin/test-gemini', async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    const settings = db.getSettings();
+    const keyToTest = (apiKey && apiKey.trim()) || settings?.geminiApiKey || process.env.GEMINI_API_KEY;
+
+    if (!keyToTest || !keyToTest.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'กรุณากรอก Google Gemini API Key ก่อนทำการทดสอบ' 
+      });
+    }
+
+    const aiChatService = require('../services/aiChatService');
+    const reply = await aiChatService.queryGeminiAPI(
+      'สวัสดี แนะนำตัวแบบสั้นๆ 1 ประโยค พร้อมทักทายแอดมินร้าน BOOSTUP หน่อยครับ',
+      keyToTest.trim(),
+      { chat: { messages: [] }, user: { name: 'Admin BOOSTUP' }, db }
+    );
+
+    if (!reply) {
+      throw new Error('ไม่ได้รับข้อความตอบกลับจาก Google Gemini API กรุณาตรวจสอบ API Key');
+    }
+
+    res.json({
+      success: true,
+      message: 'เชื่อมต่อ Google Gemini AI สำเร็จ 100%!',
+      reply
+    });
+  } catch (err) {
+    console.error('Gemini test error:', err.message);
+    res.status(400).json({
+      success: false,
+      message: `ทดสอบไม่สำเร็จ: ${err.message}`
+    });
+  }
+});
+
 // ==========================================
 // 8. ADMIN SLIP APPROVAL & DEPOSIT APIS
 // ==========================================

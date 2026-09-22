@@ -1605,7 +1605,26 @@ router.post('/game/check-ign', async (req, res) => {
 router.get('/wheel/prizes', (req, res) => {
   const prizes = db.getLuckyWheelPrizes();
   const settings = db.getLuckyWheelSettings();
-  res.json({ success: true, prizes, settings });
+  const winners = db.getLuckyWheelWinners();
+  res.json({ success: true, prizes, settings, winners });
+});
+
+router.get('/wheel/recent-winners', (req, res) => {
+  const winners = db.getLuckyWheelWinners();
+  res.json({ success: true, winners });
+});
+
+router.get('/wheel/my-history', (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+    const history = db.getUserWheelHistory(userId);
+    res.json({ success: true, history });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.post('/wheel/spin', (req, res) => {

@@ -190,14 +190,23 @@ const defaultData = {
     { id: "vlt_seed_5", gameId: "app_youtube_1m", gameName: "YouTube Premium 1 เดือน", packageName: "1 เดือน", code: "INVITE-LINK: https://youtube.com/family/join?invite=boostup992", costPrice: 35, status: "available", addedAt: "2026-09-20T12:00:00Z" }
   ],
   luckyWheelPrizes: [
-    { id: "prize_1", name: "50 พอยท์", type: "points", value: 50, probability: 0.25, color: "#f59e0b", icon: "Coins" },
-    { id: "prize_2", name: "10 พอยท์", type: "points", value: 10, probability: 0.35, color: "#3b82f6", icon: "Coins" },
-    { id: "prize_3", name: "เครดิต 5 บาท", type: "credit", value: 5, probability: 0.15, color: "#10b981", icon: "Wallet" },
-    { id: "prize_4", name: "เครดิต 20 บาท", type: "credit", value: 20, probability: 0.08, color: "#8b5cf6", icon: "Gift" },
-    { id: "prize_5", name: "โค้ดลด 5%", type: "coupon", value: "LUCKY5", probability: 0.10, color: "#ec4899", icon: "Tag" },
-    { id: "prize_6", name: "หมุนฟรี 1 ครั้ง", type: "ticket", value: 1, probability: 0.05, color: "#06b6d4", icon: "RotateCw" },
-    { id: "prize_7", name: "รางวัลใหญ่ 100 บาท", type: "credit", value: 100, probability: 0.01, color: "#ef4444", icon: "Trophy" },
-    { id: "prize_8", name: "ลองใหม่พรุ่งนี้", type: "none", value: 0, probability: 0.01, color: "#64748b", icon: "Smile" }
+    { id: "prize_7", name: "รางวัลใหญ่ 100 บาท", type: "credit", value: 100, probability: 0.01, color: "#eab308", icon: "Trophy", tier: "mythic", badge: "👑 JACKPOT", iconEmoji: "👑" },
+    { id: "prize_4", name: "เครดิต 20 บาท", type: "credit", value: 20, probability: 0.08, color: "#a855f7", icon: "Wallet", tier: "epic", badge: "🟣 EPIC", iconEmoji: "💰" },
+    { id: "prize_6", name: "หมุนฟรี 1 ครั้ง", type: "ticket", value: 1, probability: 0.05, color: "#ec4899", icon: "RotateCw", tier: "epic", badge: "🟣 EPIC", iconEmoji: "🎟️" },
+    { id: "prize_1", name: "50 พอยท์", type: "points", value: 50, probability: 0.25, color: "#06b6d4", icon: "Coins", tier: "rare", badge: "🔵 RARE", iconEmoji: "🪙" },
+    { id: "prize_5", name: "โค้ดลด 5%", type: "coupon", value: "LUCKY5", probability: 0.10, color: "#3b82f6", icon: "Tag", tier: "rare", badge: "🔵 RARE", iconEmoji: "🏷️" },
+    { id: "prize_3", name: "เครดิต 5 บาท", type: "credit", value: 5, probability: 0.15, color: "#10b981", icon: "Gift", tier: "common", badge: "🟢 COMMON", iconEmoji: "💵" },
+    { id: "prize_2", name: "10 พอยท์", type: "points", value: 10, probability: 0.35, color: "#14b8a6", icon: "Coins", tier: "common", badge: "🟢 COMMON", iconEmoji: "✨" },
+    { id: "prize_8", name: "ลองใหม่พรุ่งนี้", type: "none", value: 0, probability: 0.01, color: "#475569", icon: "Smile", tier: "none", badge: "⚪ MISS", iconEmoji: "😊" }
+  ],
+  luckyWheelWinners: [
+    { id: "win_1", username: "p***1", prizeName: "เครดิต 20 บาท", prizeType: "credit", value: 20, timeAgo: "1 นาทีที่แล้ว", createdAt: new Date(Date.now() - 60000).toISOString() },
+    { id: "win_2", username: "k***8", prizeName: "50 พอยท์", prizeType: "points", value: 50, timeAgo: "3 นาทีที่แล้ว", createdAt: new Date(Date.now() - 180000).toISOString() },
+    { id: "win_3", username: "m***5", prizeName: "หมุนฟรี 1 ครั้ง", prizeType: "ticket", value: 1, timeAgo: "5 นาทีที่แล้ว", createdAt: new Date(Date.now() - 300000).toISOString() },
+    { id: "win_4", username: "a***9", prizeName: "รางวัลใหญ่ 100 บาท!", prizeType: "credit", value: 100, timeAgo: "11 นาทีที่แล้ว", createdAt: new Date(Date.now() - 660000).toISOString() },
+    { id: "win_5", username: "s***4", prizeName: "เครดิต 5 บาท", prizeType: "credit", value: 5, timeAgo: "15 นาทีที่แล้ว", createdAt: new Date(Date.now() - 900000).toISOString() },
+    { id: "win_6", username: "t***2", prizeName: "โค้ดลด 5%", prizeType: "coupon", value: "LUCKY5", timeAgo: "22 นาทีที่แล้ว", createdAt: new Date(Date.now() - 1320000).toISOString() },
+    { id: "win_7", username: "b***6", prizeName: "50 พอยท์", prizeType: "points", value: 50, timeAgo: "28 นาทีที่แล้ว", createdAt: new Date(Date.now() - 1680000).toISOString() }
   ],
   users: [],
   admins: [
@@ -980,6 +989,9 @@ class Database {
         dailyStreakPoints: [10, 15, 20, 25, 30, 40, 100],
         dailyStreakTicketsDay7: 1
       };
+    }
+    if (!this.data.luckyWheelWinners || this.data.luckyWheelWinners.length === 0) {
+      this.data.luckyWheelWinners = defaultData.luckyWheelWinners || [];
     }
     if (!this.data.gameRoutes) {
       this.data.gameRoutes = defaultData.gameRoutes;
@@ -2248,6 +2260,42 @@ class Database {
       prizeMessage = `เกือบไปแล้ว! พรุ่งนี้มาลองเสี่ยงโชคใหม่นะครับ 😊`;
     }
 
+    // Record winner to global ticker if won a valid prize
+    if (selectedPrize.type !== 'none') {
+      if (!this.data.luckyWheelWinners) this.data.luckyWheelWinners = [];
+      const uname = user.username || user.name || 'user';
+      const maskedName = uname.length > 2 
+        ? `${uname.slice(0, 1)}***${uname.slice(-1)}` 
+        : `${uname.slice(0, 1)}***`;
+      
+      this.data.luckyWheelWinners.unshift({
+        id: `win_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        username: maskedName,
+        prizeName: selectedPrize.name,
+        prizeType: selectedPrize.type,
+        value: selectedPrize.value,
+        timeAgo: 'เมื่อสักครู่',
+        createdAt: new Date().toISOString()
+      });
+      if (this.data.luckyWheelWinners.length > 50) {
+        this.data.luckyWheelWinners = this.data.luckyWheelWinners.slice(0, 50);
+      }
+    }
+
+    // Record to user's personal wheel history
+    if (!user.wheelHistory) user.wheelHistory = [];
+    user.wheelHistory.unshift({
+      id: `wh_${Date.now()}`,
+      prizeName: selectedPrize.name,
+      prizeType: selectedPrize.type,
+      value: selectedPrize.value,
+      costType,
+      createdAt: new Date().toISOString()
+    });
+    if (user.wheelHistory.length > 40) {
+      user.wheelHistory = user.wheelHistory.slice(0, 40);
+    }
+
     this.save();
 
     return {
@@ -2259,6 +2307,15 @@ class Database {
       newPoints: user.points,
       newBalance: user.walletBalance
     };
+  }
+
+  getLuckyWheelWinners() {
+    return this.data.luckyWheelWinners || defaultData.luckyWheelWinners || [];
+  }
+
+  getUserWheelHistory(userId) {
+    const user = this.findUserById(userId);
+    return user?.wheelHistory || [];
   }
 
   // ==========================================

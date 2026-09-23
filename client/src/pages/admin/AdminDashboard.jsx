@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  AlertCircle,
   RotateCw,
   Search,
   Plus,
@@ -178,10 +179,12 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [retryingId, setRetryingId] = useState(null);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   // Web Audio API Sound Synthesizer & Notification Chimes
   const audioCtxRef = useRef(null);
   const prevOrdersCountRef = useRef(null);
+  const prevPendingOrdersRef = useRef(null);
   const prevPendingDepositsRef = useRef(null);
   const prevHumanRequiredRef = useRef(null);
   const isFirstLoadDoneRef = useRef(false);
@@ -572,11 +575,20 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
         // Sound alert triggers for new incoming orders, slips, or chat attention
         if (isFirstLoadDoneRef.current) {
-          const newOrdersCount = ordersRes?.orders?.length || 0;
+          const newOrders = ordersRes?.orders || [];
+          const newOrdersCount = newOrders.length;
+          const newPendingOrdersCount = newOrders.filter(o => o.paymentStatus === 'pending_verification' || o.paymentStatus === 'pending').length;
           const newPendingCount = depRes?.pendingCount || 0;
           const newHumanCount = chatsRes?.humanRequiredCount || 0;
 
-          if (prevOrdersCountRef.current !== null && newOrdersCount > prevOrdersCountRef.current) {
+          if (prevPendingOrdersRef.current !== null && newPendingOrdersCount > prevPendingOrdersRef.current) {
+            playNotificationSound('slip');
+            showAlert({
+              title: '🔔 มีคำสั่งซื้อใหม่!',
+              message: `มีคำสั่งซื้อใหม่รอยืนยันยอดเงินและตรวจสอบสลิป (${newPendingOrdersCount} รายการ)`,
+              type: 'warning'
+            });
+          } else if (prevOrdersCountRef.current !== null && newOrdersCount > prevOrdersCountRef.current) {
             playNotificationSound('order');
           } else if (prevPendingDepositsRef.current !== null && newPendingCount > prevPendingDepositsRef.current) {
             playNotificationSound('slip');
@@ -585,10 +597,13 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
           }
 
           prevOrdersCountRef.current = newOrdersCount;
+          prevPendingOrdersRef.current = newPendingOrdersCount;
           prevPendingDepositsRef.current = newPendingCount;
           prevHumanRequiredRef.current = newHumanCount;
         } else {
-          prevOrdersCountRef.current = ordersRes?.orders?.length || 0;
+          const newOrders = ordersRes?.orders || [];
+          prevOrdersCountRef.current = newOrders.length;
+          prevPendingOrdersRef.current = newOrders.filter(o => o.paymentStatus === 'pending_verification' || o.paymentStatus === 'pending').length;
           prevPendingDepositsRef.current = depRes?.pendingCount || 0;
           prevHumanRequiredRef.current = chatsRes?.humanRequiredCount || 0;
           isFirstLoadDoneRef.current = true;
@@ -697,7 +712,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
   useEffect(() => {
     loadData(false);
-    const interval = setInterval(() => loadData(true), 10000); // Only poll orders/stats in background
+    const interval = setInterval(() => loadData(true), 4000); // Poll orders/stats every 4s in background
     return () => clearInterval(interval);
   }, []);
 
@@ -718,6 +733,87 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     } finally {
       setRetryingId(null);
     }
+  };
+
+  // Handle Approve Order Payment & Auto Top-up
+  const handleApproveOrder = async (orderId) => {
+    showConfirm({
+      title: 'ยืนยันอนุมัติและเติมเกมทันที',
+      message: 'ยืนยันว่าได้รับยอดเงินโอนถูกต้องแล้ว และต้องการส่งงานเข้าสู่ระบบเติมเกมอัตโนมัติทันที ?',
+      confirmText: 'อนุมัติ & เติมเกมทันที',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsProcessingOrder(true);
+        try {
+          const res = await fetch(`/api/admin/orders/${orderId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminUser?.name || 'Admin' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showAlert({
+              title: 'อนุมัติสำเร็จ!',
+              message: 'อนุมัติยอดเงินและส่งงานเติมเกมอัตโนมัติสำเร็จแล้ว',
+              type: 'success'
+            });
+            setSelectedOrderDetails(null);
+            loadData(false);
+          } else {
+            showAlert({
+              title: 'เกิดข้อผิดพลาด',
+              message: data.message || data.error || 'อนุมัติไม่สำเร็จ',
+              type: 'error'
+            });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', type: 'error' });
+        } finally {
+          setIsProcessingOrder(false);
+        }
+      }
+    });
+  };
+
+  // Handle Reject Order Payment
+  const handleRejectOrder = (orderId) => {
+    showConfirm({
+      title: 'ปฏิเสธคำสั่งซื้อ',
+      message: 'ต้องการปฏิเสธคำสั่งซื้อนี้หรือไม่ ? คำสั่งซื้อจะถูกยกเลิกเนื่องจากไม่พบยอดเงินหรือสลิปไม่ถูกต้อง',
+      confirmText: 'ยืนยันปฏิเสธ',
+      cancelText: 'ยกเลิก',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsProcessingOrder(true);
+        try {
+          const res = await fetch(`/api/admin/orders/${orderId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              adminName: adminUser?.name || 'Admin',
+              reason: 'ไม่พบยอดเงินโอนเข้าบัญชี หรือสลิปไม่ถูกต้อง'
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showAlert({
+              title: 'ปฏิเสธสำเร็จ',
+              message: 'ปฏิเสธคำสั่งซื้อเรียบร้อยแล้ว',
+              type: 'success'
+            });
+            setSelectedOrderDetails(null);
+            loadData(false);
+          } else {
+            showAlert({ title: 'เกิดข้อผิดพลาด', message: data.message || 'ปฏิเสธไม่สำเร็จ', type: 'error' });
+          }
+        } catch (e) {
+          showAlert({ title: 'เกิดข้อผิดพลาด', message: 'เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', type: 'error' });
+        } finally {
+          setIsProcessingOrder(false);
+        }
+      }
+    });
   };
 
   // Handle Import Vault Codes
@@ -2169,9 +2265,18 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     }
   };
 
+  // Pending verification orders count
+  const pendingOrdersCount = orders.filter(o => o.paymentStatus === 'pending_verification' || o.paymentStatus === 'pending').length;
+
   // Filtered orders list
   const filteredOrders = orders.filter(o => {
-    if (orderFilterStatus !== 'all' && o.topupStatus !== orderFilterStatus) return false;
+    if (orderFilterStatus !== 'all') {
+      if (orderFilterStatus === 'pending_verification') {
+        if (o.paymentStatus !== 'pending_verification' && o.paymentStatus !== 'pending') return false;
+      } else if (o.topupStatus !== orderFilterStatus) {
+        return false;
+      }
+    }
     if (orderSearch) {
       const q = orderSearch.toLowerCase();
       return o.orderNumber.toLowerCase().includes(q) ||
@@ -2319,7 +2424,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   const navItems = [
     { id: 'overview', label: 'แผงควบคุม', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'slips', label: 'อนุมัติสลิปเติมเงิน', icon: <FileCheck className="w-4 h-4 text-emerald-400" />, count: pendingDepositsCount },
-    { id: 'orders', label: 'คำสั่งซื้อ', icon: <ShoppingCart className="w-4 h-4" />, count: orders.length },
+    { id: 'orders', label: 'คำสั่งซื้อ', icon: <ShoppingCart className="w-4 h-4" />, count: pendingOrdersCount > 0 ? pendingOrdersCount : orders.length },
     { id: 'vault', label: 'คลังโค้ดดิจิทัล (Stock Vault)', icon: <Key className="w-4 h-4 text-cyan-400" />, count: vaultCodes.filter(c => c.status === 'available').length },
     { id: 'live_chat', label: 'แชทสดลูกค้า (Live Chat)', icon: <MessageSquare className="w-4 h-4 text-emerald-400" />, count: liveChatUnread },
     { id: 'autotopup', label: 'เติมเงินอัตโนมัติ', icon: <Zap className="w-4 h-4" /> },
@@ -2393,7 +2498,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                 </div>
                 {item.count !== undefined && (
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    item.id === 'slips' && pendingDepositsCount > 0
+                    item.id === 'orders' && pendingOrdersCount > 0
+                      ? 'bg-amber-500 text-black animate-pulse ring-2 ring-amber-400 font-extrabold'
+                      : item.id === 'slips' && pendingDepositsCount > 0
                       ? 'bg-amber-500 text-black animate-pulse ring-2 ring-amber-400 font-extrabold'
                       : item.id === 'live_chat' && humanRequiredCount > 0
                       ? 'bg-amber-500 text-black animate-pulse ring-2 ring-amber-400 font-extrabold'
@@ -2401,7 +2508,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       ? 'bg-red-600 text-white animate-pulse ring-2 ring-red-400'
                       : isActive ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'
                   }`}>
-                    {item.id === 'live_chat' && humanRequiredCount > 0 ? `รอคน ${humanRequiredCount}` : item.count}
+                    {item.id === 'orders' && pendingOrdersCount > 0 ? `รอตรวจ ${pendingOrdersCount}` : item.id === 'live_chat' && humanRequiredCount > 0 ? `รอคน ${humanRequiredCount}` : item.count}
                   </span>
                 )}
               </button>
@@ -3111,6 +3218,33 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
           {/* TAB 2: ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-6">
+              {/* Alert Banner for pending verification orders */}
+              {pendingOrdersCount > 0 && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-amber-900/60 to-zinc-950 border-2 border-amber-500/70 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl shadow-amber-500/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-5 h-5 text-amber-400 animate-bounce" />
+                    </div>
+                    <div>
+                      <div className="font-black text-sm text-white flex items-center gap-2">
+                        <span>มีคำสั่งซื้อใหม่ {pendingOrdersCount} รายการ รอตรวจสอบสลิปและอนุมัติ!</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black animate-pulse">ด่วน</span>
+                      </div>
+                      <div className="text-[11px] text-amber-300/90 mt-0.5">
+                        กรุณาตรวจสอบยอดเงินในบัญชี หรือกดดูสลิป แล้วคลิก <strong>"✓ อนุมัติ & เติม"</strong> เพื่อส่งงานเข้าสู่ระบบเติมเกมทันที
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOrderFilterStatus('pending_verification')}
+                    className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs shrink-0 shadow-lg cursor-pointer transition-all active:scale-95"
+                  >
+                    กรองดูเฉพาะรอตรวจ ({pendingOrdersCount})
+                  </button>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-cyber-card border border-zinc-800">
                 <div className="relative w-full sm:w-80">
                   <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3" />
@@ -3123,18 +3257,28 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  {['all', 'completed', 'processing', 'failed'].map((st) => (
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {[
+                    { id: 'all', label: 'ทั้งหมด' },
+                    { id: 'pending_verification', label: `รอตรวจสอบสลิป (${pendingOrdersCount})`, alert: pendingOrdersCount > 0 },
+                    { id: 'completed', label: 'สำเร็จ' },
+                    { id: 'processing', label: 'รอดำเนินการ' },
+                    { id: 'failed', label: 'ล้มเหลว' }
+                  ].map((tab) => (
                     <button
-                      key={st}
-                      onClick={() => setOrderFilterStatus(st)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
-                        orderFilterStatus === st
-                          ? 'bg-red-600 text-white'
+                      key={tab.id}
+                      onClick={() => setOrderFilterStatus(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        orderFilterStatus === tab.id
+                          ? tab.alert
+                            ? 'bg-amber-500 text-black font-black ring-2 ring-amber-400'
+                            : 'bg-red-600 text-white'
+                          : tab.alert
+                          ? 'bg-amber-950/60 text-amber-300 border border-amber-500/50 hover:bg-amber-900/60 font-bold'
                           : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
                     >
-                      {st === 'all' ? 'ทั้งหมด' : st === 'completed' ? 'สำเร็จ' : st === 'processing' ? 'รอดำเนินการ' : 'ล้มเหลว'}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
@@ -3148,9 +3292,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                       <th className="py-3 px-3">เกม & แพ็กเกจ</th>
                       <th className="py-3 px-3">ผู้เล่น (UID)</th>
                       <th className="py-3 px-3">ยอดชำระ</th>
-                      <th className="py-3 px-3">ช่องทาง</th>
-                      <th className="py-3 px-3">API Provider</th>
-                      <th className="py-3 px-3">สถานะ</th>
+                      <th className="py-3 px-3">ช่องทาง & สลิป</th>
+                      <th className="py-3 px-3">สถานะชำระเงิน</th>
+                      <th className="py-3 px-3">สถานะเติมเกม</th>
                       <th className="py-3 px-3 text-right">การจัดการ</th>
                     </tr>
                   </thead>
@@ -3158,69 +3302,130 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                     {filteredOrders.length === 0 ? (
                       <tr>
                         <td colSpan="8" className="py-12 text-center text-zinc-500 text-xs">
-                          ยังไม่มีรายการคำสั่งซื้อในระบบ (พร้อมรับออเดอร์ใหม่ 24 ชม.)
+                          {orderFilterStatus === 'pending_verification'
+                            ? 'ไม่มีรายการคำสั่งซื้อที่รอตรวจสอบสลิปในขณะนี้'
+                            : 'ยังไม่มีรายการคำสั่งซื้อในระบบ (พร้อมรับออเดอร์ใหม่ 24 ชม.)'}
                         </td>
                       </tr>
                     ) : (
-                      filteredOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-zinc-900/40">
-                          <td className="py-3.5 px-3 font-mono font-bold text-red-400">
-                            {order.orderNumber}
-                            <span className="block text-[10px] text-zinc-500 font-normal">
-                              {new Date(order.createdAt).toLocaleString('th-TH')}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <div className="font-bold text-white">{order.gameName}</div>
-                            <div className="text-zinc-400 text-[11px]">{order.packageName}</div>
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className="text-zinc-300 font-medium">{order.playerId}</span>
-                            {order.playerNickname && (
-                              <span className="block text-[10px] text-emerald-400 font-semibold">{order.playerNickname}</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-3 font-bold font-['Kanit'] text-white">
-                            ฿{Number(order.finalAmount).toFixed(2)}
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-800 text-zinc-300">
-                              {order.paymentMethod}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className="text-zinc-300">{order.providerName || 'Smile One API'}</span>
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              order.topupStatus === 'completed'
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
-                                : 'bg-red-950 text-red-400 border border-red-800/60'
-                            }`}>
-                              {order.topupStatus === 'completed' ? 'สำเร็จ' : 'ล้มเหลว'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => setSelectedOrderDetails(order)}
-                                className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-200"
-                              >
-                                ดูข้อมูล
-                              </button>
-                              {order.topupStatus !== 'completed' && (
-                                <button
-                                  onClick={() => handleRetryOrder(order.id)}
-                                  disabled={retryingId === order.id}
-                                  className="px-2.5 py-1 rounded bg-red-600 hover:bg-red-500 text-[10px] font-bold text-white shadow-sm"
-                                >
-                                  {retryingId === order.id ? 'กำลังส่ง...' : 'เติมซ้ำ'}
-                                </button>
+                      filteredOrders.map((order) => {
+                        const isPendingCheck = order.paymentStatus === 'pending_verification' || order.paymentStatus === 'pending';
+                        return (
+                          <tr key={order.id} className={`hover:bg-zinc-900/40 transition-colors ${isPendingCheck ? 'bg-amber-950/15' : ''}`}>
+                            <td className="py-3.5 px-3 font-mono font-bold text-red-400">
+                              {order.orderNumber}
+                              <span className="block text-[10px] text-zinc-500 font-normal">
+                                {new Date(order.createdAt).toLocaleString('th-TH')}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <div className="font-bold text-white">{order.gameName}</div>
+                              <div className="text-zinc-400 text-[11px]">{order.packageName}</div>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className="text-zinc-300 font-medium">{order.playerId}</span>
+                              {order.playerNickname && (
+                                <span className="block text-[10px] text-emerald-400 font-semibold">{order.playerNickname}</span>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="py-3.5 px-3 font-bold font-['Kanit'] text-white">
+                              ฿{Number(order.finalAmount).toFixed(2)}
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <div className="flex flex-col gap-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-800 text-zinc-300 w-fit">
+                                  {order.paymentMethod}
+                                </span>
+                                {order.slipImage ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrderDetails(order)}
+                                    className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-bold hover:underline cursor-pointer"
+                                  >
+                                    <FileCheck className="w-3 h-3 text-emerald-400" /> มีสลิปแนบ (คลิกดู)
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-500">ไม่มีสลิป</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                order.paymentStatus === 'paid'
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                                  : order.paymentStatus === 'pending_verification'
+                                  ? 'bg-amber-950 text-amber-300 border border-amber-500/60 animate-pulse'
+                                  : order.paymentStatus === 'rejected'
+                                  ? 'bg-red-950 text-red-400 border border-red-800/60'
+                                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                              }`}>
+                                {order.paymentStatus === 'paid'
+                                  ? '✓ ชำระแล้ว'
+                                  : order.paymentStatus === 'pending_verification'
+                                  ? '🟡 รอตรวจสลิป'
+                                  : order.paymentStatus === 'rejected'
+                                  ? '✕ ปฏิเสธสลิป'
+                                  : '⏳ รอชำระเงิน'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                order.topupStatus === 'completed'
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                                  : order.topupStatus === 'failed'
+                                  ? 'bg-red-950 text-red-400 border border-red-800/60'
+                                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                              }`}>
+                                {order.topupStatus === 'completed' ? '✓ สำเร็จ' : order.topupStatus === 'failed' ? '✕ ล้มเหลว' : 'รอดำเนินการ'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                {isPendingCheck && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApproveOrder(order.id)}
+                                      disabled={isProcessingOrder}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white shadow-sm flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                                      title="ยืนยันยอดเงินและเติมเกมทันที"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      <span>อนุมัติ & เติม</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRejectOrder(order.id)}
+                                      disabled={isProcessingOrder}
+                                      className="px-2 py-1 rounded-lg bg-red-950 hover:bg-red-900 border border-red-800 text-[10px] font-bold text-red-300 hover:text-white cursor-pointer transition-all"
+                                      title="ปฏิเสธสลิป"
+                                    >
+                                      ปฏิเสธ
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrderDetails(order)}
+                                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-200 cursor-pointer"
+                                >
+                                  ดูข้อมูล
+                                </button>
+                                {order.topupStatus !== 'completed' && order.paymentStatus === 'paid' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetryOrder(order.id)}
+                                    disabled={retryingId === order.id}
+                                    className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-[10px] font-bold text-white shadow-sm cursor-pointer"
+                                  >
+                                    {retryingId === order.id ? 'กำลังส่ง...' : 'เติมซ้ำ'}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -7682,27 +7887,150 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
 
       {/* Order Details Modal */}
       {selectedOrderDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#0e121a] border border-red-800/60 rounded-3xl p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-lg bg-[#0e121a] border border-zinc-800 rounded-3xl p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h3 className="text-sm font-bold text-white">รายละเอียดคำสั่งซื้อ</h3>
-              <button onClick={() => setSelectedOrderDetails(null)} className="text-zinc-400 hover:text-white">✕</button>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>รายละเอียดคำสั่งซื้อ</span>
+                  <span className="font-mono text-red-400">#{selectedOrderDetails.orderNumber}</span>
+                </h3>
+                <span className="text-[10px] text-zinc-400">{new Date(selectedOrderDetails.createdAt).toLocaleString('th-TH')}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetails(null)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="space-y-2 text-xs">
-              <div><strong>Order:</strong> {selectedOrderDetails.orderNumber}</div>
-              <div><strong>Game:</strong> {selectedOrderDetails.gameName} ({selectedOrderDetails.packageName})</div>
-              <div><strong>UID:</strong> {selectedOrderDetails.playerId}</div>
-              <div><strong>Nickname:</strong> {selectedOrderDetails.playerNickname}</div>
-              <div><strong>Amount:</strong> ฿{selectedOrderDetails.finalAmount}</div>
-              <div><strong>Provider:</strong> {selectedOrderDetails.providerName}</div>
-              <div><strong>Latency:</strong> {selectedOrderDetails.providerLatencyMs} ms</div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/80">
+              <div>
+                <span className="text-[10px] text-zinc-500 block">เกม</span>
+                <strong className="text-white text-xs">{selectedOrderDetails.gameName}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">แพ็กเกจ</span>
+                <strong className="text-zinc-200 text-xs">{selectedOrderDetails.packageName}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">UID / ไอดีผู้เล่น</span>
+                <strong className="text-white font-mono text-xs">{selectedOrderDetails.playerId}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">ชื่อตัวละคร (IGN)</span>
+                <strong className="text-emerald-400 text-xs">{selectedOrderDetails.playerNickname || '-'}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">ยอดชำระสุทธิ</span>
+                <strong className="text-red-400 font-['Kanit'] text-base">฿{Number(selectedOrderDetails.finalAmount).toFixed(2)}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">ช่องทางชำระเงิน</span>
+                <strong className="text-zinc-300 text-xs uppercase">{selectedOrderDetails.paymentMethod} {selectedOrderDetails.subPaymentChannel ? `(${selectedOrderDetails.subPaymentChannel})` : ''}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">สถานะการชำระเงิน</span>
+                <span className={`inline-flex items-center gap-1 font-bold ${
+                  selectedOrderDetails.paymentStatus === 'paid' ? 'text-emerald-400' :
+                  selectedOrderDetails.paymentStatus === 'pending_verification' ? 'text-amber-400 animate-pulse' :
+                  selectedOrderDetails.paymentStatus === 'rejected' ? 'text-red-400' : 'text-zinc-400'
+                }`}>
+                  {selectedOrderDetails.paymentStatus === 'paid' ? '✓ ชำระแล้ว' :
+                   selectedOrderDetails.paymentStatus === 'pending_verification' ? '🟡 รอตรวจสลิป' :
+                   selectedOrderDetails.paymentStatus === 'rejected' ? '✕ สลิปถูกปฏิเสธ' : '⏳ รอการชำระเงิน'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-zinc-500 block">สถานะการเติมเกม</span>
+                <span className={`inline-flex items-center gap-1 font-bold ${
+                  selectedOrderDetails.topupStatus === 'completed' ? 'text-emerald-400' :
+                  selectedOrderDetails.topupStatus === 'failed' ? 'text-red-400' : 'text-zinc-400'
+                }`}>
+                  {selectedOrderDetails.topupStatus === 'completed' ? '✓ สำเร็จ' :
+                   selectedOrderDetails.topupStatus === 'failed' ? '✕ ล้มเหลว' : '⏳ รอดำเนินการ'}
+                </span>
+              </div>
             </div>
-            <button
-              onClick={() => setSelectedOrderDetails(null)}
-              className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold"
-            >
-              ปิด
-            </button>
+
+            {/* Slip image if uploaded */}
+            {selectedOrderDetails.slipImage ? (
+              <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-300 font-bold flex items-center gap-1">
+                    <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    รูปสลิปหลักฐานการโอนเงินของลูกค้า
+                  </span>
+                  <a
+                    href={selectedOrderDetails.slipImage}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5 cursor-pointer font-bold"
+                  >
+                    เปิดดูภาพขนาดเต็ม ↗
+                  </a>
+                </div>
+                <div className="relative rounded-xl overflow-hidden border border-zinc-800 bg-black flex justify-center max-h-72">
+                  <img
+                    src={selectedOrderDetails.slipImage}
+                    alt="Slip"
+                    className="w-auto h-auto max-h-72 object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-center text-zinc-500 text-xs">
+                ยังไม่มีรูปสลิปแนบมากับคำสั่งซื้อนี้
+              </div>
+            )}
+
+            {/* Action buttons in Modal */}
+            <div className="space-y-2 pt-2 border-t border-zinc-800">
+              {(selectedOrderDetails.paymentStatus === 'pending_verification' || selectedOrderDetails.paymentStatus === 'pending') && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={isProcessingOrder}
+                    onClick={() => handleApproveOrder(selectedOrderDetails.id)}
+                    className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>✓ อนุมัติ & เติมเกมทันที</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessingOrder}
+                    onClick={() => handleRejectOrder(selectedOrderDetails.id)}
+                    className="py-2.5 px-4 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>✕ ปฏิเสธคำสั่งซื้อ</span>
+                  </button>
+                </div>
+              )}
+
+              {selectedOrderDetails.topupStatus !== 'completed' && selectedOrderDetails.paymentStatus === 'paid' && (
+                <button
+                  type="button"
+                  disabled={retryingId === selectedOrderDetails.id}
+                  onClick={() => handleRetryOrder(selectedOrderDetails.id)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-red-600/30 cursor-pointer disabled:opacity-50 transition-all"
+                >
+                  <RotateCw className={`w-4 h-4 ${retryingId === selectedOrderDetails.id ? 'animate-spin' : ''}`} />
+                  <span>{retryingId === selectedOrderDetails.id ? 'กำลังส่งงาน...' : 'ส่งเติมเกมซ้ำ (Retry API)'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetails(null)}
+                className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}

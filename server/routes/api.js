@@ -328,12 +328,10 @@ router.post('/orders', async (req, res) => {
     } else if (paymentMethod === 'truemoney') {
       if (voucherUrl) {
         await paymentService.verifyTrueMoneyVoucher(voucherUrl, finalAmount);
+        paymentVerified = true;
       }
-      paymentVerified = true;
-    } else if (paymentMethod === 'promptpay' || paymentMethod === 'bank_transfer' || paymentMethod === 'credit_card') {
-      // PromptPay and direct channels are verified
-      paymentVerified = true;
     }
+    // Note: promptpay and bank_transfer require customer payment & slip upload, verified by admin or slip engine
 
     // Get customer name
     let customerName = "ลูกค้าทั่วไป";
@@ -362,15 +360,31 @@ router.post('/orders', async (req, res) => {
       couponCode: couponCode || null,
       paymentMethod,
       subPaymentChannel: subPaymentChannel || paymentMethod,
-      paymentStatus: paymentVerified ? 'paid' : 'pending'
+      paymentStatus: paymentVerified ? 'paid' : 'pending',
+      topupStatus: paymentVerified ? 'processing' : 'pending',
+      slipImage: req.body.slipImage || null
     });
 
-    // Auto Top-up Execution (Asynchronous or Synchronous)
-    const topupResult = await topupEngine.processOrder(order.id);
+    // Auto Top-up Execution ONLY if paid
+    let topupResult = null;
+    if (paymentVerified) {
+      topupResult = await topupEngine.processOrder(order.id);
+    }
+
+    // Generate PromptPay QR if waiting for payment
+    let qrCodeUrl = null;
+    if (!paymentVerified) {
+      try {
+        const qrRes = await paymentService.generatePromptPay(finalAmount);
+        qrCodeUrl = qrRes.qrDataUrl;
+      } catch (qrErr) {
+        console.warn("QR generation warning:", qrErr.message);
+      }
+    }
 
     // Send Real-time Merchant Notification (LINE Notify / Webhook)
     try {
-      const activeOrder = topupResult.order || order;
+      const activeOrder = topupResult ? (topupResult.order || order) : order;
       notificationService.sendNewOrderNotification(activeOrder, settings).catch(() => {});
     } catch (notifErr) {
       console.warn("Notification dispatch warning:", notifErr.message);
@@ -378,13 +392,113 @@ router.post('/orders', async (req, res) => {
 
     res.json({
       success: true,
-      order: topupResult.order || order,
-      topupSuccess: topupResult.success,
-      message: topupResult.success ? 'เติมเงินเข้าเกมสำเร็จทันที 24 ชม.' : 'กำลังดำเนินการเติมเงิน'
+      order: (topupResult && topupResult.order) ? topupResult.order : order,
+      topupSuccess: topupResult ? topupResult.success : false,
+      qrCodeUrl,
+      requiresPayment: !paymentVerified,
+      message: paymentVerified ? 'เติมเงินเข้าเกมสำเร็จทันที 24 ชม.' : 'สร้างคำสั่งซื้อสำเร็จ กรุณาสแกน QR หรือโอนเงินและแนบสลิป'
     });
 
   } catch (err) {
     console.error("Order creation error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Customer attaches payment slip to an order
+router.post('/orders/:id/slip', async (req, res) => {
+  try {
+    const { slipImage } = req.body;
+    if (!slipImage) {
+      return res.status(400).json({ success: false, message: 'กรุณาแนบรูปภาพสลิปหลักฐานการโอน' });
+    }
+    const order = db.getOrderById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'ไม่พบคำสั่งซื้อนี้' });
+    }
+
+    const updated = db.updateOrder(order.id, {
+      slipImage,
+      slipUploadedAt: new Date().toISOString(),
+      paymentStatus: 'pending_verification'
+    });
+
+    db.logAction('order', order.orderNumber, 'SLIP_UPLOADED', `ลูกค้าแนบสลิปชำระเงิน ยอด ฿${order.finalAmount}`);
+
+    // Real-time notification to admin
+    try {
+      const settings = db.getSettings();
+      notificationService.sendNewOrderNotification({ ...updated, note: '🔔 ลูกค้าแนบสลิปใหม่ รอตรวจสอบยอดเงิน' }, settings).catch(() => {});
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      order: updated,
+      message: 'แนบสลิปเรียบร้อยแล้ว รอแอดมินตรวจสอบยอดเงินสักครู่'
+    });
+  } catch (err) {
+    console.error("Slip attach error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin approves order payment and triggers auto topup
+router.post('/admin/orders/:id/approve', async (req, res) => {
+  try {
+    const order = db.getOrderById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'ไม่พบคำสั่งซื้อนี้' });
+    }
+    const { adminName } = req.body;
+
+    // 1. Mark as paid
+    db.updateOrder(order.id, {
+      paymentStatus: 'paid',
+      approvedBy: adminName || 'Admin',
+      approvedAt: new Date().toISOString()
+    });
+
+    // 2. Process Auto Top-up immediately
+    const topupResult = await topupEngine.processOrder(order.id);
+
+    db.logAction('admin', adminName || 'Admin', 'APPROVE_ORDER', `อนุมัติการชำระเงินออเดอร์ ${order.orderNumber} (฿${order.finalAmount})`);
+
+    res.json({
+      success: true,
+      order: topupResult.order || db.getOrderById(order.id),
+      topupSuccess: topupResult.success,
+      message: 'อนุมัติการชำระเงินและส่งคำสั่งเติมเกมเรียบร้อยแล้ว'
+    });
+  } catch (err) {
+    console.error("Approve order error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin rejects order payment slip
+router.post('/admin/orders/:id/reject', (req, res) => {
+  try {
+    const order = db.getOrderById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'ไม่พบคำสั่งซื้อนี้' });
+    }
+    const { reason, adminName } = req.body;
+    const updated = db.updateOrder(order.id, {
+      paymentStatus: 'rejected',
+      topupStatus: 'cancelled',
+      rejectReason: reason || 'สลิปไม่ถูกต้อง หรือยอดเงินไม่ตรง',
+      rejectedBy: adminName || 'Admin',
+      rejectedAt: new Date().toISOString()
+    });
+
+    db.logAction('admin', adminName || 'Admin', 'REJECT_ORDER', `ปฏิเสธสลิปออเดอร์ ${order.orderNumber}: ${reason || 'สลิปไม่ถูกต้อง'}`);
+
+    res.json({
+      success: true,
+      order: updated,
+      message: 'ปฏิเสธคำสั่งซื้อเรียบร้อยแล้ว'
+    });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });

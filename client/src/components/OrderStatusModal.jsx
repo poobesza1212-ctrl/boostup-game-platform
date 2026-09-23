@@ -14,7 +14,11 @@ import {
   Share2, 
   ExternalLink,
   Sparkles,
-  Award
+  Award,
+  Upload,
+  Image,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -33,6 +37,7 @@ const getPaymentLabel = (method, subMethod) => {
 };
 
 export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteSettings }) {
+  const [currentOrder, setCurrentOrder] = useState(order);
   const [currentStep, setCurrentStep] = useState(1);
   const [copied, setCopied] = useState(false);
   const [copiedBank, setCopiedBank] = useState(false);
@@ -41,6 +46,20 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
+  // Slip upload state
+  const [slipPreview, setSlipPreview] = useState(order?.slipImage || null);
+  const [isSubmittingSlip, setIsSubmittingSlip] = useState(false);
+  const [slipUploadError, setSlipUploadError] = useState('');
+  const [slipSuccessMsg, setSlipSuccessMsg] = useState('');
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (order) {
+      setCurrentOrder(order);
+      if (order.slipImage) setSlipPreview(order.slipImage);
+    }
+  }, [order]);
+
   const primaryBank = siteSettings?.bankAccounts?.find(b => b.isActive) || {
     bankName: siteSettings?.bankName || 'ธนาคารกสิกรไทย (KBANK)',
     accountNo: siteSettings?.bankAccount || '120-8-87467-1',
@@ -48,15 +67,15 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
     accountType: 'บัญชีออมทรัพย์'
   };
 
-  const isQrPayment = ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.paymentMethod) || ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.subPaymentChannel);
+  const isQrPayment = ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'bank_transfer', 'truemoney_scan', 'truemoney_promptpay'].includes(currentOrder?.paymentMethod) || ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'bank_transfer', 'truemoney_scan', 'truemoney_promptpay'].includes(currentOrder?.subPaymentChannel);
 
   // Load PromptPay QR if applicable
   useEffect(() => {
-    if (isQrPayment && order?.finalAmount) {
+    if (isQrPayment && currentOrder?.finalAmount) {
       fetch('/api/payments/promptpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: order.finalAmount })
+        body: JSON.stringify({ amount: currentOrder.finalAmount })
       })
       .then(res => res.json())
       .then(data => {
@@ -66,12 +85,12 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
       })
       .catch(err => console.error("QR load err:", err));
     }
-  }, [order, isQrPayment]);
+  }, [currentOrder?.id, currentOrder?.finalAmount, isQrPayment]);
 
   // Load Order Verification QR Code
   useEffect(() => {
-    if (order?.id || order?.orderNumber) {
-      const ordId = order.id || order.orderNumber;
+    if (currentOrder?.id || currentOrder?.orderNumber) {
+      const ordId = currentOrder.id || currentOrder.orderNumber;
       fetch(`/api/orders/${ordId}/receipt-qr`)
         .then(res => res.json())
         .then(data => {
@@ -81,47 +100,115 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
         })
         .catch(err => console.error("Receipt QR load err:", err));
     }
-  }, [order]);
+  }, [currentOrder?.id]);
 
-  // Animated stages progression
+  // Real-time polling to detect Admin Approval / Status Update
   useEffect(() => {
-    if (!order) return;
+    if (!currentOrder?.id) return;
+    const isFinished = currentOrder.paymentStatus === 'paid' && currentOrder.topupStatus === 'completed';
+    if (isFinished) return;
 
-    if (order.topupStatus === 'completed') {
-      setCurrentStep(4);
+    const interval = setInterval(async () => {
       try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+        const res = await fetch(`/api/orders/${currentOrder.id}`);
+        const data = await res.json();
+        if (data.success && data.order) {
+          if (data.order.paymentStatus !== currentOrder.paymentStatus || data.order.topupStatus !== currentOrder.topupStatus) {
+            setCurrentOrder(data.order);
+            if (onRefreshOrder) onRefreshOrder(data.order);
+          }
+        }
       } catch (e) {}
-    } else {
-      // Simulate rapid automated steps
-      const t1 = setTimeout(() => setCurrentStep(2), 700);
-      const t2 = setTimeout(() => setCurrentStep(3), 1500);
-      const t3 = setTimeout(() => {
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [currentOrder?.id, currentOrder?.paymentStatus, currentOrder?.topupStatus]);
+
+  // Animated stages progression - ONLY advances when paid!
+  useEffect(() => {
+    if (!currentOrder) return;
+
+    if (currentOrder.paymentStatus === 'paid') {
+      if (currentOrder.topupStatus === 'completed') {
         setCurrentStep(4);
         try {
           confetti({
-            particleCount: 100,
-            spread: 90,
+            particleCount: 80,
+            spread: 70,
             origin: { y: 0.6 }
           });
         } catch (e) {}
-      }, 2400);
+      } else {
+        setCurrentStep(2);
+        const t1 = setTimeout(() => setCurrentStep(3), 1000);
+        const t2 = setTimeout(() => {
+          setCurrentStep(4);
+          try {
+            confetti({
+              particleCount: 100,
+              spread: 90,
+              origin: { y: 0.6 }
+            });
+          } catch (e) {}
+        }, 2200);
 
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }
+    } else {
+      // Pending payment or waiting for admin verification -> strictly stay at step 1!
+      setCurrentStep(1);
     }
-  }, [order]);
+  }, [currentOrder?.paymentStatus, currentOrder?.topupStatus]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setSlipUploadError('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG)');
+      return;
+    }
+    setSlipUploadError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSlipPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadSlip = async () => {
+    if (!slipPreview) {
+      setSlipUploadError('กรุณาเลือกรูปภาพสลิปก่อนกดยืนยัน');
+      return;
+    }
+    setIsSubmittingSlip(true);
+    setSlipUploadError('');
+    try {
+      const res = await fetch(`/api/orders/${currentOrder.id}/slip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slipImage: slipPreview })
+      });
+      const data = await res.json();
+      if (data.success && data.order) {
+        setCurrentOrder(data.order);
+        setSlipSuccessMsg('แนบสลิปเรียบร้อยแล้ว! เจ้าหน้าที่กำลังตรวจสอบยอดเงินในบัญชี');
+        if (onRefreshOrder) onRefreshOrder(data.order);
+      } else {
+        setSlipUploadError(data.message || 'แนบสลิปไม่สำเร็จ');
+      }
+    } catch (err) {
+      setSlipUploadError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ' + err.message);
+    } finally {
+      setIsSubmittingSlip(false);
+    }
+  };
 
   const copyOrderNumber = () => {
-    if (order?.orderNumber) {
-      navigator.clipboard.writeText(order.orderNumber);
+    if (currentOrder?.orderNumber) {
+      navigator.clipboard.writeText(currentOrder.orderNumber);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -409,7 +496,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
         <div className="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
           
           {/* PromptPay QR & Bank Transfer Section (if waiting for payment and still in step 1) */}
-          {(isQrPayment || order?.paymentMethod === 'bank_transfer') && currentStep === 1 && (
+          {(isQrPayment || currentOrder?.paymentMethod === 'bank_transfer') && currentOrder?.paymentStatus !== 'paid' && (
             <div className="p-4 rounded-2xl bg-white text-zinc-900 text-center space-y-3 shadow-xl">
               <div className="inline-block bg-[#0056b3] text-white px-3 py-1 rounded text-xs font-bold">
                 Thai QR Payment / พร้อมเพย์ & โอนผ่านธนาคาร
@@ -420,7 +507,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
                 </div>
               )}
               <div className="text-sm font-black text-red-600 text-2xl font-['Kanit']">
-                ฿{Number(order.finalAmount).toFixed(2)}
+                ฿{Number(currentOrder.finalAmount).toFixed(2)}
               </div>
               <p className="text-[11px] text-zinc-600">
                 เปิดแอปธนาคารใดก็ได้ แล้วสแกนเพื่อชำระเงิน หรือโอนเข้าบัญชีด้านล่างนี้ได้โดยตรง
@@ -455,6 +542,117 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
                   ชื่อบัญชี: <strong className="text-zinc-900">{primaryBank.accountName}</strong> {primaryBank.accountType ? `(${primaryBank.accountType})` : ''}
                 </div>
               </div>
+
+              {/* Slip Upload & Proof of Payment Section */}
+              <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-left space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Upload className="w-4 h-4 text-amber-400" />
+                    <span>แนบสลิปหลักฐานการโอนเงิน *</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">รูปสลิปจากแอปธนาคาร</span>
+                </div>
+
+                {currentOrder.paymentStatus === 'pending_verification' ? (
+                  <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/50 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                      <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                      <span>แนบสลิปเรียบร้อยแล้ว • รอแอดมินตรวจสอบยอดเงิน (1-3 นาที)</span>
+                    </div>
+                    {slipPreview && (
+                      <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-zinc-700 mx-auto">
+                        <img src={slipPreview} alt="Slip Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <p className="text-[10px] text-zinc-300 text-center">
+                      ระบบบันทึกสลิปแล้ว กำลังรอแอดมินตรวจสอบยอดเงิน เมื่ออนุมัติแล้วระบบจะส่งงานเติมเกมอัตโนมัติทันที
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSlipPreview(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="w-full py-1 text-[10px] text-zinc-400 hover:text-white underline text-center block cursor-pointer"
+                    >
+                      เปลี่ยนรูปสลิปใหม่
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {slipPreview ? (
+                      <div className="flex items-center gap-3 p-2 rounded-xl bg-zinc-800/80 border border-zinc-600">
+                        <img src={slipPreview} alt="Preview" className="w-14 h-14 object-cover rounded-lg shrink-0 border border-zinc-700" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-white truncate">เลือกรูปภาพสลิปแล้ว</div>
+                          <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                            <Check className="w-3 h-3" /> พร้อมส่งหลักฐาน
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSlipPreview(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-700 text-xs cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-4 rounded-xl border-2 border-dashed border-zinc-700 hover:border-amber-400 hover:bg-zinc-800/50 cursor-pointer text-center transition-all group"
+                      >
+                        <Upload className="w-6 h-6 text-zinc-400 group-hover:text-amber-400 mx-auto mb-1 transition-colors" />
+                        <div className="text-xs font-bold text-white group-hover:text-amber-300">
+                          คลิกเพื่อแนบรูปสลิปโอนเงิน
+                        </div>
+                        <div className="text-[10px] text-zinc-400 mt-0.5">
+                          รองรับไฟล์ JPG, PNG (รูปสลิปจาก K PLUS หรือ Mobile Banking)
+                        </div>
+                      </div>
+                    )}
+
+                    {slipUploadError && (
+                      <div className="text-[11px] text-red-400 flex items-center gap-1 font-bold">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{slipUploadError}</span>
+                      </div>
+                    )}
+
+                    {slipPreview && (
+                      <button
+                        type="button"
+                        disabled={isSubmittingSlip}
+                        onClick={handleUploadSlip}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        {isSubmittingSlip ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>กำลังส่งสลิป...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>ยืนยันและส่งสลิปแจ้งชำระเงิน</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -466,16 +664,38 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
               
               {/* Step 1 */}
               <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                currentStep >= 1 ? 'bg-zinc-900 border-zinc-700 text-zinc-200' : 'opacity-40 border-zinc-800'
+                currentOrder.paymentStatus === 'paid'
+                  ? 'bg-zinc-900 border-zinc-700 text-zinc-200'
+                  : currentOrder.paymentStatus === 'pending_verification'
+                  ? 'bg-amber-950/40 border-amber-500/60 text-amber-200'
+                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400'
               }`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                  currentStep >= 1 ? 'bg-emerald-500 text-black' : 'bg-zinc-800 text-zinc-400'
+                  currentOrder.paymentStatus === 'paid'
+                    ? 'bg-emerald-500 text-black'
+                    : currentOrder.paymentStatus === 'pending_verification'
+                    ? 'bg-amber-500 text-black animate-pulse'
+                    : 'bg-zinc-800 text-zinc-400'
                 }`}>
-                  <Check className="w-4 h-4" />
+                  {currentOrder.paymentStatus === 'paid' ? (
+                    <Check className="w-4 h-4" />
+                  ) : currentOrder.paymentStatus === 'pending_verification' ? (
+                    <Clock className="w-4 h-4" />
+                  ) : (
+                    <Clock className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-bold">ยืนยันการชำระเงินเรียบร้อย</div>
-                  <div className="text-[10px] text-zinc-400">ช่องทาง: {getPaymentLabel(order.paymentMethod, order.subPaymentChannel)} (฿{order.finalAmount})</div>
+                  <div className="text-xs font-bold">
+                    {currentOrder.paymentStatus === 'paid'
+                      ? 'ยืนยันการชำระเงินเรียบร้อย'
+                      : currentOrder.paymentStatus === 'pending_verification'
+                      ? 'รอแอดมินตรวจสอบสลิปและยอดเงินในบัญชี...'
+                      : 'รอการชำระเงินและแนบสลิป'}
+                  </div>
+                  <div className="text-[10px] text-zinc-400">
+                    ช่องทาง: {getPaymentLabel(currentOrder.paymentMethod, currentOrder.subPaymentChannel)} (฿{currentOrder.finalAmount})
+                  </div>
                 </div>
               </div>
 
@@ -543,40 +763,54 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <span className="text-zinc-500 block text-[10px]">เกม</span>
-                <strong className="text-white">{order.gameName}</strong>
+                <strong className="text-white">{currentOrder.gameName}</strong>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[10px]">แพ็กเกจ</span>
-                <strong className="text-white">{order.packageName}</strong>
+                <strong className="text-white">{currentOrder.packageName}</strong>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[10px]">ไอดีผู้เล่น (UID)</span>
-                <strong className="text-white">{order.playerId}</strong>
+                <strong className="text-white">{currentOrder.playerId}</strong>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[10px]">ชื่อตัวละคร (IGN)</span>
-                <strong className="text-emerald-400">{order.playerNickname || '-'}</strong>
+                <strong className="text-emerald-400">{currentOrder.playerNickname || '-'}</strong>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[10px]">ยอดชำระสุทธิ</span>
-                <strong className="text-red-400 font-['Kanit'] text-sm">฿{Number(order.finalAmount).toFixed(2)}</strong>
+                <strong className="text-red-400 font-['Kanit'] text-sm">฿{Number(currentOrder.finalAmount).toFixed(2)}</strong>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[10px]">สถานะการเติม</span>
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-3 h-3" /> สำเร็จ 100%
-                </span>
+                {currentOrder.topupStatus === 'completed' ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-3 h-3" /> สำเร็จ 100%
+                  </span>
+                ) : currentOrder.paymentStatus === 'pending_verification' ? (
+                  <span className="inline-flex items-center gap-1 text-amber-400 font-bold">
+                    <Clock className="w-3 h-3" /> รอตรวจสอบสลิป
+                  </span>
+                ) : currentOrder.paymentStatus === 'pending' ? (
+                  <span className="inline-flex items-center gap-1 text-amber-400 font-bold">
+                    <Clock className="w-3 h-3" /> รอการชำระเงิน
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-zinc-400 font-bold">
+                    {currentOrder.topupStatus || 'กำลังดำเนินการ'}
+                  </span>
+                )}
               </div>
             </div>
 
-            {order.couponCode && (
+            {currentOrder.couponCode && (
               <div className="p-2 rounded-xl bg-purple-950/40 border border-purple-500/40 flex items-center justify-between text-xs text-purple-300">
-                <span>🏷️ ใช้โค้ดส่วนลด: <strong>{order.couponCode}</strong></span>
+                <span>🏷️ ใช้โค้ดส่วนลด: <strong>{currentOrder.couponCode}</strong></span>
                 <span className="text-emerald-400 font-bold">ประหยัดแล้ว ✓</span>
               </div>
             )}
 
-            {order.digitalCode && (
+            {currentOrder.digitalCode && (
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/60 shadow-lg space-y-2 mt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
@@ -588,12 +822,12 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteS
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/60 border border-emerald-500/40">
                   <span className="font-mono text-sm font-black text-white select-all tracking-wider">
-                    {order.digitalCode}
+                    {currentOrder.digitalCode}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(order.digitalCode);
+                      navigator.clipboard.writeText(currentOrder.digitalCode);
                       alert('คัดลอกรหัสเรียบร้อยแล้ว!');
                     }}
                     className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 transition-all"

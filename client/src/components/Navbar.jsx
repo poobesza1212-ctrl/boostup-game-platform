@@ -116,8 +116,8 @@ export default function Navbar({
           </div>
         </div>
 
-          {/* Global Search Bar (Richman Shop Style) */}
-          <div className="hidden md:flex flex-1 max-w-md mx-2 relative">
+          {/* Global Search Bar (Expanded & Centered) */}
+          <div className="hidden md:flex flex-1 max-w-xl mx-4 sm:mx-8 relative">
             <div className="relative w-full">
               <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3" />
               <input
@@ -127,7 +127,7 @@ export default function Navbar({
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
                 placeholder="ค้นหาเกม หรือ บัตรเติมเงิน... เช่น ROV, Valorant, Steam"
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-900/90 border border-zinc-700/80 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/80 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-inner"
               />
             </div>
 
@@ -157,81 +157,15 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-5">
-            <button 
-              onClick={() => handleNavClick('root')}
-              className={`text-xs font-semibold transition-colors hover:text-red-400 ${currentView === 'home' ? 'text-red-500' : 'text-zinc-300'}`}
-            >
-              หน้าแรก
-            </button>
-            <button 
-              onClick={() => handleNavClick('popular-games')}
-              className="text-xs font-semibold text-zinc-300 hover:text-red-400 transition-colors"
-            >
-              เติมเกม
-            </button>
-            <button 
-              onClick={() => handleNavClick('flash-sale-section')}
-              className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1"
-            >
-              <Zap className="w-3.5 h-3.5" /> Flash Sale
-            </button>
-            <button 
-              onClick={() => handleNavClick('gift-cards-section')}
-              className="text-xs font-semibold text-zinc-300 hover:text-red-400 transition-colors"
-            >
-              บัตรเติมเกม
-            </button>
-            <button 
-              onClick={() => handleNavClick('apps-section')}
-              className="text-xs font-semibold text-zinc-300 hover:text-red-400 transition-colors"
-            >
-              ต่ออายุแอป
-            </button>
-            <button 
-              onClick={() => {
-                setCurrentView('orders');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className={`text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
-                currentView === 'orders' ? 'text-yellow-400 font-bold' : 'text-zinc-300 hover:text-yellow-400'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>ประวัติการสั่งซื้อ</span>
-            </button>
-          </nav>
-
-          {/* Quick Actions (Wheel, Affiliate, Cart) */}
+          {/* Quick Actions (Cart Button) */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={onOpenWheel}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-950/70 to-red-950/70 border border-amber-500/40 hover:border-amber-400 text-amber-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="วงล้อเสี่ยงโชค & เช็คชื่อรายวัน"
-            >
-              <RotateCw className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden xl:inline font-['Kanit']">วงล้อ & เช็คชื่อ</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenAffiliate}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/70 to-indigo-950/70 border border-purple-500/40 hover:border-purple-400 text-purple-300 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="ระบบแนะนำเพื่อนรับค่าคอมมิชชั่น 2%"
-            >
-              <Share2 className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden xl:inline font-['Kanit']">ชวนเพื่อน 2%</span>
-            </button>
-
-            <button
-              type="button"
               onClick={onOpenCart}
-              className="relative p-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-amber-500/50 transition-all cursor-pointer"
+              className="relative p-2.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-amber-500/50 transition-all cursor-pointer shadow-sm"
               title="ตะกร้าสินค้า"
             >
-              <ShoppingCart className="w-4 h-4 text-amber-400" />
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
               {cartCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-md animate-pulse">
                   {cartCount}

@@ -235,16 +235,6 @@ export default function LeftSidebar({
               <span>บัตรเติมเกม</span>
             </button>
 
-            {/* ต่ออายุแอพ */}
-            <button
-              type="button"
-              onClick={() => handleNavClick('home', 'apps-section')}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
-            >
-              <Crown className="w-4 h-4 text-zinc-400 group-hover:text-amber-400 transition-colors" />
-              <span>ต่ออายุแอพ</span>
-            </button>
-
             {/* ประวัติการสั่งซื้อ (Order History View) */}
             <button
               type="button"

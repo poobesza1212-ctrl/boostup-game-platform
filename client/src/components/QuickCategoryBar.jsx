@@ -42,15 +42,6 @@ export default function QuickCategoryBar({ categories: customCategories, onSelec
       color: 'hover:border-amber-500/60'
     },
     {
-      id: 'apps',
-      label: 'ต่ออายุสมาชิกแอป',
-      sublabel: 'YouTube, Netflix, Discord',
-      iconName: 'Film',
-      iconColor: 'text-purple-400',
-      targetId: 'apps-section',
-      color: 'hover:border-purple-500/60'
-    },
-    {
       id: 'coins',
       label: 'Boost Coins',
       sublabel: 'สะสมเหรียญแลกส่วนลด',
@@ -81,7 +72,7 @@ export default function QuickCategoryBar({ categories: customCategories, onSelec
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-10">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {categories.map((cat) => (
           <div
             key={cat.id}

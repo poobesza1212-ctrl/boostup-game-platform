@@ -378,13 +378,7 @@ export default function Navbar({
               onClick={() => handleNavClick('gift-cards-section')}
               className="text-left py-2 text-zinc-200 hover:text-red-400 font-semibold"
             >
-              บัตรเติมเกม & บัตรกำนัล
-            </button>
-            <button 
-              onClick={() => handleNavClick('apps-section')}
-              className="text-left py-2 text-zinc-200 hover:text-red-400 font-semibold"
-            >
-              ต่ออายุสมาชิกแอป
+              บัตรเติมเกม
             </button>
             <button 
               onClick={() => {

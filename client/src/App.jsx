@@ -6,7 +6,6 @@ import QuickCategoryBar from './components/QuickCategoryBar';
 import FlashSaleSection from './components/FlashSaleSection';
 import GameGrid from './components/GameGrid';
 import GiftCardGrid from './components/GiftCardGrid';
-import AppSubscriptionGrid from './components/AppSubscriptionGrid';
 import StepGuide from './components/StepGuide';
 import FeaturesGrid from './components/FeaturesGrid';
 import TrustSection from './components/TrustSection';
@@ -468,16 +467,10 @@ export default function App() {
                 searchQuery={searchQuery}
               />
 
-              {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
+              {/* 5. Gift Cards (Steam, Razer Gold, Roblox, Riot Cards) */}
               <GiftCardGrid
                 giftCards={giftCards}
                 onSelectCard={handleSelectProduct}
-              />
-
-              {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
-              <AppSubscriptionGrid
-                appSubscriptions={appSubscriptions}
-                onSelectApp={handleSelectProduct}
               />
 
               {/* 7. 4-Step How-to-Topup Guide */}

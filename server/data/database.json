@@ -1530,18 +1530,6 @@
       "displayOrder": 3
     },
     {
-      "id": "cat_apps",
-      "label": "ต่ออายุสมาชิกแอป",
-      "sublabel": "YouTube, Netflix, Discord",
-      "iconName": "Film",
-      "iconColor": "text-purple-400",
-      "targetId": "apps-section",
-      "badge": "",
-      "badgeColor": "",
-      "isActive": true,
-      "displayOrder": 4
-    },
-    {
       "id": "cat_coins",
       "label": "Boost Coins",
       "sublabel": "สะสมเหรียญแลกส่วนลด",

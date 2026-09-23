@@ -32,13 +32,21 @@ const getPaymentLabel = (method, subMethod) => {
   return (method || 'PromptPay').toUpperCase();
 };
 
-export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
+export default function OrderStatusModal({ order, onClose, onRefreshOrder, siteSettings }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [copied, setCopied] = useState(false);
+  const [copiedBank, setCopiedBank] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [receiptQrUrl, setReceiptQrUrl] = useState('');
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  const primaryBank = siteSettings?.bankAccounts?.find(b => b.isActive) || {
+    bankName: siteSettings?.bankName || 'ธนาคารกสิกรไทย (KBANK)',
+    accountNo: siteSettings?.bankAccount || '120-8-87467-1',
+    accountName: siteSettings?.bankAccountName || 'บจก. สยาม ฟาร์ม แอนด์ ฟู้ด',
+    accountType: 'บัญชีออมทรัพย์'
+  };
 
   const isQrPayment = ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.paymentMethod) || ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.subPaymentChannel);
 
@@ -171,7 +179,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px sans-serif';
-      ctx.fillText('ร้านเติมเกมอัตโนมัติ 24 ชม. • WWW.BOOSTUP-GAME.ONLINE', 40, 102);
+      ctx.fillText('ผู้รับชำระ: บจก. สยาม ฟาร์ม แอนด์ ฟู้ด (KBANK 120-8-87467-1)', 40, 102);
 
       // Top-right Verified Badge
       ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
@@ -400,21 +408,53 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
 
         <div className="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
           
-          {/* PromptPay QR Section (if waiting for payment and still in step 1) */}
-          {isQrPayment && currentStep === 1 && qrCodeUrl && (
+          {/* PromptPay QR & Bank Transfer Section (if waiting for payment and still in step 1) */}
+          {(isQrPayment || order?.paymentMethod === 'bank_transfer') && currentStep === 1 && (
             <div className="p-4 rounded-2xl bg-white text-zinc-900 text-center space-y-3 shadow-xl">
               <div className="inline-block bg-[#0056b3] text-white px-3 py-1 rounded text-xs font-bold">
-                Thai QR Payment / พร้อมเพย์
+                Thai QR Payment / พร้อมเพย์ & โอนผ่านธนาคาร
               </div>
-              <div className="flex justify-center">
-                <img src={qrCodeUrl} alt="PromptPay QR" className="w-52 h-52 object-contain" />
-              </div>
-              <div className="text-sm font-black text-red-600 text-xl font-['Kanit']">
+              {qrCodeUrl && (
+                <div className="flex justify-center">
+                  <img src={qrCodeUrl} alt="PromptPay QR" className="w-52 h-52 object-contain" />
+                </div>
+              )}
+              <div className="text-sm font-black text-red-600 text-2xl font-['Kanit']">
                 ฿{Number(order.finalAmount).toFixed(2)}
               </div>
               <p className="text-[11px] text-zinc-600">
-                เปิดแอปธนาคารใดก็ได้ แล้วสแกนเพื่อชำระเงิน ระบบจะเติมเข้าเกมให้อัตโนมัติทันที
+                เปิดแอปธนาคารใดก็ได้ แล้วสแกนเพื่อชำระเงิน หรือโอนเข้าบัญชีด้านล่างนี้ได้โดยตรง
               </p>
+
+              {/* Official Bank Account Card with Copy Button */}
+              <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-left space-y-1.5 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-zinc-900 text-xs">
+                    <div className="w-5 h-5 rounded-md bg-[#137e38] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                      K
+                    </div>
+                    <span>{primaryBank.bankName}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(primaryBank.accountNo);
+                      setCopiedBank(true);
+                      setTimeout(() => setCopiedBank(false), 2000);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-200 hover:bg-zinc-300 text-zinc-800 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    {copiedBank ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedBank ? 'คัดลอกแล้ว' : 'คัดลอกเลขบัญชี'}</span>
+                  </button>
+                </div>
+                <div className="text-emerald-700 font-black font-mono text-lg tracking-wider">
+                  {primaryBank.accountNo}
+                </div>
+                <div className="text-[11px] text-zinc-600">
+                  ชื่อบัญชี: <strong className="text-zinc-900">{primaryBank.accountName}</strong> {primaryBank.accountType ? `(${primaryBank.accountType})` : ''}
+                </div>
+              </div>
             </div>
           )}
 

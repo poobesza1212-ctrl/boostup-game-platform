@@ -31,7 +31,7 @@ class PaymentService {
       qrDataUrl,
       rawPayload: payload,
       promptpayNumber: target,
-      accountName: settings.promptpayName || "บจก. บูสต์อัพ (BOOSTUP)",
+      accountName: settings.promptpayName || "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
       amount: Number(amount).toFixed(2),
       expiresAt
     };

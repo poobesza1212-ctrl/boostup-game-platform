@@ -44,9 +44,9 @@ class SlipVerificationService {
     }
 
     // 2. Validate receiver details with store settings
-    const storeBank = siteSettings?.bankAccount || '098-2-33445-5';
-    const storePromptpay = siteSettings?.promptpayNumber || '0891234567';
-    const storeName = siteSettings?.bankAccountName || siteSettings?.siteName || 'BOOSTUP STORE';
+    const storeBank = siteSettings?.bankAccount || '120-8-87467-1';
+    const storePromptpay = siteSettings?.promptpayNumber || '1208874671';
+    const storeName = siteSettings?.bankAccountName || 'บจก. สยาม ฟาร์ม แอนด์ ฟู้ด';
 
     // 3. Automated Slip OCR / AI Data Extraction (Fast 2-second simulation / live ready)
     const transferDate = new Date();

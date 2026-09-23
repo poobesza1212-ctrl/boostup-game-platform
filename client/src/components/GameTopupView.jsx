@@ -122,9 +122,22 @@ export default function GameTopupView({
           <QrCode className="w-5 h-5 text-sky-300" />
         </div>
       ),
-      notice: 'สแกน QR ผ่าน Mobile Banking ทุกธนาคาร',
+      notice: 'สแกน QR หรือโอนเข้าบัญชีกสิกรไทย บจก. สยาม ฟาร์ม แอนด์ ฟู้ด',
       badge: 'ค่าธรรมเนียม 0% (โปรโมชั่นฟรี)',
       badgeType: 'info',
+      feePercent: 0
+    },
+    {
+      id: 'bank_transfer',
+      name: 'โอนผ่านบัญชีธนาคาร (KBANK)',
+      logo: (
+        <div className="w-8 h-8 rounded-lg bg-[#137e38] flex items-center justify-center text-white font-black text-[10px] shadow-sm">
+          KBANK
+        </div>
+      ),
+      notice: 'โอนเข้าบัญชี บจก. สยาม ฟาร์ม แอนด์ ฟู้ด (กสิกรไทย 120-8-87467-1)',
+      badge: 'โอนตรงเข้าบัญชี',
+      badgeType: 'free',
       feePercent: 0
     },
     {
@@ -231,7 +244,7 @@ export default function GameTopupView({
     }
 
     // Fallback mapping to legacy keys if modern key is not explicitly configured
-    if (methodId === 'promptpay_scan' || methodId === 'promptpay_bank') {
+    if (methodId === 'promptpay_scan' || methodId === 'promptpay_bank' || methodId === 'bank_transfer') {
       return pm.promptpay?.enabled !== false;
     }
     if (methodId === 'truemoney_wallet' || methodId === 'truemoney_paynext' || methodId === 'truemoney_promptpay') {
@@ -349,6 +362,7 @@ export default function GameTopupView({
     // Direct payment mapping for backend
     let mappedMethod = 'promptpay';
     if (paymentMethod === 'wallet') mappedMethod = 'wallet';
+    else if (paymentMethod === 'bank_transfer') mappedMethod = 'bank_transfer';
     else if (paymentMethod === 'credit_card' || paymentMethod === 'credit_installment') mappedMethod = 'credit_card';
     else if (paymentMethod.startsWith('truemoney')) mappedMethod = 'truemoney';
     else mappedMethod = 'promptpay';

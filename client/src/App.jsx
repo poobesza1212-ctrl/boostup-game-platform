@@ -551,6 +551,7 @@ export default function App() {
           order={activeOrderForStatus}
           onClose={() => setActiveOrderForStatus(null)}
           onRefreshOrder={() => {}}
+          siteSettings={siteSettings}
         />
       )}
 

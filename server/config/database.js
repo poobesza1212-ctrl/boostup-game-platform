@@ -25,12 +25,12 @@ const defaultData = {
     siteName: "BOOSTUP ร้านเติมเงินเกม",
     siteSlogan: "PLAY MORE GO FURTHER • เติมเกมสุดคุ้ม รวดเร็ว ปลอดภัย 100% เติมง่าย ได้ทันที ไม่ต้องรอนาน",
     announcement: "🔥 ยินดีต้อนรับสู่ BOOSTUP ร้านเติมเงินเกม! เติมไว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
-    promptpayNumber: "",
-    promptpayName: "",
+    promptpayNumber: "1208874671",
+    promptpayName: "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
     truemoneyNumber: "",
-    bankName: "",
-    bankAccount: "",
-    bankAccountName: "",
+    bankName: "ธนาคารกสิกรไทย (KBANK)",
+    bankAccount: "120-8-87467-1",
+    bankAccountName: "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
     contactLine: "@boostup",
     contactFacebook: "BoostUpGameStore",
     contactDiscord: "discord.gg/boostup",
@@ -149,7 +149,26 @@ const defaultData = {
         desc: "ได้รับความไว้วางใจจากเหล่าโปรเพลเยอร์ สตรีมเมอร์ และเกมเมอร์ทั่วประเทศอย่างต่อเนื่อง"
       }
     ],
-    bankAccounts: [],
+    bankAccounts: [
+      {
+        id: "bank_kbank_savings",
+        bankName: "ธนาคารกสิกรไทย (KBANK)",
+        accountNo: "120-8-87467-1",
+        accountName: "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
+        accountType: "บัญชีออมทรัพย์",
+        promptpayLinked: true,
+        isActive: true
+      },
+      {
+        id: "bank_kbank_current",
+        bankName: "ธนาคารกสิกรไทย (KBANK)",
+        accountNo: "158-3-76911-7",
+        accountName: "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
+        accountType: "บัญชีกระแสรายวัน",
+        promptpayLinked: false,
+        isActive: true
+      }
+    ],
     autoSlipApproval: false, // Strict Security: requires admin to approve slips before adding balance
     coinsRewardRate: 10, // 10 coins per 100 THB
     coinsMultiplierText: "2X COINS",
@@ -992,7 +1011,13 @@ class Database {
     else {
       this.data.settings = { ...defaultData.settings, ...this.data.settings };
       if (!this.data.settings.trustPoints) this.data.settings.trustPoints = defaultData.settings.trustPoints;
-      if (!this.data.settings.bankAccounts) this.data.settings.bankAccounts = defaultData.settings.bankAccounts;
+      if (!this.data.settings.bankAccounts || this.data.settings.bankAccounts.length === 0) {
+        this.data.settings.bankAccounts = defaultData.settings.bankAccounts;
+      }
+      if (!this.data.settings.bankAccount) this.data.settings.bankAccount = defaultData.settings.bankAccount;
+      if (!this.data.settings.bankAccountName) this.data.settings.bankAccountName = defaultData.settings.bankAccountName;
+      if (!this.data.settings.bankName) this.data.settings.bankName = defaultData.settings.bankName;
+      if (!this.data.settings.promptpayName) this.data.settings.promptpayName = defaultData.settings.promptpayName;
       if (!this.data.settings.paymentMethods) {
         this.data.settings.paymentMethods = defaultData.settings.paymentMethods;
       } else {

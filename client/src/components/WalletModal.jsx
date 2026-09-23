@@ -31,8 +31,24 @@ export default function WalletModal({ user, siteSettings, onClose, onDepositSucc
   const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [pendingDetails, setPendingDetails] = useState(null);
 
-  const quickAmounts = ['50', '100', '300', '500', '1000', '2000'];
-  const activeBankAccounts = siteSettings?.bankAccounts?.filter(b => b.isActive) || [];
+  const activeBankAccounts = (siteSettings?.bankAccounts && siteSettings.bankAccounts.length > 0)
+    ? siteSettings.bankAccounts.filter(b => b.isActive)
+    : [
+        {
+          id: 'bank_kbank_savings',
+          bankName: 'ธนาคารกสิกรไทย (KBANK)',
+          accountNo: '120-8-87467-1',
+          accountName: 'บจก. สยาม ฟาร์ม แอนด์ ฟู้ด',
+          isActive: true
+        },
+        {
+          id: 'bank_kbank_current',
+          bankName: 'ธนาคารกสิกรไทย (KBANK)',
+          accountNo: '158-3-76911-7',
+          accountName: 'บจก. สยาม ฟาร์ม แอนด์ ฟู้ด',
+          isActive: true
+        }
+      ];
 
   const isDepositChannelEnabled = (channelId) => {
     if (!siteSettings || !siteSettings.paymentMethods) return true;

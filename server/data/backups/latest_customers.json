@@ -3,12 +3,12 @@
     "siteName": "BOOSTUP ร้านเติมเงินเกม",
     "siteSlogan": "PLAY MORE GO FURTHER • เติมเกมสุดคุ้ม รวดเร็ว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
     "announcement": "🔥 ยินดีต้อนรับสู่ BOOSTUP ร้านเติมเงินเกม! เติมไว ปลอดภัย 100% ระบบอัตโนมัติ 24 ชม.",
-    "promptpayNumber": "",
-    "promptpayName": "",
+    "promptpayNumber": "1208874671",
+    "promptpayName": "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
     "truemoneyNumber": "",
-    "bankName": "",
-    "bankAccount": "",
-    "bankAccountName": "",
+    "bankName": "ธนาคารกสิกรไทย (KBANK)",
+    "bankAccount": "120-8-87467-1",
+    "bankAccountName": "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
     "contactLine": "@boostup",
     "contactFacebook": "BoostUpGameStore",
     "contactDiscord": "discord.gg/boostup",
@@ -127,7 +127,26 @@
         "desc": "เกมเมอร์ระดับท็อปและสตรีมเมอร์ไว้วางใจ"
       }
     ],
-    "bankAccounts": [],
+    "bankAccounts": [
+      {
+        "id": "bank_kbank_savings",
+        "bankName": "ธนาคารกสิกรไทย (KBANK)",
+        "accountNo": "120-8-87467-1",
+        "accountName": "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
+        "accountType": "บัญชีออมทรัพย์",
+        "promptpayLinked": true,
+        "isActive": true
+      },
+      {
+        "id": "bank_kbank_current",
+        "bankName": "ธนาคารกสิกรไทย (KBANK)",
+        "accountNo": "158-3-76911-7",
+        "accountName": "บจก. สยาม ฟาร์ม แอนด์ ฟู้ด",
+        "accountType": "บัญชีกระแสรายวัน",
+        "promptpayLinked": false,
+        "isActive": true
+      }
+    ],
     "autoSlipApproval": false,
     "coinsRewardRate": 0.05,
     "coinsMultiplierText": "2X COINS BACK",

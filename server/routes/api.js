@@ -237,6 +237,13 @@ router.post('/orders', async (req, res) => {
 
     const settings = db.getSettings();
     const pmConfig = settings?.paymentMethods || {};
+    const channelToCheck = subPaymentChannel || paymentMethod;
+    if (pmConfig[channelToCheck] && pmConfig[channelToCheck].enabled === false) {
+      return res.status(400).json({
+        success: false,
+        message: `ขออภัย ช่องทางชำระเงิน "${pmConfig[channelToCheck].name || channelToCheck}" ปิดให้บริการชั่วคราว กรุณาเลือกช่องทางอื่น`
+      });
+    }
     if (pmConfig[paymentMethod] && pmConfig[paymentMethod].enabled === false) {
       return res.status(400).json({
         success: false,

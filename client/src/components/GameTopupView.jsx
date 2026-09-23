@@ -220,6 +220,43 @@ export default function GameTopupView({
     }
   ];
 
+  // Check if a payment method is enabled in Admin Settings
+  const isMethodEnabled = (methodId) => {
+    if (!siteSettings || !siteSettings.paymentMethods) return true;
+    const pm = siteSettings.paymentMethods;
+
+    // Direct check for modern 9-channel keys
+    if (pm[methodId] !== undefined) {
+      return pm[methodId].enabled !== false;
+    }
+
+    // Fallback mapping to legacy keys if modern key is not explicitly configured
+    if (methodId === 'promptpay_scan' || methodId === 'promptpay_bank') {
+      return pm.promptpay?.enabled !== false;
+    }
+    if (methodId === 'truemoney_wallet' || methodId === 'truemoney_paynext' || methodId === 'truemoney_promptpay') {
+      return pm.truemoney?.enabled !== false;
+    }
+    if (methodId === 'credit_installment') {
+      return pm.credit_card?.enabled !== false;
+    }
+    if (methodId === 'line_pay' || methodId === 'linepay') {
+      return (pm.line_pay?.enabled !== false) && (pm.linepay?.enabled !== false);
+    }
+    return pm[methodId]?.enabled !== false;
+  };
+
+  const visiblePaymentMethods = useMemo(() => {
+    return paymentMethodsList.filter(item => isMethodEnabled(item.id));
+  }, [paymentMethodsList, siteSettings]);
+
+  // If currently selected payment method is disabled or not in visible list, select first available
+  useEffect(() => {
+    if (visiblePaymentMethods.length > 0 && !visiblePaymentMethods.some(c => c.id === paymentMethod)) {
+      setPaymentMethod(visiblePaymentMethods[0].id);
+    }
+  }, [visiblePaymentMethods, paymentMethod]);
+
   // Primary ID actions
   const handleSaveAsPrimaryId = () => {
     if (!playerId.trim()) {
@@ -512,25 +549,36 @@ export default function GameTopupView({
           </div>
 
           {/* Payment Methods Grid matching Image */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-            {paymentMethodsList.map((channel) => {
-              const isSelected = paymentMethod === channel.id;
+          {visiblePaymentMethods.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200">
+              <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+              <div className="text-sm font-bold text-slate-700 font-['Kanit']">
+                ขณะนี้ช่องทางชำระเงินปิดปรับปรุงชั่วคราว
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                กรุณาติดต่อทีมงานแอดมินทาง LINE หรือลองใหม่อีกครั้งในภายหลังครับ
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+              {visiblePaymentMethods.map((channel) => {
+                const isSelected = paymentMethod === channel.id;
 
-              return (
-                <div
-                  key={channel.id}
-                  onClick={() => setPaymentMethod(channel.id)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between select-none ${
-                    isSelected
-                      ? 'border-2 border-blue-600 bg-blue-50/20 shadow-md ring-1 ring-blue-500/20'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
-                  }`}
-                >
-                  {/* Top: Logo & Title */}
-                  <div className="flex items-start gap-3">
-                    {channel.logo}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-slate-900 font-['Kanit'] leading-tight">
+                return (
+                  <div
+                    key={channel.id}
+                    onClick={() => setPaymentMethod(channel.id)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between select-none ${
+                      isSelected
+                        ? 'border-2 border-blue-600 bg-blue-50/20 shadow-md ring-1 ring-blue-500/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                    }`}
+                  >
+                    {/* Top: Logo & Title */}
+                    <div className="flex items-start gap-3">
+                      {channel.logo}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-slate-900 font-['Kanit'] leading-tight">
                         {channel.name}
                       </div>
                       {channel.subtext && (
@@ -571,6 +619,7 @@ export default function GameTopupView({
               );
             })}
           </div>
+        )}
 
           {/* Conditional Input for TrueMoney Voucher Link if selected */}
           {paymentMethod === 'truemoney_wallet' && (
@@ -715,7 +764,7 @@ export default function GameTopupView({
                 <div className="flex justify-between">
                   <span className="text-slate-500">วิธีชำระเงิน:</span>
                   <span className="font-bold text-emerald-600">
-                    {paymentMethodsList.find(c => c.id === paymentMethod)?.name || 'พร้อมเพย์ QR'}
+                    {visiblePaymentMethods.find(c => c.id === paymentMethod)?.name || paymentMethodsList.find(c => c.id === paymentMethod)?.name || 'พร้อมเพย์ QR'}
                   </span>
                 </div>
               </div>

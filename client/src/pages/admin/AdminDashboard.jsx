@@ -28,6 +28,7 @@ import {
   DollarSign,
   Film,
   Key,
+  Calendar,
   Upload,
   UserPlus,
   ShieldCheck,
@@ -1917,23 +1918,43 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
     }
   };
 
-  // Payment Methods Visibility & Toggle Handlers
+  // Payment Methods Visibility & Toggle Handlers (9 Channels + Legacy)
   const handleTogglePaymentMethod = async (methodKey) => {
-    const currentMethods = siteSettings?.paymentMethods || {
-      promptpay: { enabled: true },
-      truemoney: { enabled: true },
-      bank_transfer: { enabled: true },
-      wallet: { enabled: true },
-      credit_card: { enabled: false }
-    };
-    const isCurrentlyEnabled = currentMethods[methodKey]?.enabled !== false;
+    const currentMethods = siteSettings?.paymentMethods || {};
+    const isCurrentlyEnabled = currentMethods[methodKey] !== undefined
+      ? currentMethods[methodKey]?.enabled !== false
+      : true;
+    
+    const newStatus = !isCurrentlyEnabled;
     const updatedMethods = {
       ...currentMethods,
       [methodKey]: {
         ...(currentMethods[methodKey] || {}),
-        enabled: !isCurrentlyEnabled
+        enabled: newStatus
       }
     };
+
+    // Keep legacy keys synchronized for components that still check them
+    if (methodKey === 'promptpay_scan' || methodKey === 'promptpay_bank') {
+      const anyPP = (methodKey === 'promptpay_scan' ? newStatus : updatedMethods.promptpay_scan?.enabled !== false) ||
+                    (methodKey === 'promptpay_bank' ? newStatus : updatedMethods.promptpay_bank?.enabled !== false);
+      updatedMethods.promptpay = { ...(updatedMethods.promptpay || {}), enabled: anyPP };
+    }
+    if (methodKey === 'truemoney_wallet' || methodKey === 'truemoney_paynext' || methodKey === 'truemoney_promptpay') {
+      const anyTM = (methodKey === 'truemoney_wallet' ? newStatus : updatedMethods.truemoney_wallet?.enabled !== false) ||
+                    (methodKey === 'truemoney_paynext' ? newStatus : updatedMethods.truemoney_paynext?.enabled !== false) ||
+                    (methodKey === 'truemoney_promptpay' ? newStatus : updatedMethods.truemoney_promptpay?.enabled !== false);
+      updatedMethods.truemoney = { ...(updatedMethods.truemoney || {}), enabled: anyTM };
+    }
+    if (methodKey === 'credit_card' || methodKey === 'credit_installment') {
+      const anyCard = (methodKey === 'credit_card' ? newStatus : updatedMethods.credit_card?.enabled !== false) ||
+                      (methodKey === 'credit_installment' ? newStatus : updatedMethods.credit_installment?.enabled !== false);
+      updatedMethods.credit_card = { ...(updatedMethods.credit_card || {}), enabled: anyCard };
+    }
+    if (methodKey === 'line_pay') {
+      updatedMethods.linepay = { ...(updatedMethods.linepay || {}), enabled: newStatus };
+    }
+
     const updatedSettings = {
       ...siteSettings,
       paymentMethods: updatedMethods
@@ -1952,20 +1973,36 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
   };
 
   const handleSetAllPaymentMethods = async (enable) => {
-    const currentMethods = siteSettings?.paymentMethods || {
-      promptpay: { enabled: true },
-      truemoney: { enabled: true },
-      bank_transfer: { enabled: true },
-      wallet: { enabled: true },
-      credit_card: { enabled: false }
-    };
+    const currentMethods = siteSettings?.paymentMethods || {};
     const updatedMethods = { ...currentMethods };
-    ['promptpay', 'truemoney', 'bank_transfer', 'wallet'].forEach(k => {
+
+    const allKeys = [
+      'promptpay_scan',
+      'promptpay_bank',
+      'wallet',
+      'credit_card',
+      'credit_installment',
+      'truemoney_wallet',
+      'truemoney_paynext',
+      'truemoney_promptpay',
+      'line_pay',
+      'linepay',
+      'promptpay',
+      'truemoney',
+      'bank_transfer'
+    ];
+
+    allKeys.forEach(k => {
       updatedMethods[k] = { ...(updatedMethods[k] || {}), enabled: enable };
     });
+
     if (!enable) {
+      // Keep promptpay active so the store can always accept payments
+      updatedMethods.promptpay_scan = { ...(updatedMethods.promptpay_scan || {}), enabled: true };
+      updatedMethods.promptpay_bank = { ...(updatedMethods.promptpay_bank || {}), enabled: true };
       updatedMethods.promptpay = { ...(updatedMethods.promptpay || {}), enabled: true };
     }
+
     const updatedSettings = {
       ...siteSettings,
       paymentMethods: updatedMethods
@@ -1980,7 +2017,9 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
       });
       showAlert({
         title: 'บันทึกสถานะเรียบร้อย',
-        message: enable ? 'เปิดใช้งานทุกช่องทางการชำระเงินเรียบร้อยแล้ว' : 'เปิดเฉพาะพร้อมเพย์ และปิดช่องทางอื่นเรียบร้อยแล้ว',
+        message: enable 
+          ? 'เปิดใช้งานครบทั้ง 9 ช่องทางการชำระเงินที่หน้าร้านแล้ว' 
+          : 'เปิดเฉพาะพร้อมเพย์ (PromptPay) และปิดช่องทางอื่นเรียบร้อยแล้ว',
         type: 'success'
       });
     } catch (e) {
@@ -5966,91 +6005,171 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {[
                     {
-                      id: 'promptpay',
-                      name: 'พร้อมเพย์ QR Code (PromptPay)',
-                      sub: 'สแกน QR Code พร้อมเพย์ ชำระเงินสะดวก ตรวจสลิป AI',
-                      icon: QrCode,
-                      badge: 'แนะนำ',
+                      id: 'promptpay_scan',
+                      name: 'สแกนผ่านพร้อมเพย์',
+                      sub: 'ระยะเวลาตรวจสอบชำระเงิน 1-3 วินาที (ระบบอัตโนมัติ 24 ชม.)',
+                      badge: 'ไม่มีค่าธรรมเนียม',
                       badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                      iconColor: 'text-emerald-400',
-                      iconBg: 'bg-emerald-500/10 border-emerald-500/20',
+                      category: 'พร้อมเพย์',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#003b71] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
+                          PP
+                        </div>
+                      )
                     },
                     {
-                      id: 'truemoney',
-                      name: 'ซองของขวัญ ทรูมันนี่ (TrueMoney Wallet)',
-                      sub: 'ส่งลิงก์ซองของขวัญทรูมันนี่ เติมเงินอัตโนมัติ 24 ชม.',
-                      icon: Gift,
-                      badge: 'ยอดนิยม',
+                      id: 'promptpay_bank',
+                      name: 'QR PromptPay ธนาคาร',
+                      sub: 'สแกน QR ผ่าน Mobile Banking ทุกธนาคาร (ค่าธรรมเนียม 0%)',
+                      badge: 'ค่าธรรมเนียม 0%',
+                      badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                      category: 'พร้อมเพย์',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#1a3c61] flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <QrCode className="w-5 h-5 text-sky-300" />
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'wallet',
+                      name: 'BOOSTUP Wallet',
+                      sub: 'ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋าสมาชิก BOOSTUP',
+                      badge: 'สะดวกทันใจ',
+                      badgeColor: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+                      category: 'กระเป๋าเงิน',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <Wallet className="w-5 h-5" />
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'credit_card',
+                      name: 'ชำระผ่านบัตรเครดิต',
+                      sub: 'รองรับ VISA, Mastercard, JCB (ความปลอดภัยสูงสุด 3D Secure)',
+                      badge: 'VISA • MC • JCB',
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      category: 'บัตรเครดิต',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#1e293b] flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <CreditCard className="w-5 h-5 text-amber-400" />
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'credit_installment',
+                      name: 'ผ่อนชำระผ่านบัตรเครดิต',
+                      sub: 'ผ่อนชำระ 0% สำหรับยอด 1,000 บาทขึ้นไป ดอกเบี้ย 0% สูงสุด 10 เดือน',
+                      badge: 'ดอกเบี้ย 0% 10 ด.',
+                      badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                      category: 'ผ่อนชำระ',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#0f172a] flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <Calendar className="w-5 h-5 text-indigo-400" />
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'truemoney_wallet',
+                      name: 'True Money Wallet',
+                      sub: 'โอนผ่าน TrueMoney Wallet หรือ ซองอั่งเปาของขวัญอัตโนมัติ',
+                      badge: 'ไม่มีค่าธรรมเนียม',
                       badgeColor: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-                      iconColor: 'text-orange-400',
-                      iconBg: 'bg-orange-500/10 border-orange-500/20',
+                      category: 'TrueMoney',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#ff6000] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
+                          TM
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'truemoney_paynext',
+                      name: 'True Money Pay Next (ใช้ก่อน จ่ายทีหลัง)',
+                      sub: 'รองรับทั้ง Pay Next และ Pay Next Extra ค่าธรรมเนียม 0%',
+                      badge: 'ใช้ก่อน จ่ายทีหลัง',
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      category: 'TrueMoney',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 flex items-center justify-center text-white font-black text-[9px] shrink-0 shadow-sm">
+                          NEXT
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'truemoney_promptpay',
+                      name: 'True Money PromptPay (Scan)',
+                      sub: 'สแกน QR ผ่านแอป TrueMoney ตรวจสอบชำระเงิน 1-3 วินาที',
+                      badge: 'ไม่มีค่าธรรมเนียม',
+                      badgeColor: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                      category: 'TrueMoney',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#ff8c00] flex items-center justify-center text-white shrink-0 shadow-sm">
+                          <QrCode className="w-5 h-5 text-white" />
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'line_pay',
+                      name: 'LINE Pay',
+                      sub: 'ชำระเงินผ่าน Rabbit LINE Pay อัตโนมัติ รวดเร็ว ปลอดภัย',
+                      badge: 'รองรับ LINE Pay',
+                      badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                      category: 'LINE Pay',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-[#06c755] flex items-center justify-center text-white font-black text-[9px] shrink-0 shadow-sm">
+                          LINE
+                        </div>
+                      )
                     },
                     {
                       id: 'bank_transfer',
                       name: 'โอนผ่านบัญชีธนาคาร (Bank Transfer)',
-                      sub: 'โอนเงินเข้าบัญชีธนาคารของร้าน พร้อมระบบแนบสลิปตรวจสอบ',
-                      icon: Building2,
+                      sub: 'โอนเงินเข้าบัญชีธนาคารของร้าน พร้อมระบบตรวจสอบและแนบสลิป',
                       badge: 'แนบสลิป',
                       badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                      iconColor: 'text-blue-400',
-                      iconBg: 'bg-blue-500/10 border-blue-500/20',
-                    },
-                    {
-                      id: 'wallet',
-                      name: 'กระเป๋าเงินสมาชิก BOOSTUP (User Wallet)',
-                      sub: 'หักเงินจากยอดคงเหลือในบัญชีสมาชิก เติมเกมได้ทันที',
-                      icon: Wallet,
-                      badge: 'สะดวกสุด',
-                      badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-                      iconColor: 'text-purple-400',
-                      iconBg: 'bg-purple-500/10 border-purple-500/20',
-                    },
-                    {
-                      id: 'credit_card',
-                      name: 'บัตรเครดิต / เดบิต (Credit / Debit Card)',
-                      sub: 'รองรับการชำระผ่าน Visa, Mastercard, JCB (ระบบเกตเวย์)',
-                      icon: CreditCard,
-                      badge: 'เร็วๆ นี้',
-                      badgeColor: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-                      iconColor: 'text-pink-400',
-                      iconBg: 'bg-pink-500/10 border-pink-500/20',
-                    },
+                      category: 'โอนบัญชีธนาคาร',
+                      logoEl: (
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                      )
+                    }
                   ].map((ch) => {
-                    const isEnabled = ch.id === 'credit_card'
-                      ? Boolean(siteSettings.paymentMethods?.credit_card?.enabled)
-                      : siteSettings.paymentMethods?.[ch.id]?.enabled !== false;
-                    const IconComp = ch.icon;
+                    const isEnabled = siteSettings.paymentMethods?.[ch.id] !== undefined
+                      ? siteSettings.paymentMethods[ch.id]?.enabled !== false
+                      : true;
 
                     return (
                       <div
                         key={ch.id}
-                        className={`p-4 rounded-xl border transition-all duration-200 flex items-center justify-between gap-4 ${
+                        className={`p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-4 ${
                           isEnabled
-                            ? 'bg-zinc-900/90 border-zinc-700/80 shadow-sm'
-                            : 'bg-zinc-950/40 border-zinc-800/60 opacity-60'
+                            ? 'bg-zinc-900/90 border-zinc-700/80 shadow-sm ring-1 ring-emerald-500/10'
+                            : 'bg-zinc-950/50 border-zinc-850 opacity-55'
                         }`}
                       >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${ch.iconBg}`}>
-                            <IconComp className={`w-5 h-5 ${ch.iconColor}`} />
-                          </div>
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          {ch.logoEl}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-white truncate">{ch.name}</span>
+                              <span className="text-xs font-bold text-white truncate font-['Kanit']">{ch.name}</span>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${ch.badgeColor}`}>
                                 {ch.badge}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
+                                {ch.category}
                               </span>
                             </div>
                             <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
                               {ch.sub}
                             </p>
                             <div className="mt-2 flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-                              <span className={`text-[10px] font-medium ${isEnabled ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                                {isEnabled ? 'เปิดแสดงผล (Active)' : 'ปิดการแสดงผล (Disabled)'}
+                              <span className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-emerald-400 shadow-sm shadow-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                              <span className={`text-[11px] font-bold ${isEnabled ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                {isEnabled ? 'เปิดแสดงผลที่หน้าร้าน (Active)' : 'ปิดการแสดงผล (Disabled)'}
                               </span>
                             </div>
                           </div>
@@ -6063,7 +6182,7 @@ export default function AdminDashboard({ onBackToStore, adminUser, onLogout }) {
                             onChange={() => handleTogglePaymentMethod(ch.id)}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                          <div className="w-12 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[3px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
                         </label>
                       </div>
                     );

@@ -37,6 +37,69 @@ const defaultData = {
     simulationMode: true, // Allows instant full end-to-end testing out of the box
     autoTopupEnabled: true,
     paymentMethods: {
+      promptpay_scan: {
+        id: "promptpay_scan",
+        name: "สแกนผ่านพร้อมเพย์",
+        sublabel: "ระยะเวลาตรวจสอบชำระเงิน 1-3 วินาที (ระบบอัตโนมัติ 24 ชม.)",
+        enabled: true,
+        icon: "QrCode"
+      },
+      promptpay_bank: {
+        id: "promptpay_bank",
+        name: "QR PromptPay ธนาคาร",
+        sublabel: "สแกน QR ผ่าน Mobile Banking ทุกธนาคาร (ค่าธรรมเนียม 0%)",
+        enabled: true,
+        icon: "QrCode"
+      },
+      wallet: {
+        id: "wallet",
+        name: "BOOSTUP Wallet",
+        sublabel: "ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋า ไม่ต้องสแกนใหม่",
+        enabled: true,
+        icon: "Wallet"
+      },
+      credit_card: {
+        id: "credit_card",
+        name: "ชำระผ่านบัตรเครดิต",
+        sublabel: "รองรับ VISA, Mastercard, JCB (ความปลอดภัยสูงสุด 3D Secure)",
+        enabled: true,
+        icon: "CreditCard"
+      },
+      credit_installment: {
+        id: "credit_installment",
+        name: "ผ่อนชำระผ่านบัตรเครดิต",
+        sublabel: "ผ่อนชำระ 0% สำหรับยอด 1,000 บาทขึ้นไป ดอกเบี้ย 0% สูงสุด 10 เดือน",
+        enabled: true,
+        icon: "Calendar"
+      },
+      truemoney_wallet: {
+        id: "truemoney_wallet",
+        name: "True Money Wallet",
+        sublabel: "โอนผ่าน TrueMoney Wallet หรือ ซองอั่งเปาของขวัญอัตโนมัติ",
+        enabled: true,
+        icon: "Gift"
+      },
+      truemoney_paynext: {
+        id: "truemoney_paynext",
+        name: "True Money Pay Next (ใช้ก่อน จ่ายทีหลัง)",
+        sublabel: "รองรับทั้ง Pay Next และ Pay Next Extra ค่าธรรมเนียม 0%",
+        enabled: true,
+        icon: "CreditCard"
+      },
+      truemoney_promptpay: {
+        id: "truemoney_promptpay",
+        name: "True Money PromptPay (Scan)",
+        sublabel: "สแกน QR ผ่านแอป TrueMoney ตรวจสอบชำระเงิน 1-3 วินาที",
+        enabled: true,
+        icon: "QrCode"
+      },
+      line_pay: {
+        id: "line_pay",
+        name: "LINE Pay",
+        sublabel: "ชำระเงินผ่าน Rabbit LINE Pay อัตโนมัติ",
+        enabled: true,
+        icon: "CreditCard"
+      },
       promptpay: {
         id: "promptpay",
         name: "พร้อมเพย์ QR Code (PromptPay)",
@@ -57,20 +120,6 @@ const defaultData = {
         sublabel: "โอนเงินเข้าบัญชีธนาคารของร้าน พร้อมระบบตรวจสอบและแนบสลิป",
         enabled: true,
         icon: "Building2"
-      },
-      wallet: {
-        id: "wallet",
-        name: "กระเป๋าเงินสมาชิก BOOSTUP (User Wallet)",
-        sublabel: "ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋า ไม่ต้องสแกนใหม่",
-        enabled: true,
-        icon: "Wallet"
-      },
-      credit_card: {
-        id: "credit_card",
-        name: "บัตรเครดิต / เดบิต (Credit / Debit Card)",
-        sublabel: "ชำระผ่านบัตร Visa, Mastercard, JCB (ระบบเกตเวย์ภายนอก)",
-        enabled: false,
-        icon: "CreditCard"
       }
     },
     logoUrl: "/uploads/boostup_logo.jpg",

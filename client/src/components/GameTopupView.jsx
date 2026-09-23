@@ -387,6 +387,33 @@ export default function GameTopupView({
     }
   };
 
+  const renderPackageBrandIcon = () => {
+    const isValorant = game?.id === 'valorant' || game?.slug === 'valorant' || (game?.name && game.name.toLowerCase().includes('valorant'));
+    if (isValorant) {
+      return (
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-rose-300 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
+          <svg role="img" viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5" fill="#ff4655" xmlns="http://www.w3.org/2000/svg">
+            <path d="M23.792 2.152a.252.252 0 0 0-.098.083c-3.384 4.23-6.769 8.46-10.15 12.69-.107.093-.025.288.119.265 2.439.003 4.877 0 7.316.001a.66.66 0 0 0 .552-.25c.774-.967 1.55-1.934 2.324-2.903a.72.72 0 0 0 .144-.49c-.002-3.077 0-6.153-.003-9.23.016-.11-.1-.206-.204-.167zM.077 2.166c-.077.038-.074.132-.076.205.002 3.074.001 6.15.001 9.225a.679.679 0 0 0 .158.463l7.64 9.55c.12.152.308.25.505.247 2.455 0 4.91.003 7.365 0 .142.02.222-.174.116-.265C10.661 15.176 5.526 8.766.4 2.35c-.08-.094-.174-.272-.322-.184z"/>
+          </svg>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-blue-200/80 bg-white p-1 flex items-center justify-center shrink-0 shadow-2xs">
+        <img
+          src={game?.icon || game?.image || '/boostup_logo.jpg'}
+          alt="game logo"
+          className="w-full h-full object-contain rounded-full"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/boostup_logo.jpg';
+          }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-['Prompt',sans-serif] pb-24 selection:bg-blue-600 selection:text-white">
       
@@ -676,54 +703,39 @@ export default function GameTopupView({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {filteredPackages.map((pkg) => {
                 const isSelected = selectedPackage?.id === pkg.id;
-                const hasDiscount = pkg.originalPrice && pkg.originalPrice > pkg.price;
+                const coinReward = pkg.coinReward || Math.max(1, Math.round(pkg.price * 0.01));
+                const formattedPrice = Number(pkg.price).toLocaleString('en-US', {
+                  minimumFractionDigits: pkg.price % 1 === 0 ? 0 : 2,
+                  maximumFractionDigits: 2
+                });
 
                 return (
                   <div
                     key={pkg.id}
                     onClick={() => setSelectedPackage(pkg)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none relative ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between bg-white select-none min-h-[96px] ${
                       isSelected
-                        ? 'border-2 border-blue-600 bg-blue-50/25 shadow-md ring-1 ring-blue-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                        ? 'border-2 border-blue-500 bg-blue-50/15 shadow-sm ring-2 ring-blue-400/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
                     }`}
                   >
-                    {/* Top Package Details */}
-                    <div>
-                      {/* Package Name */}
-                      <div className="text-sm font-bold text-slate-900 font-['Kanit'] line-clamp-2 leading-snug">
+                    {/* Top Row: Name and Yellow Coin Badge */}
+                    <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                      <div className="text-sm sm:text-base font-bold text-slate-800 font-['Kanit'] leading-tight">
                         {pkg.name}
                       </div>
-
-                      {/* Bonus tag if present */}
-                      {pkg.bonus && (
-                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
-                          +{pkg.bonus}
-                        </span>
-                      )}
+                      <div className="bg-[#facc15] text-amber-950 font-bold text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs shrink-0 whitespace-nowrap">
+                        <span>🪙</span>
+                        <span>รับ {coinReward} คอยน์</span>
+                      </div>
                     </div>
 
-                    {/* Bottom Price */}
-                    <div className="mt-4 pt-2 border-t border-slate-100 flex items-baseline justify-between">
-                      <div>
-                        {hasDiscount && (
-                          <div className="text-[10px] text-slate-400 line-through">
-                            ฿{Number(pkg.originalPrice).toLocaleString()}
-                          </div>
-                        )}
-                        <div className="text-base sm:text-lg font-black text-blue-600 font-['Kanit'] leading-tight">
-                          ฿{Number(pkg.price).toLocaleString()}
-                        </div>
+                    {/* Bottom Row: Price in Blue and Circular Logo Badge */}
+                    <div className="mt-3 pt-2 flex items-center justify-between">
+                      <div className="text-sm sm:text-base font-bold text-blue-600 font-['Kanit']">
+                        ฿{formattedPrice}
                       </div>
-
-                      {/* Selected check */}
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                        isSelected 
-                          ? 'border-blue-600 bg-blue-600 text-white' 
-                          : 'border-slate-200 bg-white'
-                      }`}>
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                      </div>
+                      {renderPackageBrandIcon()}
                     </div>
                   </div>
                 );
@@ -734,7 +746,7 @@ export default function GameTopupView({
         </div>
 
         {/* 6. STEP 4: ตรวจสอบข้อมูลคำสั่งซื้อ & ยืนยันการชำระเงิน (DIRECT CHECKOUT - NO WALLET REQUIRED) */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-12">
+        <div id="checkout-summary-section" className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-12">
           
           <div className="flex items-center gap-2 mb-5">
             <span className="text-blue-600 font-black text-xl leading-none">|</span>
@@ -874,6 +886,35 @@ export default function GameTopupView({
 
         </div>
 
+      </div>
+
+      {/* Floating Bottom Helper Pill matching Screenshot */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedPackage) {
+              document.getElementById('checkout-summary-section')?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          className={`pointer-events-auto px-5 py-2.5 rounded-full shadow-2xl border flex items-center gap-2.5 text-xs font-bold font-['Kanit'] transition-all transform active:scale-95 ${
+            selectedPackage
+              ? 'bg-[#0f172a] hover:bg-slate-800 text-white border-slate-700/80 cursor-pointer shadow-blue-500/10'
+              : 'bg-[#1e293b]/95 text-slate-200 border-slate-700/60 cursor-default'
+          }`}
+        >
+          <ShoppingCart className="w-4 h-4 text-blue-400" />
+          <span>
+            {selectedPackage
+              ? `เลือก: ${selectedPackage.name} (฿${Number(selectedPackage.price).toLocaleString('en-US', { minimumFractionDigits: selectedPackage.price % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })})`
+              : 'กรุณาระบุ แพ็คเกจเติมเกม'}
+          </span>
+          {selectedPackage ? (
+            <span className="text-emerald-400 text-xs ml-0.5">🚀 ชำระเงิน</span>
+          ) : (
+            <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin ml-1" />
+          )}
+        </button>
       </div>
 
     </div>

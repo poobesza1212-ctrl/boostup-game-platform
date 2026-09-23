@@ -15,6 +15,69 @@
     "simulationMode": true,
     "autoTopupEnabled": true,
     "paymentMethods": {
+      "promptpay_scan": {
+        "id": "promptpay_scan",
+        "name": "สแกนผ่านพร้อมเพย์",
+        "sublabel": "ระยะเวลาตรวจสอบชำระเงิน 1-3 วินาที (ระบบอัตโนมัติ 24 ชม.)",
+        "enabled": true,
+        "icon": "QrCode"
+      },
+      "promptpay_bank": {
+        "id": "promptpay_bank",
+        "name": "QR PromptPay ธนาคาร",
+        "sublabel": "สแกน QR ผ่าน Mobile Banking ทุกธนาคาร (ค่าธรรมเนียม 0%)",
+        "enabled": true,
+        "icon": "QrCode"
+      },
+      "wallet": {
+        "id": "wallet",
+        "name": "BOOSTUP Wallet",
+        "sublabel": "ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋า ไม่ต้องสแกนใหม่",
+        "enabled": true,
+        "icon": "Wallet"
+      },
+      "credit_card": {
+        "id": "credit_card",
+        "name": "ชำระผ่านบัตรเครดิต",
+        "sublabel": "รองรับ VISA, Mastercard, JCB (ความปลอดภัยสูงสุด 3D Secure)",
+        "enabled": true,
+        "icon": "CreditCard"
+      },
+      "credit_installment": {
+        "id": "credit_installment",
+        "name": "ผ่อนชำระผ่านบัตรเครดิต",
+        "sublabel": "ผ่อนชำระ 0% สำหรับยอด 1,000 บาทขึ้นไป ดอกเบี้ย 0% สูงสุด 10 เดือน",
+        "enabled": true,
+        "icon": "Calendar"
+      },
+      "truemoney_wallet": {
+        "id": "truemoney_wallet",
+        "name": "True Money Wallet",
+        "sublabel": "โอนผ่าน TrueMoney Wallet หรือ ซองอั่งเปาของขวัญอัตโนมัติ",
+        "enabled": true,
+        "icon": "Gift"
+      },
+      "truemoney_paynext": {
+        "id": "truemoney_paynext",
+        "name": "True Money Pay Next (ใช้ก่อน จ่ายทีหลัง)",
+        "sublabel": "รองรับทั้ง Pay Next และ Pay Next Extra ค่าธรรมเนียม 0%",
+        "enabled": true,
+        "icon": "CreditCard"
+      },
+      "truemoney_promptpay": {
+        "id": "truemoney_promptpay",
+        "name": "True Money PromptPay (Scan)",
+        "sublabel": "สแกน QR ผ่านแอป TrueMoney ตรวจสอบชำระเงิน 1-3 วินาที",
+        "enabled": true,
+        "icon": "QrCode"
+      },
+      "line_pay": {
+        "id": "line_pay",
+        "name": "LINE Pay",
+        "sublabel": "ชำระเงินผ่าน Rabbit LINE Pay อัตโนมัติ",
+        "enabled": true,
+        "icon": "CreditCard"
+      },
       "promptpay": {
         "id": "promptpay",
         "name": "พร้อมเพย์ QR Code (PromptPay)",
@@ -35,20 +98,6 @@
         "sublabel": "โอนเงินเข้าบัญชีธนาคารของร้าน พร้อมระบบตรวจสอบและแนบสลิป",
         "enabled": true,
         "icon": "Building2"
-      },
-      "wallet": {
-        "id": "wallet",
-        "name": "กระเป๋าเงินสมาชิก BOOSTUP (User Wallet)",
-        "sublabel": "ชำระเงินทันทีด้วยยอดเงินคงเหลือในกระเป๋า ไม่ต้องสแกนใหม่",
-        "enabled": true,
-        "icon": "Wallet"
-      },
-      "credit_card": {
-        "id": "credit_card",
-        "name": "บัตรเครดิต / เดบิต (Credit / Debit Card)",
-        "sublabel": "ชำระผ่านบัตร Visa, Mastercard, JCB (ระบบเกตเวย์ภายนอก)",
-        "enabled": false,
-        "icon": "CreditCard"
       }
     },
     "logoUrl": "/uploads/boostup_logo.jpg",
@@ -368,51 +417,321 @@
           "id": "val_475",
           "name": "475 VP",
           "currencyAmount": 475,
-          "originalPrice": 175,
-          "price": 150,
-          "costPrice": 135,
-          "bonus": "+0",
+          "originalPrice": 150,
+          "price": 132.5,
+          "costPrice": 120,
+          "coinReward": 1,
           "isPopular": false
         },
         {
           "id": "val_1000",
-          "name": "1,000 VP",
+          "name": "1000 VP",
           "currencyAmount": 1000,
-          "originalPrice": 350,
-          "price": 299,
-          "costPrice": 270,
-          "bonus": "+50 VP",
+          "originalPrice": 290,
+          "price": 265,
+          "costPrice": 240,
+          "coinReward": 2,
           "isPopular": true
         },
         {
+          "id": "val_1475",
+          "name": "1475 VP",
+          "currencyAmount": 1475,
+          "originalPrice": 430,
+          "price": 397.5,
+          "costPrice": 360,
+          "coinReward": 3,
+          "isPopular": false
+        },
+        {
           "id": "val_2050",
-          "name": "2,050 VP",
+          "name": "2050 VP",
           "currencyAmount": 2050,
-          "originalPrice": 700,
-          "price": 599,
-          "costPrice": 540,
-          "bonus": "+150 VP",
+          "originalPrice": 580,
+          "price": 530,
+          "costPrice": 480,
+          "coinReward": 5,
+          "isPopular": false
+        },
+        {
+          "id": "val_2525",
+          "name": "2525 VP",
+          "currencyAmount": 2525,
+          "originalPrice": 720,
+          "price": 662.5,
+          "costPrice": 600,
+          "coinReward": 6,
+          "isPopular": false
+        },
+        {
+          "id": "val_3050",
+          "name": "3050 VP",
+          "currencyAmount": 3050,
+          "originalPrice": 860,
+          "price": 795,
+          "costPrice": 720,
+          "coinReward": 7,
           "isPopular": false
         },
         {
           "id": "val_3650",
-          "name": "3,650 VP",
+          "name": "3650 VP",
           "currencyAmount": 3650,
-          "originalPrice": 1250,
-          "price": 1049,
-          "costPrice": 950,
-          "bonus": "+350 VP",
+          "originalPrice": 1020,
+          "price": 937.04,
+          "costPrice": 850,
+          "coinReward": 9,
+          "isPopular": false
+        },
+        {
+          "id": "val_4100",
+          "name": "4100 VP",
+          "currencyAmount": 4100,
+          "originalPrice": 1150,
+          "price": 1060,
+          "costPrice": 960,
+          "coinReward": 10,
+          "isPopular": false
+        },
+        {
+          "id": "val_4125",
+          "name": "4125 VP",
+          "currencyAmount": 4125,
+          "originalPrice": 1160,
+          "price": 1069.54,
+          "costPrice": 970,
+          "coinReward": 10,
+          "isPopular": false
+        },
+        {
+          "id": "val_4650",
+          "name": "4650 VP",
+          "currencyAmount": 4650,
+          "originalPrice": 1310,
+          "price": 1202.04,
+          "costPrice": 1090,
+          "coinReward": 12,
           "isPopular": false
         },
         {
           "id": "val_5350",
-          "name": "5,350 VP",
+          "name": "5350 VP",
           "currencyAmount": 5350,
-          "originalPrice": 1750,
-          "price": 1499,
-          "costPrice": 1350,
-          "bonus": "+600 VP",
+          "originalPrice": 1460,
+          "price": 1344.08,
+          "costPrice": 1220,
+          "coinReward": 13,
           "isPopular": false
+        },
+        {
+          "id": "val_5825",
+          "name": "5825 VP",
+          "currencyAmount": 5825,
+          "originalPrice": 1600,
+          "price": 1476.58,
+          "costPrice": 1340,
+          "coinReward": 14,
+          "isPopular": false
+        },
+        {
+          "id": "val_6350",
+          "name": "6350 VP",
+          "currencyAmount": 6350,
+          "originalPrice": 1750,
+          "price": 1609.08,
+          "costPrice": 1460,
+          "coinReward": 16,
+          "isPopular": false
+        },
+        {
+          "id": "val_6700",
+          "name": "6700 VP",
+          "currencyAmount": 6700,
+          "originalPrice": 1880,
+          "price": 1732.04,
+          "costPrice": 1570,
+          "coinReward": 17,
+          "isPopular": false
+        },
+        {
+          "id": "val_6825",
+          "name": "6825 VP",
+          "currencyAmount": 6825,
+          "originalPrice": 1890,
+          "price": 1741.58,
+          "costPrice": 1580,
+          "coinReward": 17,
+          "isPopular": false
+        },
+        {
+          "id": "val_7150",
+          "name": "7150 VP",
+          "currencyAmount": 7150,
+          "originalPrice": 2010,
+          "price": 1855,
+          "costPrice": 1680,
+          "coinReward": 18,
+          "isPopular": false
+        },
+        {
+          "id": "val_7400",
+          "name": "7400 VP",
+          "currencyAmount": 7400,
+          "originalPrice": 2030,
+          "price": 1874.08,
+          "costPrice": 1700,
+          "coinReward": 18,
+          "isPopular": false
+        },
+        {
+          "id": "val_7750",
+          "name": "7750 VP",
+          "currencyAmount": 7750,
+          "originalPrice": 2170,
+          "price": 1997.04,
+          "costPrice": 1810,
+          "coinReward": 19,
+          "isPopular": false
+        },
+        {
+          "id": "val_7875",
+          "name": "7875 VP",
+          "currencyAmount": 7875,
+          "originalPrice": 2180,
+          "price": 2006.58,
+          "costPrice": 1820,
+          "coinReward": 20,
+          "isPopular": false
+        },
+        {
+          "id": "val_8200",
+          "name": "8200 VP",
+          "currencyAmount": 8200,
+          "originalPrice": 2300,
+          "price": 2120,
+          "costPrice": 1920,
+          "coinReward": 21,
+          "isPopular": false
+        },
+        {
+          "id": "val_8400",
+          "name": "8400 VP",
+          "currencyAmount": 8400,
+          "originalPrice": 2320,
+          "price": 2139.08,
+          "costPrice": 1940,
+          "coinReward": 21,
+          "isPopular": false
+        },
+        {
+          "id": "val_8750",
+          "name": "8750 VP",
+          "currencyAmount": 8750,
+          "originalPrice": 2460,
+          "price": 2262.04,
+          "costPrice": 2050,
+          "coinReward": 22,
+          "isPopular": false
+        },
+        {
+          "id": "val_9000",
+          "name": "9000 VP",
+          "currencyAmount": 9000,
+          "originalPrice": 2480,
+          "price": 2281.12,
+          "costPrice": 2070,
+          "coinReward": 22,
+          "isPopular": false
+        },
+        {
+          "id": "val_9475",
+          "name": "9475 VP",
+          "currencyAmount": 9475,
+          "originalPrice": 2620,
+          "price": 2413.62,
+          "costPrice": 2190,
+          "coinReward": 24,
+          "isPopular": false
+        },
+        {
+          "id": "val_9800",
+          "name": "9800 VP",
+          "currencyAmount": 9800,
+          "originalPrice": 2750,
+          "price": 2527.04,
+          "costPrice": 2290,
+          "coinReward": 25,
+          "isPopular": false
+        },
+        {
+          "id": "val_10000",
+          "name": "10000 VP",
+          "currencyAmount": 10000,
+          "originalPrice": 2770,
+          "price": 2546.12,
+          "costPrice": 2310,
+          "coinReward": 25,
+          "isPopular": false
+        },
+        {
+          "id": "val_11000",
+          "name": "11000 VP",
+          "currencyAmount": 11000,
+          "originalPrice": 2920,
+          "price": 2687.1,
+          "costPrice": 2440,
+          "coinReward": 26,
+          "isPopular": true
+        },
+        {
+          "id": "val_12000",
+          "name": "12000 VP",
+          "currencyAmount": 12000,
+          "originalPrice": 3210,
+          "price": 2952.1,
+          "costPrice": 2680,
+          "coinReward": 29,
+          "isPopular": false
+        },
+        {
+          "id": "val_13050",
+          "name": "13050 VP",
+          "currencyAmount": 13050,
+          "originalPrice": 3500,
+          "price": 3217.1,
+          "costPrice": 2920,
+          "coinReward": 32,
+          "isPopular": false
+        },
+        {
+          "id": "val_14650",
+          "name": "14650 VP",
+          "currencyAmount": 14650,
+          "originalPrice": 3940,
+          "price": 3624.14,
+          "costPrice": 3290,
+          "coinReward": 36,
+          "isPopular": false
+        },
+        {
+          "id": "val_16350",
+          "name": "16350 VP",
+          "currencyAmount": 16350,
+          "originalPrice": 4380,
+          "price": 4031.18,
+          "costPrice": 3660,
+          "coinReward": 40,
+          "isPopular": false
+        },
+        {
+          "id": "val_22000",
+          "name": "22000 VP",
+          "currencyAmount": 22000,
+          "originalPrice": 5840,
+          "price": 5374.2,
+          "costPrice": 4880,
+          "coinReward": 53,
+          "isPopular": true
         }
       ]
     },
@@ -759,7 +1078,7 @@
       "endpoint": "https://api.smile.one/v1/topup",
       "apiKey": "sm_live_9482759103829103",
       "apiSecret": "sec_a91048201948201",
-      "balance": 13548,
+      "balance": 13218,
       "currency": "THB",
       "status": "online",
       "latencyMs": 223,
@@ -802,10 +1121,10 @@
       "endpoint": "https://order.codashop.com/th/init",
       "apiKey": "coda_partner_99182",
       "apiSecret": "sec_coda_8819283",
-      "balance": 24500,
+      "balance": 24230,
       "currency": "THB",
       "status": "online",
-      "latencyMs": 180,
+      "latencyMs": 192,
       "successRate": 99.7,
       "priority": 3,
       "isActive": true,
@@ -907,7 +1226,108 @@
       "isActive": true
     }
   ],
-  "orders": [],
+  "orders": [
+    {
+      "id": "ord_12572",
+      "orderNumber": "BST-20260923-12572",
+      "paymentStatus": "pending",
+      "topupStatus": "processing",
+      "costPrice": 0,
+      "profit": 0,
+      "digitalCode": null,
+      "vaultId": null,
+      "createdAt": "2026-09-23T06:46:45.369Z",
+      "gameId": "valorant",
+      "gameName": "Valorant",
+      "packageId": "val_11000",
+      "packageName": "11000 VP",
+      "amount": 2687.1,
+      "originalPrice": 2687.1,
+      "playerId": "TestPlayer#TH1",
+      "paymentMethod": "promptpay",
+      "subPaymentChannel": "promptpay_scan"
+    },
+    {
+      "id": "ord_12571",
+      "orderNumber": "BST-20260923-12571",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "costPrice": 330,
+      "profit": 45,
+      "digitalCode": null,
+      "vaultId": null,
+      "createdAt": "2026-09-23T05:49:28.666Z",
+      "userId": "usr_anonymous",
+      "customerName": "ลูกค้าทั่วไป",
+      "gameId": "gc_steam",
+      "gameName": "Steam Wallet Code (THB)",
+      "packageId": "gc_steam_350",
+      "packageName": "350 THB",
+      "currencyAmount": 375,
+      "currencyName": "ไอเทม",
+      "playerId": "customer@gmail.com",
+      "playerNickname": "Player_.com",
+      "server": "",
+      "originalAmount": 375,
+      "discountAmount": 0,
+      "finalAmount": 375,
+      "couponCode": null,
+      "paymentMethod": "promptpay",
+      "subPaymentChannel": "promptpay_bank",
+      "providerId": "prov_smileone",
+      "providerName": "Smile One API",
+      "isFallbackUsed": false,
+      "updatedAt": "2026-09-23T05:49:28.902Z",
+      "providerOrderId": "SM-42568899",
+      "providerLatencyMs": 223,
+      "providerResponse": {
+        "code": 200,
+        "status": "SUCCESS",
+        "txId": "TX-SM-1790142568899",
+        "inGameCurrencyDelivered": true
+      },
+      "completedAt": "2026-09-23T05:49:28.902Z"
+    },
+    {
+      "id": "ord_12570",
+      "orderNumber": "BST-20260923-12570",
+      "paymentStatus": "paid",
+      "topupStatus": "completed",
+      "costPrice": 270,
+      "profit": 29,
+      "digitalCode": null,
+      "vaultId": null,
+      "createdAt": "2026-09-23T05:41:51.624Z",
+      "userId": "usr_anonymous",
+      "customerName": "ลูกค้าทั่วไป",
+      "gameId": "valorant",
+      "gameName": "Valorant",
+      "packageId": "val_1000",
+      "packageName": "1,000 VP",
+      "currencyAmount": 1000,
+      "currencyName": "VP (Valorant Points)",
+      "playerId": "Jett#TH1",
+      "playerNickname": "Player_#TH1",
+      "server": "",
+      "originalAmount": 299,
+      "discountAmount": 0,
+      "finalAmount": 299,
+      "couponCode": null,
+      "paymentMethod": "promptpay",
+      "subPaymentChannel": "promptpay_scan",
+      "providerId": "prov_codashop",
+      "providerName": "Codashop Direct B2B",
+      "isFallbackUsed": false,
+      "updatedAt": "2026-09-23T05:41:51.887Z",
+      "providerOrderId": "CODA-42111828",
+      "providerLatencyMs": 192,
+      "providerResponse": {
+        "result": "SUCCESS",
+        "txnId": "TX-CODA-1790142111834"
+      },
+      "completedAt": "2026-09-23T05:41:51.884Z"
+    }
+  ],
   "transactions": [],
   "cards": [
     {
@@ -1022,6 +1442,22 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1790143784929_f1mz5",
+      "adminId": "admin",
+      "adminName": "Admin",
+      "action": "UPDATE_SETTINGS",
+      "details": "อัปเดตการตั้งค่าเว็บไซต์และบัญชีธนาคารรับเงิน",
+      "createdAt": "2026-09-23T06:09:44.929Z"
+    },
+    {
+      "id": "log_1790143784919_tvsqr",
+      "adminId": "admin",
+      "adminName": "Admin",
+      "action": "UPDATE_SETTINGS",
+      "details": "อัปเดตการตั้งค่าเว็บไซต์และบัญชีธนาคารรับเงิน",
+      "createdAt": "2026-09-23T06:09:44.919Z"
+    },
     {
       "id": "log_1789940171081",
       "adminId": "admin",
@@ -1697,5 +2133,6 @@
       "timeAgo": "28 นาทีที่แล้ว",
       "createdAt": "2026-09-22T15:16:26.768Z"
     }
-  ]
+  ],
+  "settingsCustomized": true
 }

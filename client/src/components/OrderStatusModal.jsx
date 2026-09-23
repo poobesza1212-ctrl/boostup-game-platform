@@ -18,6 +18,20 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+const getPaymentLabel = (method, subMethod) => {
+  const m = (subMethod || method || '').toLowerCase();
+  if (m === 'promptpay' || m === 'promptpay_scan') return 'สแกนผ่านพร้อมเพย์ (PromptPay)';
+  if (m === 'bank_promptpay' || m === 'promptpay_bank') return 'QR PromptPay ธนาคาร';
+  if (m === 'wallet') return 'BOOSTUP Wallet (กระเป๋าเงิน)';
+  if (m === 'credit_card' || m.includes('credit_card')) return 'บัตรเครดิต / เดบิต (VISA • MC • JCB)';
+  if (m === 'installment' || m === 'credit_installment') return 'ผ่อนชำระผ่านบัตรเครดิต 0%';
+  if (m === 'truemoney' || m === 'truemoney_wallet') return 'TrueMoney Wallet';
+  if (m === 'truemoney_paynext') return 'TrueMoney Pay Next';
+  if (m === 'truemoney_scan' || m === 'truemoney_promptpay') return 'TrueMoney PromptPay (Scan)';
+  if (m === 'linepay') return 'LINE Pay';
+  return (method || 'PromptPay').toUpperCase();
+};
+
 export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [copied, setCopied] = useState(false);
@@ -26,9 +40,11 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
+  const isQrPayment = ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.paymentMethod) || ['promptpay', 'promptpay_scan', 'promptpay_bank', 'bank_promptpay', 'truemoney_scan', 'truemoney_promptpay'].includes(order?.subPaymentChannel);
+
   // Load PromptPay QR if applicable
   useEffect(() => {
-    if (order?.paymentMethod === 'promptpay') {
+    if (isQrPayment && order?.finalAmount) {
       fetch('/api/payments/promptpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,7 +58,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
       })
       .catch(err => console.error("QR load err:", err));
     }
-  }, [order]);
+  }, [order, isQrPayment]);
 
   // Load Order Verification QR Code
   useEffect(() => {
@@ -242,7 +258,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillText('💳 สรุปยอดการชำระเงิน', 40, 470);
 
-      drawRow('ช่องทางการชำระ:', (order.paymentMethod || 'PromptPay').toUpperCase(), 505);
+      drawRow('ช่องทางการชำระ:', getPaymentLabel(order.paymentMethod, order.subPaymentChannel), 505);
       const subtotal = Number(order.originalAmount || order.price || order.finalAmount).toFixed(2);
       drawRow('ยอดรวมสินค้า:', `฿${subtotal}`, 535);
       if (order.couponCode) {
@@ -385,7 +401,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
         <div className="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
           
           {/* PromptPay QR Section (if waiting for payment and still in step 1) */}
-          {order.paymentMethod === 'promptpay' && currentStep === 1 && qrCodeUrl && (
+          {isQrPayment && currentStep === 1 && qrCodeUrl && (
             <div className="p-4 rounded-2xl bg-white text-zinc-900 text-center space-y-3 shadow-xl">
               <div className="inline-block bg-[#0056b3] text-white px-3 py-1 rounded text-xs font-bold">
                 Thai QR Payment / พร้อมเพย์
@@ -419,7 +435,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-bold">ยืนยันการชำระเงินเรียบร้อย</div>
-                  <div className="text-[10px] text-zinc-400">ช่องทาง: {order.paymentMethod.toUpperCase()} (฿{order.finalAmount})</div>
+                  <div className="text-[10px] text-zinc-400">ช่องทาง: {getPaymentLabel(order.paymentMethod, order.subPaymentChannel)} (฿{order.finalAmount})</div>
                 </div>
               </div>
 
@@ -652,7 +668,7 @@ export default function OrderStatusModal({ order, onClose, onRefreshOrder }) {
             <div className="p-3 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-2">
               <div className="flex justify-between">
                 <span className="text-zinc-500 text-[10px]">ช่องทางชำระเงิน:</span>
-                <span className="text-zinc-300 font-bold">{order.paymentMethod.toUpperCase()}</span>
+                <span className="text-zinc-300 font-bold">{getPaymentLabel(order.paymentMethod, order.subPaymentChannel)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500 text-[10px]">ยอดรวมสินค้า:</span>

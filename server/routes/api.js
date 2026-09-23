@@ -225,6 +225,7 @@ router.post('/orders', async (req, res) => {
       playerNickname,
       server,
       paymentMethod,
+      subPaymentChannel,
       couponCode,
       voucherUrl,
       userId
@@ -243,10 +244,50 @@ router.post('/orders', async (req, res) => {
       });
     }
 
-    const game = db.getGameById(gameId);
-    if (!game) return res.status(404).json({ success: false, message: 'ไม่พบเกมที่เลือก' });
+    let game = db.getGameById(gameId);
+    let pkg = null;
 
-    const pkg = game.packages.find(p => p.id === packageId);
+    if (game && Array.isArray(game.packages)) {
+      pkg = game.packages.find(p => p.id === packageId);
+    }
+
+    if (!game || !pkg) {
+      // Check gift cards
+      const giftCards = (typeof db.getGiftCards === 'function') ? db.getGiftCards() : [];
+      const giftCard = giftCards.find(g => g.id === gameId);
+      if (giftCard) {
+        game = giftCard;
+        const denom = giftCard.denominations?.find(d => d.id === packageId);
+        if (denom) {
+          pkg = { id: denom.id, name: denom.name, price: denom.price, currencyAmount: denom.price };
+        }
+      }
+    }
+
+    if (!game || !pkg) {
+      // Check app subscriptions
+      const appSubs = (typeof db.getAppSubscriptions === 'function') ? db.getAppSubscriptions() : [];
+      const appSub = appSubs.find(a => a.id === gameId);
+      if (appSub) {
+        game = appSub;
+        const plan = appSub.plans?.find(p => p.id === packageId);
+        if (plan) {
+          pkg = { id: plan.id, name: plan.name, price: plan.price, currencyAmount: plan.price };
+        }
+      }
+    }
+
+    if (!game || !pkg) {
+      // Check flash sale items
+      const flashSales = (typeof db.getFlashSales === 'function') ? db.getFlashSales() : [];
+      const flash = flashSales.find(f => f.id === gameId || f.id === packageId);
+      if (flash) {
+        game = { id: flash.id, name: flash.gameName || flash.packageName || 'Flash Sale Item', image: flash.image };
+        pkg = { id: flash.id, name: flash.packageName, price: flash.flashPrice, currencyAmount: flash.flashPrice };
+      }
+    }
+
+    if (!game) return res.status(404).json({ success: false, message: 'ไม่พบเกมหรือสินค้าที่เลือก' });
     if (!pkg) return res.status(404).json({ success: false, message: 'ไม่พบแพ็กเกจที่เลือก' });
 
     let originalAmount = pkg.price;
@@ -282,8 +323,8 @@ router.post('/orders', async (req, res) => {
         await paymentService.verifyTrueMoneyVoucher(voucherUrl, finalAmount);
       }
       paymentVerified = true;
-    } else if (paymentMethod === 'promptpay' || paymentMethod === 'bank_transfer') {
-      // PromptPay and Slip uploads are instantly confirmed in demo / auto-confirmed
+    } else if (paymentMethod === 'promptpay' || paymentMethod === 'bank_transfer' || paymentMethod === 'credit_card') {
+      // PromptPay and direct channels are verified
       paymentVerified = true;
     }
 
@@ -302,8 +343,8 @@ router.post('/orders', async (req, res) => {
       gameName: game.name,
       packageId: pkg.id,
       packageName: pkg.name,
-      currencyAmount: pkg.currencyAmount,
-      currencyName: game.currencyName,
+      currencyAmount: pkg.currencyAmount || pkg.price,
+      currencyName: game.currencyName || 'ไอเทม',
       playerId,
       playerNickname: playerNickname || `Player_${playerId.slice(-4)}`,
       server: server || '',
@@ -313,6 +354,7 @@ router.post('/orders', async (req, res) => {
       costPrice: pkg.costPrice || (pkg.price * 0.88),
       couponCode: couponCode || null,
       paymentMethod,
+      subPaymentChannel: subPaymentChannel || paymentMethod,
       paymentStatus: paymentVerified ? 'paid' : 'pending'
     });
 

@@ -12,7 +12,7 @@ import FeaturesGrid from './components/FeaturesGrid';
 import TrustSection from './components/TrustSection';
 import FloatingSupport from './components/FloatingSupport';
 import Footer from './components/Footer';
-import TopupModal from './components/TopupModal';
+import GameTopupView from './components/GameTopupView';
 import OrderStatusModal from './components/OrderStatusModal';
 import AuthModal from './components/AuthModal';
 import WalletModal from './components/WalletModal';
@@ -65,6 +65,7 @@ export default function App() {
   }, []);
 
   const navigateTo = (view) => {
+    setSelectedProductForCheckout(null);
     setCurrentView(view);
     let targetPath = '/';
     if (view === 'admin') targetPath = '/admin';
@@ -74,6 +75,11 @@ export default function App() {
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectProduct = (product) => {
+    setSelectedProductForCheckout(product);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const [games, setGames] = useState([]);
@@ -402,12 +408,26 @@ export default function App() {
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           games={games}
-          onSelectGame={(game) => setSelectedProductForCheckout(game)}
+          onSelectGame={handleSelectProduct}
         />
 
-        {/* Main Content Router: Profile View vs Order History View vs Home Storefront */}
+        {/* Main Content Router: Topup View vs Profile View vs Order History View vs Home Storefront */}
         <main className="flex-1">
-          {currentView === 'profile' ? (
+          {selectedProductForCheckout ? (
+            <GameTopupView
+              game={selectedProductForCheckout}
+              onBack={() => {
+                setSelectedProductForCheckout(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onSubmitOrder={handleSubmitOrder}
+              onAddToCart={handleAddToCart}
+              user={user}
+              siteSettings={siteSettings}
+              onOpenPolicy={(tab = 'terms') => setPolicyModal({ open: true, tab })}
+              onOpenAuth={handleOpenAuth}
+            />
+          ) : currentView === 'profile' ? (
             <UserProfileView
               user={user}
               onUpdateUser={(updatedUser) => {
@@ -438,26 +458,26 @@ export default function App() {
               {/* 3. Flash Sale Section with Live Countdown Timer & Stock Progress Bar */}
               <FlashSaleSection
                 flashSales={flashSales}
-                onSelectFlashSale={(item) => setSelectedProductForCheckout(item)}
+                onSelectFlashSale={handleSelectProduct}
               />
 
               {/* 4. Popular Games Catalog Grid */}
               <GameGrid
                 games={games}
-                onSelectGame={(game) => setSelectedProductForCheckout(game)}
+                onSelectGame={handleSelectProduct}
                 searchQuery={searchQuery}
               />
 
               {/* 5. Gift Cards & Game Vouchers (Steam, Razer Gold, Roblox, Riot Cards) */}
               <GiftCardGrid
                 giftCards={giftCards}
-                onSelectCard={(card) => setSelectedProductForCheckout(card)}
+                onSelectCard={handleSelectProduct}
               />
 
               {/* 6. App Subscriptions (Discord Nitro, YouTube Premium, Netflix, Spotify) */}
               <AppSubscriptionGrid
                 appSubscriptions={appSubscriptions}
-                onSelectApp={(app) => setSelectedProductForCheckout(app)}
+                onSelectApp={handleSelectProduct}
               />
 
               {/* 7. 4-Step How-to-Topup Guide */}
@@ -484,23 +504,6 @@ export default function App() {
         contactLine={siteSettings?.contactLine || '@boostup'} 
         user={user}
       />
-
-      {/* Interactive Purchase Modal (Handles Games, Flash Deals, Gift Cards & App Subs) */}
-      {selectedProductForCheckout && (
-        <TopupModal
-          game={selectedProductForCheckout}
-          onClose={() => setSelectedProductForCheckout(null)}
-          onSubmitOrder={handleSubmitOrder}
-          onAddToCart={handleAddToCart}
-          user={user}
-          siteSettings={siteSettings}
-          onOpenWallet={() => {
-            setSelectedProductForCheckout(null);
-            setWalletModalOpen(true);
-          }}
-          onOpenPolicy={(tab = 'terms') => setPolicyModal({ open: true, tab })}
-        />
-      )}
 
       {/* Lucky Wheel & Daily Check-in Modal */}
       <LuckyWheelModal

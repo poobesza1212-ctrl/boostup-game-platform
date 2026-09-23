@@ -172,7 +172,7 @@ const defaultData = {
     },
     {
       id: "cat_cards",
-      label: "บัตรเติมเงิน",
+      label: "บัตรเติมเกม",
       sublabel: "Steam, Razer, Roblox",
       iconName: "CreditCard",
       iconColor: "text-blue-400",
@@ -205,18 +205,6 @@ const defaultData = {
       badgeColor: "",
       isActive: true,
       displayOrder: 4
-    },
-    {
-      id: "cat_mobile",
-      label: "เติมเงินมือถือ",
-      sublabel: "AIS, True, Dtac",
-      iconName: "Smartphone",
-      iconColor: "text-emerald-400",
-      targetId: "popular-games",
-      badge: "",
-      badgeColor: "",
-      isActive: true,
-      displayOrder: 5
     },
     {
       id: "cat_coins",

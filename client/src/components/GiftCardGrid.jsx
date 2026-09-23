@@ -18,7 +18,7 @@ export default function GiftCardGrid({ giftCards = [], onSelectCard }) {
               <span>INSTANT SERIAL CODE DELIVERY</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-['Kanit']">
-              บัตรเติมเกม & บัตรกำนัล <span className="text-zinc-500 font-light text-xl">({giftCards.length} รายการ)</span>
+              บัตรเติมเกม <span className="text-zinc-500 font-light text-xl">({giftCards.length} รายการ)</span>
             </h2>
             <p className="text-zinc-400 text-sm mt-1">
               จัดส่งรหัส Serial Code อัตโนมัติทันทีหลังชำระเงิน 24 ชม. ปลอดภัย รวดเร็ว

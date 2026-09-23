@@ -225,52 +225,24 @@ export default function LeftSidebar({
               <span>เติมเกม</span>
             </button>
 
-            {/* บัตรกำนัล / บัตรเติมเกม */}
+            {/* บัตรเติมเกม */}
             <button
               type="button"
               onClick={() => handleNavClick('home', 'gift-cards-section')}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
             >
               <CreditCard className="w-4 h-4 text-zinc-400 group-hover:text-blue-400 transition-colors" />
-              <span>บัตรกำนัล / บัตรเติมเกม</span>
+              <span>บัตรเติมเกม</span>
             </button>
 
-            {/* บัตร Gift Voucher */}
-            <button
-              type="button"
-              onClick={() => handleNavClick('home', 'gift-cards-section')}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
-            >
-              <Ticket className="w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-colors" />
-              <span>บัตร Gift Voucher</span>
-            </button>
-
-            {/* ต่ออายุสมาชิกแอพ */}
+            {/* ต่ออายุแอพ */}
             <button
               type="button"
               onClick={() => handleNavClick('home', 'apps-section')}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
             >
               <Crown className="w-4 h-4 text-zinc-400 group-hover:text-amber-400 transition-colors" />
-              <span>ต่ออายุสมาชิกแอพ</span>
-            </button>
-
-            {/* เติมเงินมือถือ (NEW) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined' && window.innerWidth < 1024) onClose();
-                alert('ระบบเติมเงินมือถืออัตโนมัติ (AIS, TRUE, DTAC) กำลังเตรียมเปิดให้บริการในเร็วๆ นี้ครับ!');
-              }}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-[#181d2a] transition-all text-left cursor-pointer group"
-            >
-              <div className="flex items-center gap-3">
-                <Smartphone className="w-4 h-4 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
-                <span>เติมเงินมือถือ</span>
-              </div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm shadow-orange-500/40">
-                NEW
-              </span>
+              <span>ต่ออายุแอพ</span>
             </button>
 
             {/* ประวัติการสั่งซื้อ (Order History View) */}

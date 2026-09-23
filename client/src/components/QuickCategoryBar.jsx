@@ -23,7 +23,7 @@ export default function QuickCategoryBar({ categories: customCategories, onSelec
     },
     {
       id: 'cards',
-      label: 'บัตรเติมเงิน',
+      label: 'บัตรเติมเกม',
       sublabel: 'Steam, Razer, Roblox',
       iconName: 'CreditCard',
       iconColor: 'text-blue-400',
@@ -49,15 +49,6 @@ export default function QuickCategoryBar({ categories: customCategories, onSelec
       iconColor: 'text-purple-400',
       targetId: 'apps-section',
       color: 'hover:border-purple-500/60'
-    },
-    {
-      id: 'mobile',
-      label: 'เติมเงินมือถือ',
-      sublabel: 'AIS, True, Dtac',
-      iconName: 'Smartphone',
-      iconColor: 'text-emerald-400',
-      targetId: 'popular-games',
-      color: 'hover:border-emerald-500/60'
     },
     {
       id: 'coins',
@@ -90,7 +81,7 @@ export default function QuickCategoryBar({ categories: customCategories, onSelec
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-10">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {categories.map((cat) => (
           <div
             key={cat.id}

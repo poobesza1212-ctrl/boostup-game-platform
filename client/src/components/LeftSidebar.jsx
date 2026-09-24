@@ -315,6 +315,20 @@ export default function LeftSidebar({
                     <span className="font-['Kanit']">ข้อมูลผู้ใช้</span>
                   </button>
 
+                  {/* OH ประวัติการสั่งซื้อ */}
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('orders')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                      currentView === 'orders'
+                        ? 'bg-yellow-400/20 text-yellow-300 font-bold border border-yellow-400/30'
+                        : 'text-zinc-300 hover:text-white hover:bg-[#181d2a]'
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-amber-500 font-mono tracking-wider w-6">OH</span>
+                    <span className="font-['Kanit']">ประวัติการสั่งซื้อ</span>
+                  </button>
+
                   {/* L ออกจากระบบ */}
                   <button
                     type="button"

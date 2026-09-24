@@ -283,8 +283,19 @@ export default function App() {
         setSelectedProductForCheckout(null);
         setActiveOrderForStatus(data.order);
         
-        // Track completed purchase for Meta/TikTok/Google Analytics
+        // Save order to localStorage so customer never loses their order history (logged in or guest)
         if (data.order) {
+          try {
+            const saved = localStorage.getItem('tw_my_orders');
+            const myOrders = saved ? JSON.parse(saved) : [];
+            const updatedOrders = [
+              data.order, 
+              ...myOrders.filter(o => o.id !== data.order.id && o.orderNumber !== data.order.orderNumber)
+            ].slice(0, 50);
+            localStorage.setItem('tw_my_orders', JSON.stringify(updatedOrders));
+          } catch (e) {}
+
+          // Track completed purchase for Meta/TikTok/Google Analytics
           tracker.trackPurchase(data.order);
         }
 
@@ -437,6 +448,8 @@ export default function App() {
               onOpenAuth={handleOpenAuth}
               onOpenWallet={() => setWalletModalOpen(true)}
               siteSettings={siteSettings}
+              onViewReceipt={(order) => setActiveOrderForStatus(order)}
+              onGoToOrderHistory={() => navigateTo('orders')}
             />
           ) : currentView === 'orders' ? (
             <OrderHistoryView

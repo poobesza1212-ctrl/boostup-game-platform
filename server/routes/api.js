@@ -342,7 +342,7 @@ router.post('/orders', async (req, res) => {
 
     // Create Order Record
     const order = db.createOrder({
-      userId: userId || 'usr_anonymous',
+      userId: (userId && userId !== 'undefined') ? userId : 'usr_anonymous',
       customerName,
       gameId: game.id,
       gameName: game.name,
@@ -356,6 +356,8 @@ router.post('/orders', async (req, res) => {
       originalAmount,
       discountAmount,
       finalAmount,
+      amount: finalAmount,
+      price: finalAmount,
       costPrice: pkg.costPrice || (pkg.price * 0.88),
       couponCode: couponCode || null,
       paymentMethod,
@@ -546,6 +548,7 @@ router.get('/orders/history', (req, res) => {
     const { 
       userId, 
       orderNumber, 
+      orderNumbers,
       gameUid, 
       playerId, 
       gameId, 
@@ -557,9 +560,40 @@ router.get('/orders/history', (req, res) => {
 
     let orders = db.getOrders() || [];
 
-    // Filter by userId if provided
-    if (userId && userId.trim()) {
-      orders = orders.filter(o => o.userId === userId.trim());
+    // Parse orderNumbers list from client's localStorage
+    let clientOrderNumbers = [];
+    if (orderNumbers && orderNumbers.trim()) {
+      clientOrderNumbers = orderNumbers.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    }
+
+    // Auto link guest orders to user if both are provided
+    if (userId && userId.trim() && clientOrderNumbers.length > 0) {
+      const uId = userId.trim();
+      clientOrderNumbers.forEach(on => {
+        const found = orders.find(o => ((o.orderNumber || '').toLowerCase() === on || (o.id || '').toLowerCase() === on) && (!o.userId || o.userId === 'usr_anonymous'));
+        if (found) {
+          found.userId = uId;
+          try { db.updateOrder(found.id, { userId: uId }); } catch (e) {}
+        }
+      });
+    }
+
+    // Filter by User:
+    // If specific search criteria (orderNumber, gameUid, playerId) are provided, allow searching across orders
+    // Otherwise:
+    // 1. If userId is provided, match orders for this userId OR in clientOrderNumbers
+    // 2. If userId is NOT provided, match clientOrderNumbers (or return all recent if client has none)
+    const hasSearchFilter = Boolean((orderNumber && orderNumber.trim()) || (gameUid && gameUid.trim()) || (playerId && playerId.trim()));
+
+    if (!hasSearchFilter) {
+      if (userId && userId.trim() && userId.trim() !== 'undefined' && userId.trim() !== 'null' && userId.trim() !== 'usr_anonymous') {
+        const uId = userId.trim();
+        orders = orders.filter(o => o.userId === uId || clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
+      } else if (clientOrderNumbers.length > 0) {
+        orders = orders.filter(o => clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
+      } else {
+        orders = [];
+      }
     }
 
     // Filter by Order Number (partial or exact)
@@ -590,9 +624,9 @@ router.get('/orders/history', (req, res) => {
       if (s === 'completed' || s === 'สำเร็จ') {
         orders = orders.filter(o => o.topupStatus === 'completed' || o.paymentStatus === 'paid');
       } else if (s === 'pending' || s === 'รอดำเนินการ') {
-        orders = orders.filter(o => o.topupStatus === 'pending' || o.paymentStatus === 'pending');
+        orders = orders.filter(o => o.topupStatus === 'pending' || o.paymentStatus === 'pending' || o.paymentStatus === 'pending_verification');
       } else if (s === 'failed' || s === 'cancelled' || s === 'ยกเลิก') {
-        orders = orders.filter(o => o.topupStatus === 'failed' || o.paymentStatus === 'failed');
+        orders = orders.filter(o => o.topupStatus === 'failed' || o.paymentStatus === 'failed' || o.paymentStatus === 'rejected');
       } else {
         orders = orders.filter(o => o.topupStatus === s || o.paymentStatus === s);
       }
@@ -617,18 +651,18 @@ router.get('/orders/history', (req, res) => {
       });
     }
 
-    // Filter by Date Range
-    if (startDate) {
-      const start = new Date(startDate).getTime();
+    // Filter by Date Range (with generous buffer to prevent timezone cutoff)
+    if (startDate && startDate.trim()) {
+      const start = new Date(startDate.trim()).getTime();
       if (!isNaN(start)) {
-        orders = orders.filter(o => new Date(o.createdAt).getTime() >= start);
+        orders = orders.filter(o => new Date(o.createdAt).getTime() >= (start - 24 * 60 * 60 * 1000));
       }
     }
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      const endMs = end.getTime();
-      if (!isNaN(endMs)) {
+    if (endDate && endDate.trim()) {
+      const endParts = endDate.trim().split('-');
+      if (endParts.length === 3) {
+        const end = new Date(Date.UTC(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]), 23, 59, 59, 999));
+        const endMs = end.getTime() + (24 * 60 * 60 * 1000);
         orders = orders.filter(o => new Date(o.createdAt).getTime() <= endMs);
       }
     }
@@ -636,7 +670,7 @@ router.get('/orders/history', (req, res) => {
     // Sort by createdAt descending
     orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // Format response items with category labels
+    // Format response items with category labels & accurate statuses
     const formattedOrders = orders.map((o) => {
       let typeLabel = 'เติมเกม UID';
       if (o.category === 'gift_card' || o.gameId?.includes('card') || o.digitalCode) {
@@ -644,6 +678,30 @@ router.get('/orders/history', (req, res) => {
       } else if (o.category === 'app_subscription' || o.gameId?.includes('sub_')) {
         typeLabel = 'ต่ออายุสมาชิกแอป';
       }
+
+      let status = 'pending';
+      let statusLabel = 'รอดำเนินการ';
+      if (o.topupStatus === 'completed') {
+        status = 'completed';
+        statusLabel = 'สำเร็จ 100%';
+      } else if (o.paymentStatus === 'pending_verification') {
+        status = 'pending_verification';
+        statusLabel = 'รอตรวจสลิป';
+      } else if (o.paymentStatus === 'pending') {
+        status = 'pending';
+        statusLabel = 'รอชำระเงิน';
+      } else if (o.paymentStatus === 'rejected') {
+        status = 'failed';
+        statusLabel = 'สลิปถูกปฏิเสธ';
+      } else if (o.topupStatus === 'failed') {
+        status = 'failed';
+        statusLabel = 'ไม่สำเร็จ';
+      } else {
+        status = 'processing';
+        statusLabel = 'กำลังเติมเกม';
+      }
+
+      const itemPrice = Number(o.finalAmount ?? o.originalAmount ?? o.amount ?? o.price ?? o.originalPrice ?? 0);
 
       return {
         id: o.id,
@@ -655,10 +713,15 @@ router.get('/orders/history', (req, res) => {
         playerId: o.playerId || '-',
         playerNickname: o.playerNickname || '',
         server: o.server || '',
-        price: Number(o.finalAmount || o.originalAmount || 0),
-        status: o.topupStatus === 'completed' ? 'completed' : (o.topupStatus === 'failed' ? 'failed' : 'pending'),
-        statusLabel: o.topupStatus === 'completed' ? 'สำเร็จ' : (o.topupStatus === 'failed' ? 'ไม่สำเร็จ' : 'รอดำเนินการ'),
+        price: itemPrice,
+        finalAmount: itemPrice,
+        status,
+        statusLabel,
+        paymentStatus: o.paymentStatus || 'pending',
+        topupStatus: o.topupStatus || 'pending',
         paymentMethod: o.paymentMethod,
+        subPaymentChannel: o.subPaymentChannel,
+        slipImage: o.slipImage || null,
         digitalCode: o.digitalCode || null,
         vaultPin: o.vaultPin || null,
         createdAt: o.createdAt,

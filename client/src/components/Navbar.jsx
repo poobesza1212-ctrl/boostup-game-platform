@@ -157,8 +157,23 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Quick Actions (Cart Button) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Quick Actions (Order History & Cart Button) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Quick Button: ประวัติการสั่งซื้อ */}
+            <button
+              type="button"
+              onClick={() => setCurrentView('orders')}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all cursor-pointer shadow-sm text-xs font-bold font-['Kanit'] ${
+                currentView === 'orders'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 shadow-amber-500/10'
+                  : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 border border-zinc-800 hover:border-amber-500/50'
+              }`}
+              title="ประวัติการสั่งซื้อทั้งหมด"
+            >
+              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="hidden md:inline">ประวัติสั่งซื้อ</span>
+            </button>
+
             <button
               type="button"
               onClick={onOpenCart}

@@ -26,10 +26,18 @@ export default function OrderHistoryView({
   onViewReceipt,
   onOpenAuth
 }) {
-  // Filters State
+  // Local Date helper
+  const getLocalDateString = (d = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Filters State - Empty dateRange by default so all orders appear immediately
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    startDate: '',
+    endDate: ''
   });
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedGame, setSelectedGame] = useState('all');
@@ -48,12 +56,24 @@ export default function OrderHistoryView({
   const [isLoadingCards, setIsLoadingCards] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState(null);
 
-  // Fetch orders from API
+  // Fetch orders from API + sync with local browser history
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
+      // Load recent orders from localStorage
+      let localOrders = [];
+      let localOrderNumbers = [];
+      try {
+        const saved = localStorage.getItem('tw_my_orders');
+        if (saved) {
+          localOrders = JSON.parse(saved);
+          localOrderNumbers = localOrders.map(o => o.orderNumber || o.id).filter(Boolean);
+        }
+      } catch (e) {}
+
       const params = new URLSearchParams();
       if (user?.id) params.append('userId', user.id);
+      if (localOrderNumbers.length > 0) params.append('orderNumbers', localOrderNumbers.join(','));
       if (searchOrderNumber.trim()) params.append('orderNumber', searchOrderNumber.trim());
       if (searchGameUid.trim()) params.append('gameUid', searchGameUid.trim());
       if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
@@ -65,15 +85,73 @@ export default function OrderHistoryView({
       const res = await fetch(`/api/orders/history?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setOrders(data.orders || []);
-        setTotalCount(data.count || 0);
+        let fetchedOrders = data.orders || [];
+
+        // If local orders exist and search filter is not active, ensure all local orders are visible
+        if (localOrders.length > 0 && !searchOrderNumber.trim() && !searchGameUid.trim() && selectedCategory === 'all' && selectedGame === 'all' && selectedStatus === 'all' && !dateRange.startDate && !dateRange.endDate) {
+          const fetchedKeys = new Set(fetchedOrders.map(o => o.orderNumber || o.id));
+          const missingLocal = localOrders.filter(lo => !fetchedKeys.has(lo.orderNumber) && !fetchedKeys.has(lo.id)).map(lo => {
+            const itemPrice = Number(lo.finalAmount ?? lo.originalAmount ?? lo.amount ?? lo.price ?? 0);
+            return {
+              id: lo.id,
+              orderNumber: lo.orderNumber || lo.id,
+              typeLabel: 'เติมเกม UID',
+              gameId: lo.gameId,
+              gameName: lo.gameName || 'เกมออนไลน์',
+              packageName: lo.packageName,
+              playerId: lo.playerId || '-',
+              playerNickname: lo.playerNickname || '',
+              server: lo.server || '',
+              price: itemPrice,
+              finalAmount: itemPrice,
+              status: lo.topupStatus || 'pending',
+              statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : (lo.paymentStatus === 'pending_verification' ? 'รอตรวจสลิป' : 'รอชำระเงิน'),
+              paymentStatus: lo.paymentStatus || 'pending',
+              topupStatus: lo.topupStatus || 'pending',
+              createdAt: lo.createdAt || new Date().toISOString(),
+              rawOrder: lo
+            };
+          });
+
+          fetchedOrders = [...fetchedOrders, ...missingLocal].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+
+        setOrders(fetchedOrders);
+        setTotalCount(fetchedOrders.length);
       } else {
         setOrders([]);
         setTotalCount(0);
       }
     } catch (err) {
       console.error('Failed to fetch order history:', err);
-      setOrders([]);
+      // Fallback to local orders on network failure
+      try {
+        const saved = localStorage.getItem('tw_my_orders');
+        if (saved) {
+          const localOrders = JSON.parse(saved);
+          setOrders(localOrders.map(lo => ({
+            id: lo.id,
+            orderNumber: lo.orderNumber || lo.id,
+            typeLabel: 'เติมเกม UID',
+            gameId: lo.gameId,
+            gameName: lo.gameName || 'เกมออนไลน์',
+            packageName: lo.packageName,
+            playerId: lo.playerId || '-',
+            price: Number(lo.finalAmount || lo.price || 0),
+            status: lo.topupStatus || 'pending',
+            statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : 'รอชำระเงิน',
+            createdAt: lo.createdAt || new Date().toISOString(),
+            rawOrder: lo
+          })));
+          setTotalCount(localOrders.length);
+        } else {
+          setOrders([]);
+          setTotalCount(0);
+        }
+      } catch (e) {
+        setOrders([]);
+        setTotalCount(0);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,8 +168,8 @@ export default function OrderHistoryView({
 
   const handleResetFilters = () => {
     setDateRange({
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0]
+      startDate: '',
+      endDate: ''
     });
     setSelectedCategory('all');
     setSelectedGame('all');
@@ -368,6 +446,8 @@ export default function OrderHistoryView({
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                             : item.status === 'failed'
                             ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                            : item.status === 'pending_verification'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
                             : 'bg-amber-100 text-amber-800 border border-amber-300'
                         }`}>
                           {item.statusLabel}
@@ -381,7 +461,7 @@ export default function OrderHistoryView({
                           title="ดูสลิปและใบเสร็จดิจิทัล"
                         >
                           <FileText className="w-3 h-3" />
-                          <span>ดูสลิป</span>
+                          <span>{item.status === 'pending' || item.status === 'pending_verification' ? 'ดู/แนบสลิป' : 'ดูสลิป'}</span>
                         </button>
                       </td>
                     </tr>

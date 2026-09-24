@@ -116,6 +116,27 @@ export default function CartModal({
 
       if (data.success) {
         setCheckoutResult(data);
+
+        // Save cart orders to tw_my_orders in localStorage
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+          try {
+            const saved = localStorage.getItem('tw_my_orders');
+            const myOrders = saved ? JSON.parse(saved) : [];
+            const newOrders = data.orders.map(o => ({
+              ...o,
+              finalAmount: Number(o.amount ?? o.finalAmount ?? o.price ?? 0),
+              price: Number(o.amount ?? o.finalAmount ?? o.price ?? 0),
+              topupStatus: o.topupStatus || (paymentMethod === 'wallet' ? 'completed' : 'pending'),
+              paymentStatus: o.paymentStatus || (paymentMethod === 'wallet' ? 'paid' : 'pending')
+            }));
+            const updatedOrders = [
+              ...newOrders,
+              ...myOrders.filter(mo => !newOrders.some(no => no.id === mo.id || no.orderNumber === mo.orderNumber))
+            ].slice(0, 50);
+            localStorage.setItem('tw_my_orders', JSON.stringify(updatedOrders));
+          } catch (e) {}
+        }
+
         tracker.trackPurchase({
           orderNumber: data.orders?.[0]?.orderNumber || `CART_${Date.now()}`,
           gameName: 'คำสั่งซื้อจากตะกร้าสินค้า (Cart Checkout)',

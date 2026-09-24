@@ -235,6 +235,14 @@ router.post('/orders', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ข้อมูลการสั่งซื้อไม่ครบถ้วน' });
     }
 
+    // Require user to be logged in before creating an order
+    if (!userId || userId === 'usr_anonymous' || userId === 'undefined' || userId === 'null' || (typeof userId === 'string' && !userId.trim())) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'กรุณาเข้าสู่ระบบก่อนทำรายการสั่งซื้อ เพื่อความปลอดภัยและบันทึกประวัติการเติมเงิน' 
+      });
+    }
+
     const settings = db.getSettings();
     const pmConfig = settings?.paymentMethods || {};
     const channelToCheck = subPaymentChannel || paymentMethod;
@@ -2345,6 +2353,14 @@ router.post('/cart/checkout', async (req, res) => {
     const { items, paymentMethod, customerContact, userId, couponCode } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'ไม่มีสินค้าในตะกร้า' });
+    }
+
+    // Require user to be logged in before cart checkout
+    if (!userId || userId === 'usr_anonymous' || userId === 'undefined' || userId === 'null' || (typeof userId === 'string' && !userId.trim())) {
+      return res.status(401).json({
+        success: false,
+        message: 'กรุณาเข้าสู่ระบบก่อนทำรายการสั่งซื้อ เพื่อความปลอดภัยและบันทึกประวัติการเติมเงิน'
+      });
     }
 
     const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0), 0);

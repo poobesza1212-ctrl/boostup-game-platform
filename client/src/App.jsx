@@ -272,11 +272,25 @@ export default function App() {
 
   // Submit Order from TopupModal
   const handleSubmitOrder = async (orderPayload) => {
+    // Strict requirement: User must be logged in to order
+    if (!user) {
+      handleOpenAuth('login');
+      showGlobalAlert({
+        title: '🔒 กรุณาเข้าสู่ระบบก่อนทำรายการ',
+        message: 'เพื่อความปลอดภัยและบันทึกประวัติการสั่งซื้อของคุณ กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนทำรายการครับ',
+        type: 'warning'
+      });
+      return;
+    }
+
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload)
+        body: JSON.stringify({
+          ...orderPayload,
+          userId: user.id
+        })
       });
       const data = await res.json();
       if (data.success) {

@@ -80,12 +80,21 @@ export default function CartModal({
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
 
+    // Strict requirement: User must be logged in before checking out
+    if (!user) {
+      onClose();
+      if (onOpenLogin) onOpenLogin();
+      Swal.fire({
+        icon: 'warning',
+        title: 'กรุณาเข้าสู่ระบบก่อนทำรายการ',
+        text: 'เพื่อความปลอดภัยและบันทึกประวัติคำสั่งซื้อของคุณ กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนชำระเงินครับ',
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'เข้าสู่ระบบ'
+      });
+      return;
+    }
+
     if (paymentMethod === 'wallet') {
-      if (!user) {
-        onClose();
-        if (onOpenLogin) onOpenLogin();
-        return;
-      }
       if ((user.walletBalance || 0) < finalPayAmount) {
         Swal.fire({
           icon: 'warning',
@@ -462,15 +471,29 @@ export default function CartModal({
               >
                 ล้างตะกร้า
               </button>
-              <button
-                type="button"
-                onClick={handleCheckout}
-                disabled={isCheckingOut}
-                className="flex-1 sm:flex-none px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-              >
-                <Zap className="w-4 h-4" />
-                {isCheckingOut ? 'กำลังดำเนินการ...' : `ชำระเงินรวม ฿${finalPayAmount.toFixed(2)}`}
-              </button>
+              {!user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenLogin) onOpenLogin();
+                  }}
+                  className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all animate-pulse cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>เข้าสู่ระบบก่อนชำระเงิน</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={isCheckingOut}
+                  className="flex-1 sm:flex-none px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4" />
+                  {isCheckingOut ? 'กำลังดำเนินการ...' : `ชำระเงินรวม ฿${finalPayAmount.toFixed(2)}`}
+                </button>
+              )}
             </div>
           </div>
         )}

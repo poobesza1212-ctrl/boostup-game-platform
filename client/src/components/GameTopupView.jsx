@@ -32,7 +32,8 @@ export default function GameTopupView({
   user, 
   siteSettings, 
   initialPackageId,
-  onOpenPolicy 
+  onOpenPolicy,
+  onOpenAuth 
 }) {
   // Normalize packages from different product types (Games, Gift Cards, App Subs, Flash Deals)
   const packagesList = useMemo(() => {
@@ -344,6 +345,13 @@ export default function GameTopupView({
 
   // Handle direct checkout
   const handleConfirmCheckout = async () => {
+    // Strict requirement: User must be logged in to place orders
+    if (!user) {
+      if (onOpenAuth) onOpenAuth('login');
+      alert('🔒 กรุณาเข้าสู่ระบบก่อนทำรายการ เพื่อความปลอดภัยและบันทึกประวัติการสั่งซื้อของคุณครับ');
+      return;
+    }
+
     if (!playerId.trim()) {
       alert(`กรุณากรอก ${game?.inputLabel || 'UID / Riot Tag'} ให้ถูกต้องก่อนทำการสั่งซื้อ`);
       const inputEl = document.getElementById('player-id-input');
@@ -471,6 +479,35 @@ export default function GameTopupView({
             <span>กลับไปเลือกเกม</span>
           </button>
         </div>
+
+        {/* Not Logged In Warning Banner */}
+        {!user && (
+          <div className="mb-6 p-4.5 rounded-2xl bg-gradient-to-r from-red-500/10 via-amber-500/10 to-rose-500/10 border-2 border-red-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800 shadow-sm animate-fadeIn">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-red-500/25">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm font-black text-red-600 font-['Kanit'] flex items-center gap-2">
+                  <span>กรุณาเข้าสู่ระบบก่อนทำรายการ</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">จำเป็น</span>
+                </div>
+                <div className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                  ระบบจำกัดสิทธิ์ให้เฉพาะสมาชิกที่เข้าสู่ระบบเท่านั้นที่สามารถทำรายการเติมเงิน เพื่อความปลอดภัยและบันทึกประวัติการสั่งซื้อ
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenAuth) onOpenAuth('login');
+              }}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs shadow-md shadow-red-600/25 transition-all font-['Kanit'] shrink-0 cursor-pointer active:scale-95 text-center"
+            >
+              เข้าสู่ระบบ / สมัครสมาชิก
+            </button>
+          </div>
+        )}
 
         {/* 3. STEP 1: กรุณากรอก ID / Riot Tag */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-8">
@@ -843,29 +880,47 @@ export default function GameTopupView({
 
               {/* Buttons Row: Add to Cart + Confirm Checkout */}
               <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleConfirmCheckout}
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-black text-base shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer font-['Kanit']"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>กำลังสร้างรายการสั่งซื้อ...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-5 h-5" />
-                      <span>ยืนยันการสั่งซื้อและชำระเงินทันที</span>
-                    </>
-                  )}
-                </button>
+                {!user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenAuth) onOpenAuth('login');
+                    }}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-red-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer font-['Kanit'] animate-pulse"
+                  >
+                    <ShieldCheck className="w-5 h-5 text-white shrink-0" />
+                    <span>กรุณาเข้าสู่ระบบก่อนทำรายการ (คลิกเพื่อเข้าสู่ระบบ)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConfirmCheckout}
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-black text-base shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer font-['Kanit']"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>กำลังสร้างรายการสั่งซื้อ...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-5 h-5" />
+                        <span>ยืนยันการสั่งซื้อและชำระเงินทันที</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
                 {onAddToCart && (
                   <button
                     type="button"
                     onClick={() => {
+                      if (!user) {
+                        if (onOpenAuth) onOpenAuth('login');
+                        alert('🔒 กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงในตะกร้าครับ');
+                        return;
+                      }
                       if (!playerId.trim()) {
                         alert(`กรุณากรอก ${game?.inputLabel || 'UID / Riot Tag'} ก่อนเพิ่มลงตะกร้า`);
                         return;
@@ -907,26 +962,41 @@ export default function GameTopupView({
         <button
           type="button"
           onClick={() => {
+            if (!user) {
+              if (onOpenAuth) onOpenAuth('login');
+              return;
+            }
             if (selectedPackage) {
               document.getElementById('checkout-summary-section')?.scrollIntoView({ behavior: 'smooth' });
             }
           }}
           className={`pointer-events-auto px-5 py-2.5 rounded-full shadow-2xl border flex items-center gap-2.5 text-xs font-bold font-['Kanit'] transition-all transform active:scale-95 ${
-            selectedPackage
+            !user
+              ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white border-red-500 cursor-pointer shadow-red-500/25'
+              : selectedPackage
               ? 'bg-[#0f172a] hover:bg-slate-800 text-white border-slate-700/80 cursor-pointer shadow-blue-500/10'
               : 'bg-[#1e293b]/95 text-slate-200 border-slate-700/60 cursor-default'
           }`}
         >
-          <ShoppingCart className="w-4 h-4 text-blue-400" />
-          <span>
-            {selectedPackage
-              ? `เลือก: ${selectedPackage.name} (฿${Number(selectedPackage.price).toLocaleString('en-US', { minimumFractionDigits: selectedPackage.price % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })})`
-              : 'กรุณาระบุ แพ็คเกจเติมเกม'}
-          </span>
-          {selectedPackage ? (
-            <span className="text-emerald-400 text-xs ml-0.5">🚀 ชำระเงิน</span>
+          {!user ? (
+            <>
+              <ShieldCheck className="w-4 h-4 text-white" />
+              <span>กรุณาเข้าสู่ระบบก่อนทำรายการ</span>
+            </>
           ) : (
-            <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin ml-1" />
+            <>
+              <ShoppingCart className="w-4 h-4 text-blue-400" />
+              <span>
+                {selectedPackage
+                  ? `เลือก: ${selectedPackage.name} (฿${Number(selectedPackage.price).toLocaleString('en-US', { minimumFractionDigits: selectedPackage.price % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })})`
+                  : 'กรุณาระบุ แพ็คเกจเติมเกม'}
+              </span>
+              {selectedPackage ? (
+                <span className="text-emerald-400 text-xs ml-0.5">🚀 ชำระเงิน</span>
+              ) : (
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin ml-1" />
+              )}
+            </>
           )}
         </button>
       </div>

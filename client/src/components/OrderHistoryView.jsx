@@ -57,9 +57,17 @@ export default function OrderHistoryView({
   const [copiedCodeId, setCopiedCodeId] = useState(null);
 
   // Fetch orders from API + sync with local browser history
-  const fetchOrders = async () => {
+  const fetchOrders = async (overrides = {}) => {
     setIsLoading(true);
     try {
+      const activeStart = overrides.startDate !== undefined ? overrides.startDate : dateRange.startDate;
+      const activeEnd = overrides.endDate !== undefined ? overrides.endDate : dateRange.endDate;
+      const activeCat = overrides.category !== undefined ? overrides.category : selectedCategory;
+      const activeGame = overrides.gameId !== undefined ? overrides.gameId : selectedGame;
+      const activeStatus = overrides.status !== undefined ? overrides.status : selectedStatus;
+      const activeOrderNo = overrides.orderNumber !== undefined ? overrides.orderNumber : searchOrderNumber;
+      const activeUid = overrides.gameUid !== undefined ? overrides.gameUid : searchGameUid;
+
       // Load recent orders from localStorage
       let localOrders = [];
       let localOrderNumbers = [];
@@ -74,23 +82,23 @@ export default function OrderHistoryView({
       const params = new URLSearchParams();
       if (user?.id) params.append('userId', user.id);
       if (localOrderNumbers.length > 0) params.append('orderNumbers', localOrderNumbers.join(','));
-      if (searchOrderNumber.trim()) params.append('orderNumber', searchOrderNumber.trim());
-      if (searchGameUid.trim()) params.append('gameUid', searchGameUid.trim());
-      if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
-      if (selectedGame && selectedGame !== 'all') params.append('gameId', selectedGame);
-      if (selectedStatus && selectedStatus !== 'all') params.append('status', selectedStatus);
-      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
-      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+      if (activeOrderNo && activeOrderNo.trim()) params.append('orderNumber', activeOrderNo.trim());
+      if (activeUid && activeUid.trim()) params.append('gameUid', activeUid.trim());
+      if (activeCat && activeCat !== 'all') params.append('category', activeCat);
+      if (activeGame && activeGame !== 'all') params.append('gameId', activeGame);
+      if (activeStatus && activeStatus !== 'all') params.append('status', activeStatus);
+      if (activeStart) params.append('startDate', activeStart);
+      if (activeEnd) params.append('endDate', activeEnd);
 
       const res = await fetch(`/api/orders/history?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
         let fetchedOrders = data.orders || [];
 
-        // If local orders exist and search filter is not active, ensure all local orders are visible
-        if (localOrders.length > 0 && !searchOrderNumber.trim() && !searchGameUid.trim() && selectedCategory === 'all' && selectedGame === 'all' && selectedStatus === 'all' && !dateRange.startDate && !dateRange.endDate) {
-          const fetchedKeys = new Set(fetchedOrders.map(o => o.orderNumber || o.id));
-          const missingLocal = localOrders.filter(lo => !fetchedKeys.has(lo.orderNumber) && !fetchedKeys.has(lo.id)).map(lo => {
+        // If local orders exist, merge any missing ones into fetchedOrders
+        if (localOrders.length > 0) {
+          const fetchedKeys = new Set(fetchedOrders.map(o => (o.orderNumber || o.id || '').toLowerCase()));
+          const missingLocal = localOrders.filter(lo => !fetchedKeys.has((lo.orderNumber || '').toLowerCase()) && !fetchedKeys.has((lo.id || '').toLowerCase())).map(lo => {
             const itemPrice = Number(lo.finalAmount ?? lo.originalAmount ?? lo.amount ?? lo.price ?? 0);
             return {
               id: lo.id,
@@ -105,7 +113,7 @@ export default function OrderHistoryView({
               price: itemPrice,
               finalAmount: itemPrice,
               status: lo.topupStatus || 'pending',
-              statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : (lo.paymentStatus === 'pending_verification' ? 'รอตรวจสลิป' : 'รอชำระเงิน'),
+              statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : (lo.paymentStatus === 'pending_verification' ? 'รอตรวจสลิป' : (lo.paymentStatus === 'rejected' ? 'สลิปถูกปฏิเสธ' : 'รอชำระเงิน')),
               paymentStatus: lo.paymentStatus || 'pending',
               topupStatus: lo.topupStatus || 'pending',
               createdAt: lo.createdAt || new Date().toISOString(),
@@ -113,7 +121,9 @@ export default function OrderHistoryView({
             };
           });
 
-          fetchedOrders = [...fetchedOrders, ...missingLocal].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          if (!activeOrderNo.trim() && !activeUid.trim()) {
+            fetchedOrders = [...fetchedOrders, ...missingLocal].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          }
         }
 
         setOrders(fetchedOrders);
@@ -139,7 +149,7 @@ export default function OrderHistoryView({
             playerId: lo.playerId || '-',
             price: Number(lo.finalAmount || lo.price || 0),
             status: lo.topupStatus || 'pending',
-            statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : 'รอชำระเงิน',
+            statusLabel: lo.topupStatus === 'completed' ? 'สำเร็จ 100%' : (lo.paymentStatus === 'rejected' ? 'สลิปถูกปฏิเสธ' : 'รอชำระเงิน'),
             createdAt: lo.createdAt || new Date().toISOString(),
             rawOrder: lo
           })));
@@ -176,9 +186,15 @@ export default function OrderHistoryView({
     setSelectedStatus('all');
     setSearchOrderNumber('');
     setSearchGameUid('');
-    setTimeout(() => {
-      fetchOrders();
-    }, 50);
+    fetchOrders({
+      startDate: '',
+      endDate: '',
+      category: 'all',
+      gameId: 'all',
+      status: 'all',
+      orderNumber: '',
+      gameUid: ''
+    });
   };
 
   // Open My Cards Modal & fetch cards

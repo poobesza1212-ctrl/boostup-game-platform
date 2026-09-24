@@ -560,6 +560,45 @@ router.get('/orders/history', (req, res) => {
 
     let orders = db.getOrders() || [];
 
+    // Helpers for Thai timezone date normalization
+    const getThailandDateString = (isoOrDate) => {
+      if (!isoOrDate) return '';
+      try {
+        const d = new Date(isoOrDate);
+        if (isNaN(d.getTime())) return '';
+        // Thailand is UTC+7 (7 * 60 * 60 * 1000 ms)
+        const thDate = new Date(d.getTime() + (7 * 60 * 60 * 1000));
+        return thDate.toISOString().slice(0, 10); // 'YYYY-MM-DD' in Thailand
+      } catch (e) {
+        return '';
+      }
+    };
+
+    const normalizeDateInput = (val) => {
+      if (!val || typeof val !== 'string') return '';
+      const s = val.trim();
+      if (s.includes('/')) {
+        const parts = s.split('/');
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          } else {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+        }
+      } else if (s.includes('-')) {
+        const parts = s.split('-');
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          } else {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+        }
+      }
+      return s.slice(0, 10);
+    };
+
     // Parse orderNumbers list from client's localStorage
     let clientOrderNumbers = [];
     if (orderNumbers && orderNumbers.trim()) {
@@ -567,7 +606,7 @@ router.get('/orders/history', (req, res) => {
     }
 
     // Auto link guest orders to user if both are provided
-    if (userId && userId.trim() && clientOrderNumbers.length > 0) {
+    if (userId && userId.trim() && userId.trim() !== 'undefined' && userId.trim() !== 'null' && userId.trim() !== 'usr_anonymous' && clientOrderNumbers.length > 0) {
       const uId = userId.trim();
       clientOrderNumbers.forEach(on => {
         const found = orders.find(o => ((o.orderNumber || '').toLowerCase() === on || (o.id || '').toLowerCase() === on) && (!o.userId || o.userId === 'usr_anonymous'));
@@ -578,22 +617,37 @@ router.get('/orders/history', (req, res) => {
       });
     }
 
-    // Filter by User:
-    // If specific search criteria (orderNumber, gameUid, playerId) are provided, allow searching across orders
-    // Otherwise:
-    // 1. If userId is provided, match orders for this userId OR in clientOrderNumbers
-    // 2. If userId is NOT provided, match clientOrderNumbers (or return all recent if client has none)
-    const hasSearchFilter = Boolean((orderNumber && orderNumber.trim()) || (gameUid && gameUid.trim()) || (playerId && playerId.trim()));
+    // Normalize date filters
+    const normStart = normalizeDateInput(startDate);
+    const normEnd = normalizeDateInput(endDate);
 
-    if (!hasSearchFilter) {
+    // Determine if the user has specified ANY search or filter criteria
+    const hasAnyFilter = Boolean(
+      (orderNumber && orderNumber.trim()) ||
+      (gameUid && gameUid.trim()) ||
+      (playerId && playerId.trim()) ||
+      (gameId && gameId !== 'all' && gameId.trim()) ||
+      (category && category !== 'all' && category.trim()) ||
+      (status && status !== 'all' && status.trim()) ||
+      normStart ||
+      normEnd
+    );
+
+    // If NO search filter is active:
+    if (!hasAnyFilter) {
       if (userId && userId.trim() && userId.trim() !== 'undefined' && userId.trim() !== 'null' && userId.trim() !== 'usr_anonymous') {
         const uId = userId.trim();
-        orders = orders.filter(o => o.userId === uId || clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
+        const userOrders = orders.filter(o => o.userId === uId || clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
+        if (userOrders.length > 0) {
+          orders = userOrders;
+        }
       } else if (clientOrderNumbers.length > 0) {
-        orders = orders.filter(o => clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
-      } else {
-        orders = [];
+        const localMatched = orders.filter(o => clientOrderNumbers.includes((o.orderNumber || '').toLowerCase()) || clientOrderNumbers.includes((o.id || '').toLowerCase()));
+        if (localMatched.length > 0) {
+          orders = localMatched;
+        }
       }
+      // If neither or empty, leave orders as recent orders so customer is never faced with an empty screen
     }
 
     // Filter by Order Number (partial or exact)
@@ -605,17 +659,23 @@ router.get('/orders/history', (req, res) => {
       );
     }
 
-    // Filter by Game UID / Player ID
+    // Filter by Game UID / Player ID / Nickname
     const targetUid = (gameUid || playerId || '').trim().toLowerCase();
     if (targetUid) {
       orders = orders.filter(o => 
-        o.playerId && o.playerId.toString().toLowerCase().includes(targetUid)
+        (o.playerId && o.playerId.toString().toLowerCase().includes(targetUid)) ||
+        (o.playerNickname && o.playerNickname.toString().toLowerCase().includes(targetUid)) ||
+        (o.playerIgn && o.playerIgn.toString().toLowerCase().includes(targetUid))
       );
     }
 
-    // Filter by Game ID
+    // Filter by Game ID or Name
     if (gameId && gameId !== 'all' && gameId.trim()) {
-      orders = orders.filter(o => o.gameId === gameId.trim());
+      const g = gameId.trim().toLowerCase();
+      orders = orders.filter(o => 
+        (o.gameId && o.gameId.toLowerCase() === g) || 
+        (o.gameName && o.gameName.toLowerCase().includes(g))
+      );
     }
 
     // Filter by Status
@@ -625,7 +685,7 @@ router.get('/orders/history', (req, res) => {
         orders = orders.filter(o => o.topupStatus === 'completed' || o.paymentStatus === 'paid');
       } else if (s === 'pending' || s === 'รอดำเนินการ') {
         orders = orders.filter(o => o.topupStatus === 'pending' || o.paymentStatus === 'pending' || o.paymentStatus === 'pending_verification');
-      } else if (s === 'failed' || s === 'cancelled' || s === 'ยกเลิก') {
+      } else if (s === 'failed' || s === 'cancelled' || s === 'ยกเลิก' || s === 'rejected') {
         orders = orders.filter(o => o.topupStatus === 'failed' || o.paymentStatus === 'failed' || o.paymentStatus === 'rejected');
       } else {
         orders = orders.filter(o => o.topupStatus === s || o.paymentStatus === s);
@@ -651,20 +711,18 @@ router.get('/orders/history', (req, res) => {
       });
     }
 
-    // Filter by Date Range (with generous buffer to prevent timezone cutoff)
-    if (startDate && startDate.trim()) {
-      const start = new Date(startDate.trim()).getTime();
-      if (!isNaN(start)) {
-        orders = orders.filter(o => new Date(o.createdAt).getTime() >= (start - 24 * 60 * 60 * 1000));
-      }
+    // Filter by Thailand Date Range (accurate to UTC+7)
+    if (normStart) {
+      orders = orders.filter(o => {
+        const orderDate = getThailandDateString(o.createdAt);
+        return orderDate && orderDate >= normStart;
+      });
     }
-    if (endDate && endDate.trim()) {
-      const endParts = endDate.trim().split('-');
-      if (endParts.length === 3) {
-        const end = new Date(Date.UTC(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]), 23, 59, 59, 999));
-        const endMs = end.getTime() + (24 * 60 * 60 * 1000);
-        orders = orders.filter(o => new Date(o.createdAt).getTime() <= endMs);
-      }
+    if (normEnd) {
+      orders = orders.filter(o => {
+        const orderDate = getThailandDateString(o.createdAt);
+        return orderDate && orderDate <= normEnd;
+      });
     }
 
     // Sort by createdAt descending

@@ -51,7 +51,7 @@ export default function FloatingSupport({ contactLine = '@boostup', user = null 
 
       {/* Main Floating Trigger Button */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
+        <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 flex flex-col items-end">
           
           {/* New message tooltip bubble if admin replied while chat was closed */}
           {hasNewAdminMessage && (

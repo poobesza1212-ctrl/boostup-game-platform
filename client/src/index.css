@@ -5,6 +5,9 @@
     background-color: #080a0f;
     color: #e2e8f0;
     overflow-x: hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
 
   h1, h2, h3, h4, h5, h6 {

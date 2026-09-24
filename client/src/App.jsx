@@ -22,8 +22,10 @@ import LeftSidebar from './components/LeftSidebar';
 import OrderHistoryView from './components/OrderHistoryView';
 import UserProfileView from './components/UserProfileView';
 import PolicyModal from './components/PolicyModal';
+import MobileBottomNav from './components/MobileBottomNav';
 import AdminPortal from './pages/admin/AdminPortal';
 import tracker from './utils/analytics';
+import { initNativeApp } from './utils/native';
 
 export default function App() {
   // Detect current URL route (/admin vs /orders vs /profile vs /)
@@ -114,6 +116,7 @@ export default function App() {
 
   // Initialize marketing tracking pixels (Meta Pixel, TikTok, GA4, Custom Scripts)
   useEffect(() => {
+    initNativeApp();
     if (siteSettings?.marketing) {
       tracker.init(siteSettings.marketing);
     }
@@ -413,7 +416,7 @@ export default function App() {
       />
 
       {/* Main Content Column: Shifted to the right on Desktop (lg:pl-64 xl:pl-72) */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 xl:pl-72 transition-all duration-300 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 xl:pl-72 transition-all duration-300 min-h-screen pb-16 md:pb-0">
         
         {/* Top Navbar */}
         <Navbar
@@ -649,6 +652,22 @@ export default function App() {
         </div>
       )}
 
+      {/* Mobile App Bottom Navigation Bar for iOS & Android */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={navigateTo}
+        onOpenCart={() => setCartModalOpen(true)}
+        cartCount={cartItems.length}
+        onOpenChat={() => {
+          const chatBtn = document.querySelector('button[aria-label="Contact Customer Support"]');
+          if (chatBtn) chatBtn.click();
+        }}
+        user={user}
+        onOpenAuth={handleOpenAuth}
+        onSelectGameSection={() => {
+          document.getElementById('games-section')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
     </div>
   );
 }

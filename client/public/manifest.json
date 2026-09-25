@@ -1,0 +1,18 @@
+{
+  "short_name": "BOOSTUP",
+  "name": "BOOSTUP ร้านเติมเงินเกม 24 ชม.",
+  "description": "ระบบเติมเกมออนไลน์อัตโนมัติ รวดเร็ว ปลอดภัย 24 ชม.",
+  "icons": [
+    {
+      "src": "/boostup_logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#080a0f",
+  "theme_color": "#080a0f",
+  "display": "standalone",
+  "orientation": "portrait"
+}

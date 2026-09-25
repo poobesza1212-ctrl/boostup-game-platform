@@ -67,6 +67,10 @@ app.get('/uploads/:filename', (req, res, next) => {
 });
 app.use('/uploads', express.static(uploadsDir, { dotfiles: 'allow' }));
 
+// Serve banners from client public directory
+const clientBannersDir = path.join(__dirname, '..', 'client', 'public', 'banners');
+app.use('/banners', express.static(clientBannersDir, { dotfiles: 'allow' }));
+
 // Serve frontend in production or if build exists
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 const indexHtml = path.join(clientDist, 'index.html');

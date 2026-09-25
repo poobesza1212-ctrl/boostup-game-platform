@@ -846,6 +846,47 @@ const defaultData = {
       ]
     }
   ],
+  carouselSlides: [
+    {
+      id: "slide_fast_safe",
+      badge: "⚡ เติมไว ปลอดภัย 24 ชม.",
+      badgeColor: "bg-red-600 text-white",
+      title: "เติมเกมไว ปลอดภัย 24 ชม.",
+      subtitle: "ระบบอัตโนมัติ เติมไว ไม่ต้องใช้รหัสผ่าน",
+      ctaText: "เติมเกมทันที",
+      ctaTarget: "popular-games",
+      image: "/banners/banner_fast_safe.png",
+      displayOrder: 1,
+      isActive: true,
+      isPureGraphic: true
+    },
+    {
+      id: "slide_flash_sale",
+      badge: "🔥 FLASH SALE เติมคุ้มกว่าเดิม",
+      badgeColor: "bg-amber-500 text-black font-black",
+      title: "Flash Sale เติมคุ้มกว่าเดิม",
+      subtitle: "โปรโมชั่นส่วนลดพิเศษ คุ้มค่าทุกการเติม",
+      ctaText: "ดู Flash Sale",
+      ctaTarget: "popular-games",
+      image: "/banners/banner_flash_sale.png",
+      displayOrder: 2,
+      isActive: true,
+      isPureGraphic: true
+    },
+    {
+      id: "slide_all_services",
+      badge: "🎮 ครบทุกบริการเกมและดิจิทัล",
+      badgeColor: "bg-cyan-500 text-black font-black",
+      title: "ครบทุกบริการเกมและดิจิทัล",
+      subtitle: "บัตรเติมเงิน บัญชีพรีเมียม และไอเทมเกมชั้นนำ",
+      ctaText: "เลือกดูบริการ",
+      ctaTarget: "popular-games",
+      image: "/banners/banner_all_services.png",
+      displayOrder: 3,
+      isActive: true,
+      isPureGraphic: true
+    }
+  ],
   chats: [],
   auditLogs: []
 };
@@ -1082,13 +1123,13 @@ class Database {
 
     if (!this.data.appSubscriptions || this.data.appSubscriptions.length === 0) this.data.appSubscriptions = defaultData.appSubscriptions;
     
-    // Carousel Slides: ONLY populate defaults if carouselSlides has NEVER been customized
-    if (!this.data.carouselSlidesCustomized) {
-      if (!this.data.carouselSlides || this.data.carouselSlides.length === 0) {
-        this.data.carouselSlides = defaultData.carouselSlides || [];
-      }
-    } else {
-      if (!this.data.carouselSlides) this.data.carouselSlides = [];
+    // Carousel Slides: Upgrade to new 3 embedded promotional banners if using legacy defaults or empty
+    const hasLegacyBanners = Array.isArray(this.data.carouselSlides) && this.data.carouselSlides.some(s => 
+      s.id === 'slide_rov' || s.id === 'default_rov' || (s.image && s.image.includes('banner_rov'))
+    );
+    if (!this.data.carouselSlides || this.data.carouselSlides.length === 0 || hasLegacyBanners) {
+      this.data.carouselSlides = JSON.parse(JSON.stringify(defaultData.carouselSlides || []));
+      this.data.carouselSlidesCustomized = false;
     }
 
     if (!this.data.orders) this.data.orders = [];
@@ -1746,54 +1787,41 @@ class Database {
     this.data.carouselSlidesCustomized = false;
     this.data.carouselSlides = [
       {
-        id: "slide_rov",
-        badge: "⚡ FLASH SALE -30%",
+        id: "slide_fast_safe",
+        badge: "⚡ เติมไว ปลอดภัย 24 ชม.",
         badgeColor: "bg-red-600 text-white",
-        title: "เติมคูปอง ROV ราคาพิเศษ",
-        subtitle: "เข้าเกมอัตโนมัติ 1-3 วินาที ปลอดภัย ไม่ต้องใช้รหัสผ่าน",
-        ctaText: "เติม ROV ทันที",
+        title: "เติมเกมไว ปลอดภัย 24 ชม.",
+        subtitle: "ระบบอัตโนมัติ เติมไว ไม่ต้องใช้รหัสผ่าน",
+        ctaText: "เติมเกมทันที",
         ctaTarget: "popular-games",
-        image: "/banners/banner_rov.svg",
+        image: "/banners/banner_fast_safe.png",
         displayOrder: 1,
         isActive: true,
         isPureGraphic: true
       },
       {
-        id: "slide_ff",
-        badge: "💎 โบนัสเพชร +50%",
+        id: "slide_flash_sale",
+        badge: "🔥 FLASH SALE เติมคุ้มกว่าเดิม",
         badgeColor: "bg-amber-500 text-black font-black",
-        title: "เติมเพชร Free Fire รับโบนัสฟรี",
-        subtitle: "กรอกเพียง UID ตัวเลข เข้าบัญชีทันที เติมได้ตลอด 24 ชม.",
-        ctaText: "เติม Free Fire",
+        title: "Flash Sale เติมคุ้มกว่าเดิม",
+        subtitle: "โปรโมชั่นส่วนลดพิเศษ คุ้มค่าทุกการเติม",
+        ctaText: "ดู Flash Sale",
         ctaTarget: "popular-games",
-        image: "/banners/banner_freefire.svg",
+        image: "/banners/banner_flash_sale.png",
         displayOrder: 2,
         isActive: true,
         isPureGraphic: true
       },
       {
-        id: "slide_val",
-        badge: "⚡ FAST TOP-UP 24 ชม.",
+        id: "slide_all_services",
+        badge: "🎮 ครบทุกบริการเกมและดิจิทัล",
         badgeColor: "bg-cyan-500 text-black font-black",
-        title: "VALORANT POINTS (VP) เติมไว ปลอดภัย",
-        subtitle: "เติม Riot ID ตรงเข้าบัญชีทันที รองรับ Night Market ทุกเซิร์ฟเวอร์",
-        ctaText: "เติม VALORANT VP",
+        title: "ครบทุกบริการเกมและดิจิทัล",
+        subtitle: "บัตรเติมเงิน บัญชีพรีเมียม และไอเทมเกมชั้นนำ",
+        ctaText: "เลือกดูบริการ",
         ctaTarget: "popular-games",
-        image: "/banners/banner_valorant.svg",
+        image: "/banners/banner_all_services.png",
         displayOrder: 3,
-        isActive: true,
-        isPureGraphic: true
-      },
-      {
-        id: "slide_gen",
-        badge: "✨ สิทธิพิเศษ 2X COINS",
-        badgeColor: "bg-purple-600 text-white font-bold",
-        title: "Genshin Impact พรแห่งดวงจันทร์",
-        subtitle: "Blessing of the Welkin Moon & Genesis Crystals ราคาคุ้มที่สุด",
-        ctaText: "เติม Genshin Impact",
-        ctaTarget: "popular-games",
-        image: "/banners/banner_genshin.svg",
-        displayOrder: 4,
         isActive: true,
         isPureGraphic: true
       }

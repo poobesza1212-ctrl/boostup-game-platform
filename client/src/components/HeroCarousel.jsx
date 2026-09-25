@@ -9,47 +9,36 @@ export default function HeroCarousel({ slides: customSlides, onSelectCategory, o
 
   const defaultSlides = [
     {
-      id: 'default_rov',
-      badge: '⚡ FLASH SALE -30%',
+      id: 'slide_fast_safe',
+      badge: '⚡ เติมไว ปลอดภัย 24 ชม.',
       badgeColor: 'bg-red-600 text-white',
-      title: 'เติมคูปอง ROV ราคาพิเศษ',
-      subtitle: 'เข้าเกมอัตโนมัติ 1-3 วินาที ปลอดภัย ไม่ต้องใช้รหัสผ่าน',
-      ctaText: 'เติม ROV ทันที',
+      title: 'เติมเกมไว ปลอดภัย 24 ชม.',
+      subtitle: 'ระบบอัตโนมัติ เติมไว ไม่ต้องใช้รหัสผ่าน',
+      ctaText: 'เติมเกมทันที',
       ctaTarget: 'popular-games',
-      image: '/banners/banner_rov.svg',
+      image: '/banners/banner_fast_safe.png',
       isPureGraphic: true
     },
     {
-      id: 'default_ff',
-      badge: '💎 โบนัสเพชร +50%',
+      id: 'slide_flash_sale',
+      badge: '🔥 FLASH SALE เติมคุ้มกว่าเดิม',
       badgeColor: 'bg-amber-500 text-black font-black',
-      title: 'เติมเพชร Free Fire รับโบนัสฟรี',
-      subtitle: 'กรอกเพียง UID ตัวเลข เข้าบัญชีทันที เติมได้ตลอด 24 ชม.',
-      ctaText: 'เติม Free Fire',
+      title: 'Flash Sale เติมคุ้มกว่าเดิม',
+      subtitle: 'โปรโมชั่นส่วนลดพิเศษ คุ้มค่าทุกการเติม',
+      ctaText: 'ดู Flash Sale',
       ctaTarget: 'popular-games',
-      image: '/banners/banner_freefire.svg',
+      image: '/banners/banner_flash_sale.png',
       isPureGraphic: true
     },
     {
-      id: 'default_val',
-      badge: '⚡ FAST TOP-UP 24 ชม.',
+      id: 'slide_all_services',
+      badge: '🎮 ครบทุกบริการเกมและดิจิทัล',
       badgeColor: 'bg-cyan-500 text-black font-black',
-      title: 'VALORANT POINTS (VP) เติมไว ปลอดภัย',
-      subtitle: 'เติม Riot ID ตรงเข้าบัญชีทันที รองรับ Night Market ทุกเซิร์ฟเวอร์',
-      ctaText: 'เติม VALORANT VP',
+      title: 'ครบทุกบริการเกมและดิจิทัล',
+      subtitle: 'บัตรเติมเงิน บัญชีพรีเมียม และไอเทมเกมชั้นนำ',
+      ctaText: 'เลือกดูบริการ',
       ctaTarget: 'popular-games',
-      image: '/banners/banner_valorant.svg',
-      isPureGraphic: true
-    },
-    {
-      id: 'default_gen',
-      badge: '✨ สิทธิพิเศษ 2X COINS',
-      badgeColor: 'bg-purple-600 text-white font-bold',
-      title: 'Genshin Impact พรแห่งดวงจันทร์',
-      subtitle: 'Blessing of the Welkin Moon & Genesis Crystals ราคาคุ้มที่สุด',
-      ctaText: 'เติม Genshin Impact',
-      ctaTarget: 'popular-games',
-      image: '/banners/banner_genshin.svg',
+      image: '/banners/banner_all_services.png',
       isPureGraphic: true
     }
   ];
@@ -153,7 +142,7 @@ export default function HeroCarousel({ slides: customSlides, onSelectCategory, o
                   alt={slide.title || 'Promotional Banner'}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = '/banners/banner_rov.svg';
+                    e.target.src = '/banners/banner_fast_safe.png';
                   }}
                   className="w-full h-full object-cover object-center transition-transform duration-1000 ease-out group-hover:scale-[1.02]"
                 />
